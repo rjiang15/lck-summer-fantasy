@@ -1,0 +1,468 @@
+// LCK Fantasy League — Prisma schema
+// SQLite for the MVP; swap the datasource to Postgres before multi-user deploy.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ---------- Esports data (ingested from Leaguepedia) ----------
+
+model Tournament {
+  id         String      @id // Leaguepedia OverviewPage, e.g. "LCK/2026 Season/Rounds 3-5"
+  name       String
+  hidden     Boolean     @default(false) // hide duplicates (e.g. OE copy of an LP split) from the UI
+  dateStart  DateTime?
+  dateEnd    DateTime?
+  matches    Match[]
+  weeks      Week[]
+  proPlayers ProPlayer[]
+}
+
+model ProTeam {
+  id      String      @id // Leaguepedia team name, e.g. "T1"
+  short   String? // e.g. "T1", "GEN"
+  players ProPlayer[]
+}
+
+model ProPlayer {
+  id                String                   @id // Leaguepedia Link field (canonical, rename-safe)
+  name              String
+  role              String? // Top | Jungle | Mid | Bot | Support
+  team              ProTeam?                 @relation(fields: [teamId], references: [id])
+  teamId            String?
+  tournament        Tournament?              @relation(fields: [tournamentId], references: [id])
+  tournamentId      String?
+  gameStats         PlayerGameStat[]
+  timeline          PlayerTimelineSnapshot[]
+  rosterSlots       RosterSlot[]
+  weeklyRosterSlots WeeklyRosterSlot[]
+}
+
+model Week {
+  id           Int          @id @default(autoincrement())
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id])
+  tournamentId String
+  number       Int
+  startsAt     DateTime
+  endsAt       DateTime
+  matches      Match[]
+  leagueWeeks  LeagueWeek[]
+
+  @@unique([tournamentId, number])
+}
+
+model Match {
+  id           String     @id // Leaguepedia MatchId
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  tournamentId String
+  week         Week?      @relation(fields: [weekId], references: [id])
+  weekId       Int?
+  team1        String
+  team2        String
+  bestOf       Int
+  scheduledAt  DateTime
+  winner       String? // team id, null until finished
+  team1Score   Int?
+  team2Score   Int?
+  games        Game[]
+  pickems      Pickem[]
+}
+
+model Game {
+  id                 String                   @id // Leaguepedia GameId / source game id
+  match              Match                    @relation(fields: [matchId], references: [id])
+  matchId            String
+  gameNumber         Int
+  winner             String?
+  lengthSec          Int?
+  playedAt           DateTime?
+  patch              String?
+  sourceUrl          String?
+  vodUrl             String?
+  riotPlatformGameId String?
+  riotPlatformId     String?
+  riotGameId         String?
+  sourceData         String? // JSON: full source row for forward-compatible ingestion
+  playerStats        PlayerGameStat[]
+  teamStats          TeamGameStat[]
+  draftActions       DraftAction[]
+  events             GameEvent[]
+  playerTimeline     PlayerTimelineSnapshot[]
+  teamTimeline       TeamTimelineSnapshot[]
+  provenance         StatProvenance[]
+}
+
+model PlayerGameStat {
+  id                 Int       @id @default(autoincrement())
+  game               Game      @relation(fields: [gameId], references: [id])
+  gameId             String
+  player             ProPlayer @relation(fields: [playerId], references: [id])
+  playerId           String
+  teamId             String
+  side               String? // Blue | Red
+  champion           String
+  role               String?
+  kills              Int
+  deaths             Int
+  assists            Int
+  gold               Int? // end-of-game total gold
+  goldEarned         Int?
+  goldSpent          Int?
+  cs                 Int?
+  minionKills        Int?
+  monsterKills       Int?
+  damage             Int? // damage to champions
+  damageToObjectives Int?
+  damageTaken        Int?
+  damageMitigated    Int?
+  totalHeal          Int?
+  visionScore        Int?
+  wardsPlaced        Int?
+  wardsKilled        Int?
+  controlWardsBought Int?
+  doubleKills        Int?
+  tripleKills        Int?
+  quadraKills        Int?
+  pentakills         Int?
+  firstBloodKill     Boolean?
+  firstBloodAssist   Boolean?
+  firstBloodVictim   Boolean?
+  summonerSpells     String? // JSON array when supplied as a list
+  items              String? // JSON array when supplied as a list
+  trinket            String?
+  primaryRuneTree    String?
+  secondaryRuneTree  String?
+  keystoneRune       String?
+  teamKills          Int?
+  teamGold           Int?
+  killParticipation  Float?
+  damageShare        Float?
+  goldShare          Float?
+  sourceData         String? // JSON: full source row
+  won                Boolean
+
+  @@unique([gameId, playerId])
+}
+
+model TeamGameStat {
+  id               Int      @id @default(autoincrement())
+  game             Game     @relation(fields: [gameId], references: [id])
+  gameId           String
+  teamId           String
+  side             String? // Blue | Red
+  kills            Int?
+  deaths           Int?
+  gold             Int?
+  towers           Int?
+  turretPlates     Int?
+  dragons          Int?
+  cloudDrakes      Int?
+  infernalDrakes   Int?
+  mountainDrakes   Int?
+  oceanDrakes      Int?
+  hextechDrakes    Int?
+  chemtechDrakes   Int?
+  elderDragons     Int?
+  barons           Int?
+  heralds          Int?
+  voidGrubs        Int?
+  atakhans         Int?
+  inhibs           Int?
+  firstBlood       Boolean?
+  firstDragon      Boolean?
+  firstHerald      Boolean?
+  firstBaron       Boolean?
+  firstTower       Boolean?
+  firstMidTower    Boolean?
+  firstThreeTowers Boolean?
+  sourceData       String? // JSON: full source row
+  won              Boolean
+
+  @@unique([gameId, teamId])
+}
+
+// Normalized draft history. Sequence is the order within a side's picks or
+// bans because some source formats do not expose a reliable global sequence.
+model DraftAction {
+  id       Int     @id @default(autoincrement())
+  game     Game    @relation(fields: [gameId], references: [id])
+  gameId   String
+  teamId   String
+  side     String // Blue | Red
+  action   String // PICK | BAN
+  sequence Int
+  champion String
+  role     String?
+  playerId String?
+
+  @@unique([gameId, teamId, action, sequence])
+}
+
+// Event-level storage for Riot/other timeline sources. The importers populate
+// this whenever their input includes events; payload preserves source detail.
+model GameEvent {
+  id                 Int     @id @default(autoincrement())
+  game               Game    @relation(fields: [gameId], references: [id])
+  gameId             String
+  sourceKey          String
+  timestampMs        Int
+  type               String
+  teamId             String?
+  playerId           String?
+  victimPlayerId     String?
+  assistingPlayerIds String? // JSON array
+  champion           String?
+  monsterType        String?
+  monsterSubType     String?
+  buildingType       String?
+  laneType           String?
+  positionX          Int?
+  positionY          Int?
+  payload            String? // complete event JSON
+
+  @@unique([gameId, sourceKey])
+  @@index([gameId, timestampMs])
+}
+
+// Sources such as Oracle's Elixir expose checkpoints at 10/15/20/25 minutes;
+// full Riot timelines can populate these at one-minute resolution.
+model PlayerTimelineSnapshot {
+  id         Int       @id @default(autoincrement())
+  game       Game      @relation(fields: [gameId], references: [id])
+  gameId     String
+  player     ProPlayer @relation(fields: [playerId], references: [id])
+  playerId   String
+  minute     Int
+  kills      Int?
+  deaths     Int?
+  assists    Int?
+  cs         Int?
+  gold       Int?
+  xp         Int?
+  level      Int?
+  csDiff     Int?
+  goldDiff   Int?
+  xpDiff     Int?
+  sourceData String?
+
+  @@unique([gameId, playerId, minute])
+  @@index([playerId, minute])
+}
+
+model TeamTimelineSnapshot {
+  id         Int     @id @default(autoincrement())
+  game       Game    @relation(fields: [gameId], references: [id])
+  gameId     String
+  teamId     String
+  minute     Int
+  kills      Int?
+  deaths     Int?
+  gold       Int?
+  xp         Int?
+  cs         Int?
+  towers     Int?
+  dragons    Int?
+  heralds    Int?
+  voidGrubs  Int?
+  barons     Int?
+  sourceData String?
+
+  @@unique([gameId, teamId, minute])
+  @@index([teamId, minute])
+}
+
+// ---------- Fantasy league (users & scoring) ----------
+
+model User {
+  id           Int                 @id @default(autoincrement())
+  username     String              @unique
+  passwordHash String
+  isCommish    Boolean             @default(false)
+  createdAt    DateTime            @default(now())
+  fantasyTeams FantasyTeam[]
+  pickems      Pickem[]
+  cbAnswers    CrystalBallAnswer[]
+  sessions     Session[]
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model League {
+  id                  Int                   @id @default(autoincrement())
+  name                String
+  inviteCode          String                @unique
+  tournamentId        String // which LCK split this league runs on
+  scoringConfig       String // JSON: per-stat point values, pickem winner/exact-score values, etc.
+  fantasyTeams        FantasyTeam[]
+  cbQuestions         CrystalBallQuestion[]
+  currentWeek         Int                   @default(0)
+  seasonStatus        String                @default("PRESEASON") // PRESEASON | ACTIVE | FINAL
+  crystalBallLockedAt DateTime?
+  isSimulation        Boolean               @default(false)
+  leagueWeeks         LeagueWeek[]
+}
+
+model LeagueWeek {
+  id                Int                @id @default(autoincrement())
+  league            League             @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  leagueId          Int
+  week              Week               @relation(fields: [weekId], references: [id])
+  weekId            Int
+  status            String             @default("UPCOMING") // UPCOMING | OPEN | LOCKED | RESULTS_IMPORTED | SCORED | PUBLISHED
+  picksOpenAt       DateTime?
+  picksLockedAt     DateTime?
+  rosterLockedAt    DateTime?
+  resultsImportedAt DateTime?
+  scoredAt          DateTime?
+  publishedAt       DateTime?
+  validationJson    String?
+  validationError   String?
+  weeklyRosters     WeeklyRosterSlot[]
+  weeklyScores      WeeklyScore[]
+
+  @@unique([leagueId, weekId])
+  @@index([leagueId, status])
+}
+
+model FantasyTeam {
+  id           Int                @id @default(autoincrement())
+  league       League             @relation(fields: [leagueId], references: [id])
+  leagueId     Int
+  user         User               @relation(fields: [userId], references: [id])
+  userId       Int
+  name         String
+  roster       RosterSlot[]
+  weeklyRoster WeeklyRosterSlot[]
+  weeklyScores WeeklyScore[]
+
+  @@unique([leagueId, userId])
+}
+
+model WeeklyRosterSlot {
+  id            Int         @id @default(autoincrement())
+  leagueWeek    LeagueWeek  @relation(fields: [leagueWeekId], references: [id], onDelete: Cascade)
+  leagueWeekId  Int
+  fantasyTeam   FantasyTeam @relation(fields: [fantasyTeamId], references: [id], onDelete: Cascade)
+  fantasyTeamId Int
+  player        ProPlayer   @relation(fields: [playerId], references: [id])
+  playerId      String
+  slot          String
+  lockedAt      DateTime    @default(now())
+
+  @@unique([leagueWeekId, fantasyTeamId, playerId])
+  @@index([leagueWeekId, fantasyTeamId])
+}
+
+model WeeklyScore {
+  id            Int         @id @default(autoincrement())
+  leagueWeek    LeagueWeek  @relation(fields: [leagueWeekId], references: [id], onDelete: Cascade)
+  leagueWeekId  Int
+  fantasyTeam   FantasyTeam @relation(fields: [fantasyTeamId], references: [id], onDelete: Cascade)
+  fantasyTeamId Int
+  rosterPts     Float
+  pickemPts     Float
+  total         Float
+  breakdown     String
+  calculatedAt  DateTime    @default(now())
+  publishedAt   DateTime?
+
+  @@unique([leagueWeekId, fantasyTeamId])
+  @@index([fantasyTeamId])
+}
+
+model RosterSlot {
+  id            Int         @id @default(autoincrement())
+  fantasyTeam   FantasyTeam @relation(fields: [fantasyTeamId], references: [id])
+  fantasyTeamId Int
+  player        ProPlayer   @relation(fields: [playerId], references: [id])
+  playerId      String
+  slot          String // TOP | JNG | MID | BOT | SUP | BENCH | TEAM
+
+  @@unique([fantasyTeamId, playerId])
+}
+
+model Pickem {
+  id              Int      @id @default(autoincrement())
+  user            User     @relation(fields: [userId], references: [id])
+  userId          Int
+  match           Match    @relation(fields: [matchId], references: [id])
+  matchId         String
+  predictedWinner String
+  predictedScore  String? // e.g. "2-1"; bonus points if exact
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, matchId])
+}
+
+model CrystalBallQuestion {
+  id             Int                 @id @default(autoincrement())
+  league         League              @relation(fields: [leagueId], references: [id])
+  leagueId       Int
+  prompt         String
+  answerType     String // team | player | champion | yes_no | over_under
+  points         Int
+  partialRule    String? // JSON: {condition: "top-3"|"bottom-2"|"reached-finals", fraction: 0.5}
+  correctAnswer  String? // set at grading time
+  partialAnswers String? // JSON array of answers earning partial credit
+  answers        CrystalBallAnswer[]
+}
+
+model CrystalBallAnswer {
+  id         Int                 @id @default(autoincrement())
+  question   CrystalBallQuestion @relation(fields: [questionId], references: [id])
+  questionId Int
+  user       User                @relation(fields: [userId], references: [id])
+  userId     Int
+  answer     String
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @default(now()) @updatedAt
+
+  @@unique([questionId, userId])
+}
+
+model IngestionRun {
+  id           Int              @id @default(autoincrement())
+  source       String
+  tournamentId String
+  weekNumber   Int?
+  status       String           @default("RUNNING") // RUNNING | SUCCEEDED | FAILED
+  startedAt    DateTime         @default(now())
+  completedAt  DateTime?
+  rowCount     Int?
+  summary      String?
+  error        String?
+  provenance   StatProvenance[]
+
+  @@index([tournamentId, weekNumber, source])
+}
+
+model StatProvenance {
+  id         Int           @id @default(autoincrement())
+  game       Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId     String
+  run        IngestionRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  runId      Int?
+  entityType String
+  entityKey  String
+  source     String
+  fields     String
+  importedAt DateTime      @default(now())
+
+  @@unique([gameId, entityType, entityKey, source])
+  @@index([runId])
+}

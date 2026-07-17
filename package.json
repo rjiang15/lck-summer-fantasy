@@ -1,0 +1,38 @@
+{
+  "name": "lck-summer-fantasy",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "ingest": "tsx src/scripts/ingest.ts",
+    "ingest:oe": "tsx src/scripts/enrich-oe.ts",
+    "ingest:timeline": "tsx src/scripts/ingest-timeline.ts",
+    "backfill:stats": "tsx src/scripts/backfill-stats.ts",
+    "season:init": "tsx src/scripts/init-season.ts",
+    "season:reset": "tsx src/scripts/reset-live-season.ts",
+    "test": "node --import tsx --test src/**/*.test.ts",
+    "test:pipeline": "node --import tsx src/scripts/smoke-season.ts",
+    "report": "tsx src/scripts/report.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "dotenv": "^17.4.2",
+    "next": "16.2.10",
+    "prisma": "^7.8.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "tsx": "^4.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "typescript": "^5"
+  }
+}
