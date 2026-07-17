@@ -37,14 +37,7 @@ export default function ViewControls({
         : `After Week ${completedWeek}`;
 
   return (
-    <span
-      style={{
-        marginLeft: "auto",
-        display: "inline-flex",
-        gap: "0.5rem",
-        alignItems: "center",
-      }}
-    >
+    <span className="view-controls">
       <select
         value={tournamentId}
         onChange={(e) => go(`tournament=${encodeURIComponent(e.target.value)}`)}
@@ -63,7 +56,7 @@ export default function ViewControls({
         >
           ◀
         </button>}
-      <b style={{ minWidth: "7.5rem", textAlign: "center", fontSize: "0.9rem" }}>{label}</b>
+      <b className="view-label">{label}</b>
       {!isLive && <button
           onClick={() => next !== null && go(`week=${next}`)}
           disabled={completedWeek === null}

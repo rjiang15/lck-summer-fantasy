@@ -24,35 +24,56 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body>
-        <nav className="topnav">
-          <span className="brand">LCK Fantasy</span>
-          <Link href="/">Games</Link>
-          <Link href="/leaderboard">Leaderboard</Link>
-          <Link href="/stats">Deep Stats</Link>
-          <Link href="/participants">Participants</Link>
-          <Link href="/history">Weekly History</Link>
-          <Link href="/picks">Picks</Link>
-          <Link href="/crystal-ball">Crystal Ball</Link>
-          {user?.isCommish && <Link href="/commissioner">Commissioner</Link>}
-          {user?.isCommish && <Link href="/settings">Settings</Link>}
-          {user ? (
-            <form action={logout} className="nav-auth">
-              <span className="muted small">{user.username}</span>
-              <button type="submit">Log out</button>
-            </form>
-          ) : <Link href="/login">Sign in</Link>}
-          {view && (
-            <ViewControls
-              tournaments={tournaments}
-              tournamentId={view.tournamentId}
-              completedWeek={view.completedWeek}
-              maxWeek={view.maxWeek}
-              isLive={view.isLive}
-            />
-          )}
-        </nav>
+        <header className="site-header">
+          <div className="topnav">
+            <Link href="/" className="brand">LCK Fantasy</Link>
+            <div className="topnav-tools">
+              {view && (
+                <ViewControls
+                  tournaments={tournaments}
+                  tournamentId={view.tournamentId}
+                  completedWeek={view.completedWeek}
+                  maxWeek={view.maxWeek}
+                  isLive={view.isLive}
+                />
+              )}
+              {user ? (
+                <form action={logout} className="nav-auth">
+                  <span className="muted small">{user.username}</span>
+                  <button type="submit">Log out</button>
+                </form>
+              ) : <Link href="/login" className="nav-signin">Sign in</Link>}
+            </div>
+          </div>
+          <nav className="nav-sections" aria-label="Primary navigation">
+            <NavGroup label="Game data">
+              <Link href="/">Games</Link>
+              <Link href="/stats">Deep Stats</Link>
+            </NavGroup>
+            <NavGroup label="League">
+              <Link href="/leaderboard">Leaderboard</Link>
+              <Link href="/participants">Participants</Link>
+              <Link href="/history">Weekly History</Link>
+            </NavGroup>
+            <NavGroup label="My league">
+              <Link href="/picks">Picks</Link>
+              <Link href="/crystal-ball">Crystal Ball</Link>
+              {user?.isCommish && <Link href="/commissioner">Commissioner</Link>}
+              {user?.isCommish && <Link href="/settings">Settings</Link>}
+            </NavGroup>
+          </nav>
+        </header>
         <main>{children}</main>
       </body>
     </html>
+  );
+}
+
+function NavGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="nav-group">
+      <span className="nav-group-label">{label}</span>
+      <div className="nav-group-links">{children}</div>
+    </div>
   );
 }
