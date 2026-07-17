@@ -46,14 +46,15 @@ export interface ScoringConfig {
 }
 
 /**
- * Scoring v3 emphasizes repeatable impact over raw series length.
+ * Scoring v4 emphasizes repeatable impact over raw series length and uses the
+ * league's 10-point winner / 5-point exact-score Pick'em rules.
  * KP has broad, meaningful buckets; efficiency can outweigh the raw K/D/A
  * component; farming and vision are normalized to a 30-minute game. The
  * position-specific thresholds reflect genuinely different role duties and
  * were calibrated against the current LCK split without flat role multipliers.
  */
 export const DEFAULT_SCORING: ScoringConfig = {
-  version: 3,
+  version: 4,
   player: {
     kill: 1.25,
     death: -1.75,
@@ -91,8 +92,8 @@ export const DEFAULT_SCORING: ScoringConfig = {
     jungleAtakhan: 1,
   },
   pickem: {
-    correctWinner: 2,
-    exactScoreBonus: 1,
+    correctWinner: 10,
+    exactScoreBonus: 5,
   },
 };
 

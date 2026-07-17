@@ -47,14 +47,16 @@ async function main() {
   });
 
   for (const week of weeks) {
-    const before = week.weeklyScores.reduce((sum, score) => sum + score.rosterPts, 0);
+    const beforeRoster = week.weeklyScores.reduce((sum, score) => sum + score.rosterPts, 0);
+    const beforePickems = week.weeklyScores.reduce((sum, score) => sum + score.pickemPts, 0);
     await calculateWeeklyScores(week.id, {
       allowPublished: true,
       auditReason: `Commissioner-approved retroactive calibration to scoring v${scoring.version}`,
     });
     const afterRows = await prisma.weeklyScore.findMany({ where: { leagueWeekId: week.id } });
-    const after = afterRows.reduce((sum, score) => sum + score.rosterPts, 0);
-    console.log(`Week ${week.week.number}: roster points ${before.toFixed(1)} -> ${after.toFixed(1)} (${afterRows.length} teams)`);
+    const afterRoster = afterRows.reduce((sum, score) => sum + score.rosterPts, 0);
+    const afterPickems = afterRows.reduce((sum, score) => sum + score.pickemPts, 0);
+    console.log(`Week ${week.week.number}: roster ${beforeRoster.toFixed(1)} -> ${afterRoster.toFixed(1)}, Pick'ems ${beforePickems.toFixed(1)} -> ${afterPickems.toFixed(1)} (${afterRows.length} teams)`);
   }
 }
 

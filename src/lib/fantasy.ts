@@ -20,14 +20,10 @@ export function parseScoring(json: string | null | undefined): ScoringConfig {
   if (!json) return DEFAULT_SCORING;
   try {
     const parsed = JSON.parse(json);
-    // Versionless configs used the old raw-total formula. Published WeeklyScore
-    // rows already preserve those historical results; future calculations move
-    // to v2 while retaining any league-specific pickem values.
+    // Older versions use superseded player and Pick'em formulas. Published
+    // snapshots are updated only through the explicit audited rescore path.
     if (parsed.version !== DEFAULT_SCORING.version) {
-      return {
-        ...DEFAULT_SCORING,
-        pickem: { ...DEFAULT_SCORING.pickem, ...parsed.pickem },
-      };
+      return DEFAULT_SCORING;
     }
     return {
       version: DEFAULT_SCORING.version,

@@ -206,18 +206,35 @@ export async function calculateWeeklyScores(
       }
       rosterPts = round1(rosterPts);
       const previous = lw.weeklyScores.find((score) => score.fantasyTeamId === team.id);
+      const recalculationHistory: unknown[] = [];
+      if (previous) {
+        try {
+          const priorBreakdown = JSON.parse(previous.breakdown) as {
+            recalculation?: unknown;
+            recalculationHistory?: unknown[];
+          };
+          if (Array.isArray(priorBreakdown.recalculationHistory)) {
+            recalculationHistory.push(...priorBreakdown.recalculationHistory);
+          } else if (priorBreakdown.recalculation) {
+            recalculationHistory.push(priorBreakdown.recalculation);
+          }
+        } catch {
+          // A malformed historical breakdown must not block a score correction.
+        }
+      }
+      if (options.auditReason && previous) {
+        recalculationHistory.push({
+          reason: options.auditReason,
+          previousRosterPts: previous.rosterPts,
+          previousPickemPts: previous.pickemPts,
+          previousTotal: previous.total,
+          previousCalculatedAt: previous.calculatedAt.toISOString(),
+        });
+      }
       const breakdown = {
         scoringVersion: config.version,
         roster: playerContributions,
-        ...(options.auditReason && previous ? {
-          recalculation: {
-            reason: options.auditReason,
-            previousRosterPts: previous.rosterPts,
-            previousPickemPts: previous.pickemPts,
-            previousTotal: previous.total,
-            previousCalculatedAt: previous.calculatedAt.toISOString(),
-          },
-        } : {}),
+        ...(recalculationHistory.length > 0 ? { recalculationHistory } : {}),
       };
       await tx.weeklyScore.upsert({
         where: { leagueWeekId_fantasyTeamId: { leagueWeekId, fantasyTeamId: team.id } },

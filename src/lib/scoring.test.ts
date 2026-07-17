@@ -108,8 +108,8 @@ test("official player value is points per game rather than raw games played", ()
 });
 
 test("pickems award winner and exact-score points independently", () => {
-  assert.equal(pickemPoints("T1", "2-1", "T1", "2-1", DEFAULT_SCORING), 3);
-  assert.equal(pickemPoints("T1", "2-0", "T1", "2-1", DEFAULT_SCORING), 2);
+  assert.equal(pickemPoints("T1", "2-1", "T1", "2-1", DEFAULT_SCORING), 15);
+  assert.equal(pickemPoints("T1", "2-0", "T1", "2-1", DEFAULT_SCORING), 10);
   assert.equal(pickemPoints("GEN", "1-2", "T1", "2-1", DEFAULT_SCORING), 0);
 });
 
