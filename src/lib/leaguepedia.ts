@@ -14,6 +14,7 @@ const USER_AGENT =
   "lck-fantasy-mvp/0.1 (hobby fantasy league; contact: santouka72101@gmail.com)";
 const PAGE_SIZE = 500; // cargo max for anonymous users
 const THROTTLE_MS = 1500;
+const REQUEST_TIMEOUT_MS = 60_000;
 
 // ---- session (cookies + optional bot login) ----
 
@@ -45,7 +46,7 @@ async function loginIfConfigured() {
 
   const tokenRes = await fetch(
     `${API_URL}?action=query&meta=tokens&type=login&format=json`,
-    { headers: headers() },
+    { headers: headers(), signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
   );
   storeCookies(tokenRes);
   const tokenJson = (await tokenRes.json()) as {
@@ -65,6 +66,7 @@ async function loginIfConfigured() {
     method: "POST",
     headers: { ...headers(), "Content-Type": "application/x-www-form-urlencoded" },
     body,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   storeCookies(loginRes);
   const loginJson = (await loginRes.json()) as { login?: { result?: string } };
@@ -116,7 +118,10 @@ async function fetchPage(
   await loginIfConfigured();
   for (let attempt = 1; ; attempt++) {
     await onProgress?.({ kind: "request", offset, rows, attempt });
-    const res = await fetch(`${API_URL}?${search}`, { headers: headers() });
+    const res = await fetch(`${API_URL}?${search}`, {
+      headers: headers(),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
     storeCookies(res);
     if (!res.ok) throw new Error(`Leaguepedia HTTP ${res.status}`);
     const json = (await res.json()) as {

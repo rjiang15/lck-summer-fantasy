@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireLeagueManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { decodeIngestionProgress } from "@/lib/ingestion-progress";
+import { decodeIngestionProgress, isIngestionRunStale } from "@/lib/ingestion-progress";
 import {
   finishSeason,
   fetchNextWeekResults,
@@ -11,6 +11,7 @@ import {
   lockRosters,
   openWeek,
   publishWeek,
+  recoverStaleIngestion,
   unlockPicks,
   unlockRosters,
   updateScoringConfig,
@@ -56,9 +57,28 @@ export default async function CommissionerPage({
     counts.set(pick.userId, (counts.get(pick.userId) ?? 0) + 1);
     return counts;
   }, new Map<number, number>());
-  const importRunning = runs.some(
+  const crystalAnswers = target?.week.number === 1 && league.cbQuestions.length > 0
+    ? await prisma.crystalBallAnswer.findMany({
+      where: {
+        questionId: { in: league.cbQuestions.map((question) => question.id) },
+        userId: { in: fantasyTeams.map((team) => team.userId) },
+      },
+      select: { userId: true },
+    })
+    : [];
+  const crystalAnswersByUser = crystalAnswers.reduce((counts, answer) => {
+    counts.set(answer.userId, (counts.get(answer.userId) ?? 0) + 1);
+    return counts;
+  }, new Map<number, number>());
+  const targetIncompletePicks = fantasyTeams.filter((team) => (submittedByUser.get(team.userId) ?? 0) !== targetMatchCount);
+  const targetIncompleteCrystalBall = target?.week.number === 1 && league.cbQuestions.length > 0
+    ? fantasyTeams.filter((team) => (crystalAnswersByUser.get(team.userId) ?? 0) !== league.cbQuestions.length)
+    : [];
+  const activeTargetRun = runs.find(
     (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.status === "RUNNING",
   );
+  const importRunning = Boolean(activeTargetRun);
+  const staleTargetRun = activeTargetRun && isIngestionRunStale(activeTargetRun) ? activeTargetRun : null;
   const scheduleRunning = runs.some(
     (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.source === "LEAGUEPEDIA_SCHEDULE" && run.status === "RUNNING",
   );
@@ -132,7 +152,17 @@ export default async function CommissionerPage({
               />
             </form>
           )}
-          {importRunning && <span className="muted small">An import is already running. Reload this page for its latest status.</span>}
+          {staleTargetRun ? (
+            <form action={recoverStaleIngestion} className="stack">
+              <input type="hidden" name="leagueId" value={league.id} />
+              <input type="hidden" name="runId" value={staleTargetRun.id} />
+              <span className="error small">This import has not sent a backend heartbeat for more than 10 minutes.</span>
+              <button type="submit">Recover stale import</button>
+              <span className="muted small">This closes the abandoned run without deleting partial rows, so retrying remains safe.</span>
+            </form>
+          ) : importRunning ? (
+            <span className="muted small">An import is already running. Progress and backend heartbeat are shown above.</span>
+          ) : null}
           {target?.status === "OPEN" && <span className="muted small">Lock picks to freeze predictions and the scoring roster before results can be fetched.</span>}
           {!target && <span className="muted small">No Week {targetWeek} slate has been fetched yet.</span>}
         </div>
@@ -189,6 +219,9 @@ export default async function CommissionerPage({
                     unlockAction={unlockPicks}
                     id={lw.id}
                     noun="picks"
+                    importRunning={runs.some((run) => run.weekNumber === lw.week.number && run.status === "RUNNING")}
+                    incompletePicks={target?.id === lw.id ? targetIncompletePicks.length : 0}
+                    incompleteCrystalBall={target?.id === lw.id ? targetIncompleteCrystalBall.length : 0}
                   />
                 </td>
                 <td>
@@ -221,7 +254,8 @@ export default async function CommissionerPage({
           {runs.map((run) => {
             const progress = run.status === "RUNNING" ? decodeIngestionProgress(run.summary) : null;
             const summary = progress ? `${progress.percent}% — ${progress.message}` : run.error ?? run.summary ?? "";
-            return <tr key={run.id}><td>{run.startedAt.toLocaleString()}</td><td>{run.source}</td><td>{run.weekNumber ?? "all"}</td><td>{run.status}</td><td className="small">{summary}</td></tr>;
+            const stale = run.status === "RUNNING" && isIngestionRunStale(run);
+            return <tr key={run.id}><td>{run.startedAt.toLocaleString()}</td><td>{run.source}</td><td>{run.weekNumber ?? "all"}</td><td>{stale ? "STALE" : run.status}</td><td className="small">{summary}</td></tr>;
           })}
         </tbody></table></div>
       )}
@@ -261,6 +295,9 @@ function LockControl({
   unlockAction,
   id,
   noun,
+  importRunning,
+  incompletePicks,
+  incompleteCrystalBall,
 }: {
   available: boolean;
   locked: boolean;
@@ -269,10 +306,29 @@ function LockControl({
   unlockAction: (data: FormData) => Promise<void>;
   id: number;
   noun: string;
+  importRunning: boolean;
+  incompletePicks: number;
+  incompleteCrystalBall: number;
 }) {
   if (!available) return <span className="badge pending">NOT OPEN</span>;
+  const incomplete = incompletePicks > 0 || incompleteCrystalBall > 0;
   return <div className="lock-control">
     <span className={`badge ${locked ? "loss" : "win"}`}>{locked ? "LOCKED" : "OPEN"}</span>
-    {canChange && <Action action={locked ? unlockAction : lockAction} id={id} label={`${locked ? "Unlock" : "Lock"} ${noun}`} />}
+    {canChange && importRunning && <span className="muted small">Disabled while data imports</span>}
+    {canChange && !importRunning && !locked && incomplete ? (
+      <form action={lockAction} className="safety-confirm">
+        <input type="hidden" name="leagueWeekId" value={id} />
+        <label>
+          <input type="checkbox" name="confirmIncomplete" value="true" required />
+          <span>
+            Lock anyway: {incompletePicks} incomplete pick&apos;em team{incompletePicks === 1 ? "" : "s"}
+            {incompleteCrystalBall > 0 ? "; " + incompleteCrystalBall + " incomplete Crystal Ball team" + (incompleteCrystalBall === 1 ? "" : "s") : ""}. Missing entries score zero.
+          </span>
+        </label>
+        <button type="submit">Lock {noun}</button>
+      </form>
+    ) : canChange && !importRunning ? (
+      <Action action={locked ? unlockAction : lockAction} id={id} label={`${locked ? "Unlock" : "Lock"} ${noun}`} />
+    ) : null}
   </div>;
 }

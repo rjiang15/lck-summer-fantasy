@@ -1,6 +1,6 @@
 import { requireLeagueManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { decodeIngestionProgress } from "@/lib/ingestion-progress";
+import { decodeIngestionProgress, isIngestionRunStale } from "@/lib/ingestion-progress";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +37,7 @@ export async function GET(request: Request) {
       updatedAt: progress?.updatedAt ?? run.startedAt.toISOString(),
       startedAt: run.startedAt.toISOString(),
       completedAt: run.completedAt?.toISOString() ?? null,
+      stale: run.status === "RUNNING" && isIngestionRunStale(run),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return Response.json({ error: "Commissioner access required" }, { status: 403 });

@@ -9,6 +9,7 @@ type ProgressStatus = {
   message: string;
   updatedAt: string | null;
   startedAt: string | null;
+  stale?: boolean;
 };
 
 export function IngestButton({
@@ -116,6 +117,7 @@ export function IngestButton({
             Elapsed {formatElapsed(elapsed)}
             {heartbeatAge !== null ? ` · backend updated ${heartbeatAge === 0 ? "just now" : `${heartbeatAge}s ago`}` : " · waiting for backend heartbeat"}
           </span>
+          {shown.stale && <span className="error small">The backend heartbeat is stale. Reload the page to access safe recovery.</span>}
         </div>
       )}
     </div>

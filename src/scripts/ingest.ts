@@ -32,11 +32,19 @@ export interface LeaguepediaIngestCounts {
   draftActions: number;
 }
 
+class IngestionCancelledError extends Error {
+  constructor() {
+    super("This import was recovered or cancelled before it completed");
+    this.name = "IngestionCancelledError";
+  }
+}
+
 async function reportIngestionProgress(runId: number, percent: number, message: string) {
-  await prisma.ingestionRun.update({
-    where: { id: runId },
+  const updated = await prisma.ingestionRun.updateMany({
+    where: { id: runId, status: "RUNNING" },
     data: { summary: encodeIngestionProgress(percent, message) },
   });
+  if (updated.count !== 1) throw new IngestionCancelledError();
 }
 
 async function reportLoopProgress(
@@ -182,8 +190,8 @@ async function ingestTournament(
       where: {
         tournamentId_number: { tournamentId: overviewPage, number: selectedTab ? weekNumber! : i + 1 },
       },
-      create: { tournamentId: overviewPage, number: selectedTab ? weekNumber! : i + 1, startsAt, endsAt, scheduleImportedAt: new Date() },
-      update: { startsAt, endsAt, scheduleImportedAt: new Date() },
+      create: { tournamentId: overviewPage, number: selectedTab ? weekNumber! : i + 1, startsAt, endsAt },
+      update: { startsAt, endsAt },
     });
     weekIdByTab.set(tab, week.id);
   }
@@ -570,19 +578,34 @@ export async function runLeaguepediaIngest({
       }
     }
 
-    await prisma.ingestionRun.update({
-      where: { id: run.id },
-      data: { status: "SUCCEEDED", completedAt: new Date(), rowCount: counts.playerStats, summary: JSON.stringify(counts) },
+    await prisma.$transaction(async (tx) => {
+      const completed = await tx.ingestionRun.updateMany({
+        where: { id: run.id, status: "RUNNING" },
+        data: { status: "SUCCEEDED", completedAt: new Date(), rowCount: counts.playerStats, summary: JSON.stringify(counts) },
+      });
+      if (completed.count !== 1) throw new IngestionCancelledError();
+      if (!scheduleOnly && weekNumber !== null) {
+        await tx.week.update({
+          where: { tournamentId_number: { tournamentId: overviewPage, number: weekNumber } },
+          data: { resultsImportedAt: new Date() },
+        });
+      } else if (scheduleOnly && weekNumber !== null) {
+        await tx.week.update({
+          where: { tournamentId_number: { tournamentId: overviewPage, number: weekNumber } },
+          data: { scheduleImportedAt: new Date() },
+        });
+      } else if (weekNumber === null) {
+        await tx.week.updateMany({
+          where: { tournamentId: overviewPage },
+          data: { scheduleImportedAt: new Date() },
+        });
+      }
     });
-
-    if (!scheduleOnly && weekNumber !== null) {
-      await prisma.week.update({ where: { tournamentId_number: { tournamentId: overviewPage, number: weekNumber } }, data: { resultsImportedAt: new Date() } });
-    }
     return counts;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await prisma.ingestionRun.update({
-      where: { id: run.id },
+    await prisma.ingestionRun.updateMany({
+      where: { id: run.id, status: "RUNNING" },
       data: { status: "FAILED", completedAt: new Date(), error: message },
     });
     throw error;

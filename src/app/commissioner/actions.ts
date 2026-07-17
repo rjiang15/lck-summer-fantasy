@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireLeagueManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isIngestionRunStale } from "@/lib/ingestion-progress";
 import { calculateWeeklyScores, ensureLeagueWeeks, snapshotWeeklyRosters, validateLeagueWeek } from "@/lib/season";
 import { DEFAULT_SCORING } from "@/lib/scoring";
 import { runLeaguepediaIngest } from "@/scripts/ingest";
@@ -12,6 +13,46 @@ async function authorizedWeek(id: number) {
   const week = await prisma.leagueWeek.findUniqueOrThrow({ where: { id }, include: { league: true, week: true } });
   await requireLeagueManager(week.leagueId);
   return week;
+}
+
+async function runningWeekIngestion(tournamentId: string, weekNumber: number) {
+  return prisma.ingestionRun.findFirst({
+    where: { tournamentId, weekNumber, status: "RUNNING" },
+    orderBy: { startedAt: "desc" },
+  });
+}
+
+async function assertNoWeekIngestion(tournamentId: string, weekNumber: number) {
+  const run = await runningWeekIngestion(tournamentId, weekNumber);
+  if (run) {
+    throw new Error("Week " + weekNumber + " has an active data import. Wait for it to finish before changing the weekly lifecycle.");
+  }
+}
+
+async function weekSubmissionReadiness(leagueId: number, weekId: number, weekNumber: number) {
+  const [teams, matchCount, picks, questions] = await Promise.all([
+    prisma.fantasyTeam.findMany({ where: { leagueId }, select: { userId: true, user: { select: { username: true } } } }),
+    prisma.match.count({ where: { weekId } }),
+    prisma.pickem.findMany({ where: { leagueId, match: { weekId } }, select: { userId: true } }),
+    weekNumber === 1
+      ? prisma.crystalBallQuestion.findMany({ where: { leagueId }, select: { id: true } })
+      : Promise.resolve([]),
+  ]);
+  const pickCounts = new Map<number, number>();
+  for (const pick of picks) pickCounts.set(pick.userId, (pickCounts.get(pick.userId) ?? 0) + 1);
+  const incompletePicks = teams.filter((team) => (pickCounts.get(team.userId) ?? 0) !== matchCount);
+
+  let incompleteCrystalBall: typeof teams = [];
+  if (questions.length > 0) {
+    const answers = await prisma.crystalBallAnswer.findMany({
+      where: { questionId: { in: questions.map((question) => question.id) }, userId: { in: teams.map((team) => team.userId) } },
+      select: { userId: true },
+    });
+    const answerCounts = new Map<number, number>();
+    for (const answer of answers) answerCounts.set(answer.userId, (answerCounts.get(answer.userId) ?? 0) + 1);
+    incompleteCrystalBall = teams.filter((team) => (answerCounts.get(team.userId) ?? 0) !== questions.length);
+  }
+  return { matchCount, incompletePicks, incompleteCrystalBall };
 }
 
 const SLOT_ROLE: Record<string, string> = { TOP: "Top", JNG: "Jungle", MID: "Mid", BOT: "Bot", SUP: "Support" };
@@ -32,6 +73,7 @@ async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean) {
   const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
   if (league.seasonStatus === "FINAL") throw new Error("The season is already final");
   const weekNumber = league.currentWeek + 1;
+  await assertNoWeekIngestion(league.tournamentId, weekNumber);
   let week = await prisma.week.findUnique({ where: { tournamentId_number: { tournamentId: league.tournamentId, number: weekNumber } } });
   if (!scheduleOnly) {
     if (!week) throw new Error(`Fetch the Week ${weekNumber} schedule before fetching results`);
@@ -59,6 +101,9 @@ async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean) {
     });
   } else {
     const leagueWeek = await prisma.leagueWeek.findUniqueOrThrow({ where: { leagueId_weekId: { leagueId, weekId: week.id } } });
+    if (!["LOCKED", "RESULTS_IMPORTED"].includes(leagueWeek.status) || !leagueWeek.picksLockedAt || !leagueWeek.rosterLockedAt) {
+      throw new Error("Week " + weekNumber + " changed while results were importing. Its data is saved, but the weekly lifecycle was not advanced.");
+    }
     await prisma.leagueWeek.update({ where: { id: leagueWeek.id }, data: { status: "RESULTS_IMPORTED", resultsImportedAt: new Date() } });
   }
   revalidateDataPages();
@@ -100,6 +145,7 @@ export async function initializeWeeks(formData: FormData) {
 
 export async function openWeek(formData: FormData) {
   const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
+  await assertNoWeekIngestion(lw.league.tournamentId, lw.week.number);
   if (!['UPCOMING', 'OPEN'].includes(lw.status)) throw new Error("Only an upcoming week can be opened");
   if (lw.week.number !== lw.league.currentWeek + 1) {
     throw new Error(`Week ${lw.league.currentWeek + 1} must be opened next`);
@@ -122,6 +168,7 @@ export async function openWeek(formData: FormData) {
 
 export async function lockPicks(formData: FormData) {
   const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
+  await assertNoWeekIngestion(lw.league.tournamentId, lw.week.number);
   if (lw.status !== "OPEN") throw new Error("Only an open week's picks can be locked");
   if (lw.picksLockedAt) throw new Error(`Week ${lw.week.number} picks are already locked`);
   if (lw.week.number === 1) {
@@ -129,6 +176,19 @@ export async function lockPicks(formData: FormData) {
     if (teams > 0 && lw.league.draftStatus !== "COMPLETE") {
       throw new Error("Complete the Week 0 roster draft before locking Week 1 picks");
     }
+  }
+  const readiness = await weekSubmissionReadiness(lw.leagueId, lw.weekId, lw.week.number);
+  if (readiness.matchCount === 0) throw new Error("Week " + lw.week.number + " has no scheduled matches and cannot be locked");
+  const incomplete = new Set([
+    ...readiness.incompletePicks.map((team) => team.userId),
+    ...readiness.incompleteCrystalBall.map((team) => team.userId),
+  ]);
+  if (incomplete.size > 0 && formData.get("confirmIncomplete") !== "true") {
+    const details = [
+      readiness.incompletePicks.length > 0 ? readiness.incompletePicks.length + " incomplete pick'em submission(s)" : "",
+      readiness.incompleteCrystalBall.length > 0 ? readiness.incompleteCrystalBall.length + " incomplete Crystal Ball submission(s)" : "",
+    ].filter(Boolean).join(" and ");
+    throw new Error("Cannot lock yet: " + details + ". Explicitly confirm that incomplete participants will score zero.");
   }
   // This is a scoring snapshot, not a roster editing lock. Future roster
   // changes cannot alter this week's player ownership after this point.
@@ -153,6 +213,7 @@ export async function lockPicks(formData: FormData) {
 
 export async function unlockPicks(formData: FormData) {
   const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
+  await assertNoWeekIngestion(lw.league.tournamentId, lw.week.number);
   if (!["OPEN", "LOCKED"].includes(lw.status)) throw new Error("Picks cannot be unlocked after results are imported");
   if (!lw.picksLockedAt) throw new Error(`Week ${lw.week.number} picks are already open`);
   await prisma.$transaction([
@@ -195,6 +256,7 @@ export async function unlockRosters(formData: FormData) {
 
 export async function validateAndScoreWeek(formData: FormData) {
   const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
+  await assertNoWeekIngestion(lw.league.tournamentId, lw.week.number);
   if (!['RESULTS_IMPORTED', 'SCORED'].includes(lw.status)) throw new Error("Fetch the week's results before scoring it");
   const result = await validateLeagueWeek(lw.id);
   if (!result.ok) {
@@ -220,6 +282,7 @@ export async function validateAndScoreWeek(formData: FormData) {
 
 export async function publishWeek(formData: FormData) {
   const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
+  await assertNoWeekIngestion(lw.league.tournamentId, lw.week.number);
   if (lw.status !== "SCORED") throw new Error("Validate and score the week before publishing it");
   const next = await prisma.leagueWeek.findFirst({
     where: { leagueId: lw.leagueId, week: { number: { gt: lw.week.number } } },
@@ -248,12 +311,42 @@ export async function finishSeason(formData: FormData) {
   const leagueId = Number(formData.get("leagueId"));
   await requireLeagueManager(leagueId);
   const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
+  const activeImport = await prisma.ingestionRun.findFirst({ where: { tournamentId: league.tournamentId, status: "RUNNING" } });
+  if (activeImport) throw new Error("An LCK data import is still running; wait for it to finish before finalizing the season");
   const unfinished = await prisma.leagueWeek.count({ where: { leagueId, status: { not: "PUBLISHED" } } });
   const published = await prisma.leagueWeek.count({ where: { leagueId, status: "PUBLISHED" } });
   if (unfinished > 0 || published === 0) throw new Error("Publish every imported week before finishing the season");
   await prisma.league.update({ where: { id: league.id }, data: { seasonStatus: "FINAL" } });
   revalidatePath("/commissioner");
   revalidatePath("/leaderboard");
+}
+
+export async function recoverStaleIngestion(formData: FormData) {
+  const leagueId = Number(formData.get("leagueId"));
+  const runId = Number(formData.get("runId"));
+  try {
+    await requireLeagueManager(leagueId);
+    const [league, run] = await Promise.all([
+      prisma.league.findUniqueOrThrow({ where: { id: leagueId } }),
+      prisma.ingestionRun.findUniqueOrThrow({ where: { id: runId } }),
+    ]);
+    if (run.tournamentId !== league.tournamentId) throw new Error("That import does not belong to this league's tournament");
+    if (run.status !== "RUNNING") throw new Error("That import has already finished");
+    if (!isIngestionRunStale(run)) throw new Error("The importer still has a recent backend heartbeat and cannot be recovered yet");
+    const recovered = await prisma.ingestionRun.updateMany({
+      where: { id: run.id, status: "RUNNING" },
+      data: {
+        status: "FAILED",
+        completedAt: new Date(),
+        error: "Recovered by a commissioner after the backend heartbeat became stale. Partial rows were retained for a safe idempotent retry.",
+      },
+    });
+    if (recovered.count !== 1) throw new Error("The import changed while recovery was requested; reload and try again");
+  } catch (error) {
+    commissionerRedirect("error", error instanceof Error ? error.message : String(error));
+  }
+  revalidatePath("/commissioner");
+  commissionerRedirect("notice", "The stale import was closed safely. You can retry the same week; existing partial rows will be updated rather than duplicated.");
 }
 
 export async function updateRosterSlot(formData: FormData) {

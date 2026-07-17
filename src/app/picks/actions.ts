@@ -42,11 +42,24 @@ export async function savePicks(_previous: PickSaveState, formData: FormData): P
       updates.push({ matchId: match.id, predictedWinner: winner, predictedScore });
     }
     if (updates.length === 0) throw new Error("There are no unlocked series to save");
-    await prisma.$transaction(updates.map((pick) => prisma.pickem.upsert({
-      where: { leagueId_userId_matchId: { leagueId, userId: user.id, matchId: pick.matchId } },
-      create: { leagueId, userId: user.id, ...pick },
-      update: { predictedWinner: pick.predictedWinner, predictedScore: pick.predictedScore },
-    })));
+    await prisma.$transaction(async (tx) => {
+      // Recheck inside the write transaction so a submission that started just
+      // before the commissioner clicked Lock cannot commit after the lock.
+      const currentWeek = await tx.leagueWeek.findUnique({
+        where: { id: leagueWeekId },
+        select: { leagueId: true, status: true, picksLockedAt: true },
+      });
+      if (!currentWeek || currentWeek.leagueId !== leagueId || currentWeek.status !== "OPEN" || currentWeek.picksLockedAt) {
+        throw new Error("Picks were locked while this submission was being saved");
+      }
+      for (const pick of updates) {
+        await tx.pickem.upsert({
+          where: { leagueId_userId_matchId: { leagueId, userId: user.id, matchId: pick.matchId } },
+          create: { leagueId, userId: user.id, ...pick },
+          update: { predictedWinner: pick.predictedWinner, predictedScore: pick.predictedScore },
+        });
+      }
+    });
     revalidatePath("/picks");
     return { ok: true, message: `Saved ${updates.length} pick${updates.length === 1 ? "" : "s"}${locked ? `; ${locked} started series stayed locked` : ""}.` };
   } catch (error) {
