@@ -201,7 +201,7 @@ export function resolveCrystalBallMetric(
       const teamId = String(config.teamId ?? "DN SOOPers");
       const threshold = Number(config.threshold ?? 2.5);
       const wins = snapshot.matches.filter((match) => normalizeAnswer(match.winner ?? "") === normalizeAnswer(teamId)).length;
-      return resolution([wins > threshold ? "Yes" : "No"], `${teamId} finished with ${wins} series wins`, { [teamId]: wins });
+      return resolution([wins > threshold ? "Yes" : "No"], `${teamId} has ${wins} series wins in the selected data`, { [teamId]: wins });
     }
     default:
       throw new Error(`Unknown Crystal Ball metric: ${metricKey}`);
@@ -272,11 +272,15 @@ export async function settleCrystalBall(leagueId: number) {
   return { questions: updates.length, games: games.length };
 }
 
-export async function loadCrystalBallSnapshot(tournamentId: string): Promise<CrystalBallSnapshot> {
+export async function loadCrystalBallSnapshot(tournamentId: string, cutoff: Date | null = null): Promise<CrystalBallSnapshot> {
+  const matchWhere = {
+    tournamentId,
+    ...(cutoff ? { scheduledAt: { lt: cutoff } } : {}),
+  };
   const [matches, games] = await Promise.all([
-    prisma.match.findMany({ where: { tournamentId }, select: { winner: true } }),
+    prisma.match.findMany({ where: matchWhere, select: { winner: true } }),
     prisma.game.findMany({
-      where: { match: { tournamentId } },
+      where: { match: matchWhere },
       select: {
         id: true,
         winner: true,
@@ -343,6 +347,10 @@ export function crystalBallPoints(question: GradableQuestion, userId: number) {
 
 export function normalizeAnswer(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+export function crystalBallPredictionsPublic(league: { crystalBallLockedAt: Date | null; seasonStatus: string }) {
+  return Boolean(league.crystalBallLockedAt) || league.seasonStatus !== "PRESEASON";
 }
 
 export function parseResolutionEvidence(value: string | null) {

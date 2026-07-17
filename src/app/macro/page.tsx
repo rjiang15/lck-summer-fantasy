@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getViewState } from "@/lib/view";
 import { ChampionMetaTable, TeamMacroTable } from "./MacroTables";
-import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
+import { TeamLabel } from "@/components/GameIdentity";
 
 export const dynamic = "force-dynamic";
 
@@ -48,17 +48,7 @@ type TeamRollup = {
   inhibitors: number;
 };
 
-type RecordCard = {
-  label: string;
-  value: string;
-  detail: string;
-  champion?: boolean;
-  team?: string;
-};
-
-const pct = (part: number, total: number) => total === 0 ? "—" : `${((part / total) * 100).toFixed(1)}%`;
 const perGame = (value: number, games: number) => games === 0 ? "—" : (value / games).toFixed(1);
-const kda = (kills: number, deaths: number, assists: number) => (kills + assists) / Math.max(1, deaths);
 const duration = (seconds: number | null) => {
   if (seconds == null) return "—";
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -187,26 +177,6 @@ export default async function MacroDashboardPage() {
   const fastestGames = [...gameRecords].filter((game) => game.winner && game.lengthSec != null).sort((a, b) => a.lengthSec! - b.lengthSec!).slice(0, 5);
   const bloodiestGames = [...gameRecords].sort((a, b) => b.kills - a.kills || (a.lengthSec ?? Infinity) - (b.lengthSec ?? Infinity)).slice(0, 5);
 
-  const mostPicked = maxBy(championRows, ([, row]) => row.picks);
-  const mostBanned = maxBy(championRows, ([, row]) => row.bans);
-  const mostKillsChampion = maxBy(championRows, ([, row]) => row.kills);
-  const winRateMinimum = Math.max(3, Math.ceil(games.length * 0.08));
-  const bestWinRate = maxBy(championRows.filter(([, row]) => row.picks >= winRateMinimum), ([, row]) => row.wins / row.picks);
-  const highestKda = maxBy(playerRows, (player) => kda(player.kills, player.deaths, player.assists));
-  const highestCs = maxBy(playerRows, (player) => player.cs / player.games);
-  const highestDamage = maxBy(playerRows, (player) => player.damage / player.games);
-  const widestPool = maxBy(playerRows, (player) => player.champions.size);
-
-  const cards: RecordCard[] = [];
-  if (mostPicked) cards.push({ label: "Most picked", value: mostPicked[0], detail: `${mostPicked[1].picks} picks · ${pct(mostPicked[1].picks, games.length)} of games`, champion: true });
-  if (mostBanned) cards.push({ label: "Most banned", value: mostBanned[0], detail: `${mostBanned[1].bans} bans · ${pct(mostBanned[1].bans, games.length)} of games`, champion: true });
-  if (bestWinRate) cards.push({ label: `Best win rate (${winRateMinimum}+ picks)`, value: bestWinRate[0], detail: `${pct(bestWinRate[1].wins, bestWinRate[1].picks)} · ${bestWinRate[1].wins}-${bestWinRate[1].picks - bestWinRate[1].wins}`, champion: true });
-  if (mostKillsChampion) cards.push({ label: "Most champion kills", value: mostKillsChampion[0], detail: `${mostKillsChampion[1].kills} kills across ${mostKillsChampion[1].picks} picks`, champion: true });
-  if (highestKda) cards.push({ label: "Highest player KDA", value: highestKda.name, detail: `${kda(highestKda.kills, highestKda.deaths, highestKda.assists).toFixed(2)} KDA · ${highestKda.games} games` });
-  if (highestCs) cards.push({ label: "Highest CS per game", value: highestCs.name, detail: `${perGame(highestCs.cs, highestCs.games)} CS/G`, team: highestCs.team });
-  if (highestDamage) cards.push({ label: "Highest damage per game", value: highestDamage.name, detail: `${Math.round(highestDamage.damage / highestDamage.games).toLocaleString()} Dmg/G`, team: highestDamage.team });
-  if (widestPool) cards.push({ label: "Widest champion pool", value: widestPool.name, detail: `${widestPool.champions.size} champions in ${widestPool.games} games` });
-
   const sortableTeamRows = teamRows.map(([team, row]) => ({ team, ...row }));
   const sortableChampionRows = championRows.map(([champion, row]) => ({ champion, ...row }));
 
@@ -215,7 +185,7 @@ export default async function MacroDashboardPage() {
       <div>
         <span className="macro-eyebrow">Season intelligence</span>
         <h1>Macro dashboard</h1>
-        <p>{view.tournamentName} · {view.isLive ? "Live view" : `Through Week ${view.completedWeek}`} · game, draft, objective, champion and player records.</p>
+        <p>{view.tournamentName} · {view.isLive ? "Live view" : `Through Week ${view.completedWeek}`} · game, draft, objective, champion and team records.</p>
       </div>
       <Link href="/stats" className="button-link">Open player stat table</Link>
     </header>
@@ -225,18 +195,6 @@ export default async function MacroDashboardPage() {
       <Kpi label="Average game" value={duration(averageLength)} detail={`${duration(completedLengths.length > 0 ? Math.min(...completedLengths) : null)} shortest`} />
       <Kpi label="Total kills" value={totalKills.toLocaleString()} detail={`${perGame(totalKills, games.length)} per game`} />
       <Kpi label="Champions picked" value={championRows.filter(([, row]) => row.picks > 0).length.toLocaleString()} detail={`${championRows.reduce((sum, [, row]) => sum + row.picks, 0).toLocaleString()} selections`} />
-    </section>
-
-    <section>
-      <div className="macro-section-title"><div><span>League leaders</span><h2>Records at a glance</h2></div><p>All records honor the selected week cutoff.</p></div>
-      <div className="macro-record-grid">
-        {cards.map((card) => <article className="macro-record" key={card.label}>
-          <span>{card.label}</span>
-          <strong>{card.champion ? <ChampionLabel name={card.value} size="md" /> : card.value}</strong>
-          <small>{card.detail}</small>
-          {card.team && <TeamLabel name={card.team} size="xs" className="macro-record-team" />}
-        </article>)}
-      </div>
     </section>
 
     <section>
@@ -257,10 +215,6 @@ export default async function MacroDashboardPage() {
       </div>
     </section>
   </div>;
-}
-
-function maxBy<T>(rows: T[], score: (row: T) => number) {
-  return rows.reduce<T | null>((best, row) => best === null || score(row) > score(best) ? row : best, null);
 }
 
 function Kpi({ label, value, detail }: { label: string; value: string; detail: string }) {

@@ -2,6 +2,9 @@
 import { prisma } from "@/lib/db";
 import { getViewState } from "@/lib/view";
 import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
+import { parseScoring, round1 } from "@/lib/fantasy";
+import { playerGamePoints } from "@/lib/scoring";
+import DeepPlayerTable, { type DeepPlayerRow } from "./DeepPlayerTable";
 
 export const dynamic = "force-dynamic";
 
@@ -11,29 +14,65 @@ const pct = (part: number, total: number) =>
 const perGame = (value: number, games: number) =>
   games === 0 ? "—" : (value / games).toFixed(1);
 
+const OPTIONAL_PLAYER_METRICS = [
+  "gold", "goldEarned", "goldSpent", "minionKills", "monsterKills", "damage",
+  "damageToObjectives", "damageTaken", "damageMitigated", "totalHeal", "visionScore",
+  "wardsPlaced", "wardsKilled", "controlWardsBought", "doubleKills", "tripleKills",
+  "quadraKills", "pentakills", "teamKills", "teamGold", "killParticipation",
+  "damageShare", "goldShare",
+] as const;
+
+type PlayerAggregate = {
+  id: string;
+  name: string;
+  team: string;
+  role: string;
+  games: number;
+  wins: number;
+  fantasyPoints: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  cs: number;
+  maxKills: number;
+  maxCs: number;
+  champions: Map<string, number>;
+  sums: Record<string, number>;
+  samples: Record<string, number>;
+};
+
+const addMetric = (row: PlayerAggregate, key: string, value: number | null | undefined) => {
+  if (value == null) return;
+  row.sums[key] = (row.sums[key] ?? 0) + value;
+  row.samples[key] = (row.samples[key] ?? 0) + 1;
+};
+
+const averageMetric = (row: PlayerAggregate, key: string) => row.samples[key] ? row.sums[key] / row.samples[key] : null;
+const totalMetric = (row: PlayerAggregate, key: string) => row.samples[key] ? row.sums[key] : null;
+
 export default async function StatsPage() {
   const view = await getViewState();
   if (!view) return <p>No data ingested yet.</p>;
-  const games = await prisma.game.findMany({
-    where: {
-      match: {
-        tournamentId: view.tournamentId,
-        ...(view.cutoff ? { scheduledAt: { lt: view.cutoff } } : {}),
+  const [games, league] = await Promise.all([
+    prisma.game.findMany({
+      where: {
+        match: {
+          tournamentId: view.tournamentId,
+          ...(view.cutoff ? { scheduledAt: { lt: view.cutoff } } : {}),
+        },
       },
-    },
-    include: {
-      playerStats: { include: { player: true } },
-      teamStats: true,
-      draftActions: true,
-    },
-  });
+      include: {
+        playerStats: { include: { player: true } },
+        playerTimeline: { where: { minute: 15 } },
+        teamStats: true,
+        draftActions: true,
+      },
+    }),
+    prisma.league.findUnique({ where: { id: view.leagueId }, select: { scoringConfig: true } }),
+  ]);
+  const scoring = parseScoring(league?.scoringConfig);
 
-  const players = new Map<string, {
-    name: string; team: string; role: string; games: number; wins: number;
-    kills: number; deaths: number; assists: number; cs: number; damage: number;
-    vision: number; pentas: number; wardsPlaced: number; wardsKilled: number;
-    kpTotal: number; kpSamples: number;
-  }>();
+  const players = new Map<string, PlayerAggregate>();
   const champions = new Map<string, { picks: number; wins: number; bans: number }>();
   const teams = new Map<string, {
     games: number; wins: number; kills: number; towers: number; dragons: number;
@@ -44,26 +83,39 @@ export default async function StatsPage() {
   for (const game of games) {
     for (const stat of game.playerStats) {
       const row = players.get(stat.playerId) ?? {
-        name: stat.player.name, team: stat.teamId, role: stat.role ?? "?", games: 0,
-        wins: 0, kills: 0, deaths: 0, assists: 0, cs: 0, damage: 0, vision: 0,
-        pentas: 0, wardsPlaced: 0, wardsKilled: 0, kpTotal: 0, kpSamples: 0,
+        id: stat.playerId,
+        name: stat.player.name,
+        team: stat.teamId,
+        role: stat.role ?? stat.player.role ?? "?",
+        games: 0,
+        wins: 0,
+        fantasyPoints: 0,
+        kills: 0,
+        deaths: 0,
+        assists: 0,
+        cs: 0,
+        maxKills: 0,
+        maxCs: 0,
+        champions: new Map<string, number>(),
+        sums: {},
+        samples: {},
       };
       row.games++;
       row.wins += stat.won ? 1 : 0;
+      row.fantasyPoints += playerGamePoints(stat, scoring);
       row.kills += stat.kills;
       row.deaths += stat.deaths;
       row.assists += stat.assists;
       row.cs += stat.cs ?? 0;
-      row.damage += stat.damage ?? 0;
-      row.vision += stat.visionScore ?? 0;
-      row.pentas += stat.pentakills ?? 0;
-      row.wardsPlaced += stat.wardsPlaced ?? 0;
-      row.wardsKilled += stat.wardsKilled ?? 0;
-      if (stat.killParticipation != null) {
-        row.kpTotal += stat.killParticipation;
-        row.kpSamples++;
-      }
+      row.maxKills = Math.max(row.maxKills, stat.kills);
+      row.maxCs = Math.max(row.maxCs, stat.cs ?? 0);
+      row.champions.set(stat.champion, (row.champions.get(stat.champion) ?? 0) + 1);
+      for (const metric of OPTIONAL_PLAYER_METRICS) addMetric(row, metric, stat[metric]);
+      if (stat.firstBloodKill != null) addMetric(row, "firstBloodKills", stat.firstBloodKill ? 1 : 0);
+      if (stat.firstBloodAssist != null) addMetric(row, "firstBloodAssists", stat.firstBloodAssist ? 1 : 0);
+      if (stat.firstBloodVictim != null) addMetric(row, "firstBloodVictims", stat.firstBloodVictim ? 1 : 0);
       row.team = stat.teamId;
+      row.role = stat.role ?? stat.player.role ?? row.role;
       players.set(stat.playerId, row);
 
       const champion = champions.get(stat.champion) ?? { picks: 0, wins: 0, bans: 0 };
@@ -98,11 +150,72 @@ export default async function StatsPage() {
       row.firstTowers += stat.firstTower ? 1 : 0;
       teams.set(stat.teamId, row);
     }
+    for (const timeline of game.playerTimeline) {
+      const row = players.get(timeline.playerId);
+      if (!row) continue;
+      addMetric(row, "csDiff15", timeline.csDiff);
+      addMetric(row, "goldDiff15", timeline.goldDiff);
+      addMetric(row, "xpDiff15", timeline.xpDiff);
+    }
   }
 
-  const playerRows = [...players.values()].sort(
-    (a, b) => (b.kills + b.assists) / Math.max(1, b.deaths) - (a.kills + a.assists) / Math.max(1, a.deaths),
-  );
+  const playerRows: DeepPlayerRow[] = [...players.values()].map((row) => {
+    const mostPlayedChampion = [...row.champions.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0]?.[0] ?? "Unknown";
+    const fantasyPoints = round1(row.fantasyPoints);
+    return {
+      id: row.id,
+      name: row.name,
+      team: row.team,
+      role: row.role,
+      fantasyPoints,
+      fantasyPerGame: fantasyPoints / row.games,
+      games: row.games,
+      wins: row.wins,
+      winRate: row.wins / row.games,
+      kills: row.kills,
+      deaths: row.deaths,
+      assists: row.assists,
+      kda: (row.kills + row.assists) / Math.max(1, row.deaths),
+      killsPerGame: row.kills / row.games,
+      deathsPerGame: row.deaths / row.games,
+      assistsPerGame: row.assists / row.games,
+      killParticipation: averageMetric(row, "killParticipation"),
+      maxKills: row.maxKills,
+      damagePerGame: averageMetric(row, "damage"),
+      damageShare: averageMetric(row, "damageShare"),
+      objectiveDamagePerGame: averageMetric(row, "damageToObjectives"),
+      damageTakenPerGame: averageMetric(row, "damageTaken"),
+      damageMitigatedPerGame: averageMetric(row, "damageMitigated"),
+      healingPerGame: averageMetric(row, "totalHeal"),
+      cs: row.cs,
+      csPerGame: row.cs / row.games,
+      maxCs: row.maxCs,
+      minionsPerGame: averageMetric(row, "minionKills"),
+      monstersPerGame: averageMetric(row, "monsterKills"),
+      goldPerGame: averageMetric(row, "gold"),
+      goldEarnedPerGame: averageMetric(row, "goldEarned"),
+      goldSpentPerGame: averageMetric(row, "goldSpent"),
+      goldShare: averageMetric(row, "goldShare"),
+      teamKillsPerGame: averageMetric(row, "teamKills"),
+      teamGoldPerGame: averageMetric(row, "teamGold"),
+      visionPerGame: averageMetric(row, "visionScore"),
+      wardsPlacedPerGame: averageMetric(row, "wardsPlaced"),
+      wardsKilledPerGame: averageMetric(row, "wardsKilled"),
+      controlWardsPerGame: averageMetric(row, "controlWardsBought"),
+      championPool: row.champions.size,
+      mostPlayedChampion,
+      doubleKills: totalMetric(row, "doubleKills"),
+      tripleKills: totalMetric(row, "tripleKills"),
+      quadraKills: totalMetric(row, "quadraKills"),
+      pentakills: totalMetric(row, "pentakills"),
+      firstBloodKills: totalMetric(row, "firstBloodKills"),
+      firstBloodAssists: totalMetric(row, "firstBloodAssists"),
+      firstBloodVictims: totalMetric(row, "firstBloodVictims"),
+      csDiff15: averageMetric(row, "csDiff15"),
+      goldDiff15: averageMetric(row, "goldDiff15"),
+      xpDiff15: averageMetric(row, "xpDiff15"),
+    };
+  });
   const championRows = [...champions.entries()].sort(
     (a, b) => b[1].picks + b[1].bans - (a[1].picks + a[1].bans),
   );
@@ -114,17 +227,8 @@ export default async function StatsPage() {
       {view.tournamentName} · {games.length} games. Blank advanced fields mean the selected source did not publish that metric; raw source rows are retained for future parsers.
     </p>
 
-    <h2>Players</h2>
-    <div className="tablewrap"><table>
-      <thead><tr><th>Player</th><th>Team</th><th>Role</th><th className="num">GP</th><th className="num">Win%</th><th className="num">KDA</th><th className="num">KP</th><th className="num">CS/G</th><th className="num">Dmg/G</th><th className="num">Vision/G</th><th className="num">Wards P/K</th><th className="num">Pentas</th></tr></thead>
-      <tbody>{playerRows.map((p) => <tr key={`${p.name}:${p.team}`}>
-        <td>{p.name}</td><td><TeamLabel name={p.team} size="xs" /></td><td>{p.role}</td><td className="num">{p.games}</td>
-        <td className="num">{pct(p.wins, p.games)}</td><td className="num">{((p.kills + p.assists) / Math.max(1, p.deaths)).toFixed(2)}</td>
-        <td className="num">{p.kpSamples ? `${((p.kpTotal / p.kpSamples) * 100).toFixed(1)}%` : "—"}</td>
-        <td className="num">{perGame(p.cs, p.games)}</td><td className="num">{perGame(p.damage, p.games)}</td><td className="num">{perGame(p.vision, p.games)}</td>
-        <td className="num">{p.wardsPlaced || p.wardsKilled ? `${p.wardsPlaced}/${p.wardsKilled}` : "—"}</td><td className="num">{p.pentas}</td>
-      </tr>)}</tbody>
-    </table></div>
+    <div className="macro-section-title deep-stats-title"><div><span>Players</span><h2>Complete player detail</h2></div><p>Fantasy scoring uses {view.leagueName}&apos;s active rules. Click any column to sort.</p></div>
+    <DeepPlayerTable rows={playerRows} />
 
     <h2>Champion meta</h2>
     <div className="tablewrap"><table>

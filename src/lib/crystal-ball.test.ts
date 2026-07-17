@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   crystalBallPoints,
+  crystalBallPredictionsPublic,
   DEFAULT_CRYSTAL_BALL,
   resolveCrystalBallMetric,
   type CrystalBallSnapshot,
@@ -91,4 +92,10 @@ test("exact ties and equally close number predictions all receive full credit", 
   assert.equal(crystalBallPoints(closest, 1), 10);
   assert.equal(crystalBallPoints(closest, 2), 10);
   assert.equal(crystalBallPoints(closest, 3), 0);
+});
+
+test("participant Crystal Ball choices stay private until the season lock", () => {
+  assert.equal(crystalBallPredictionsPublic({ crystalBallLockedAt: null, seasonStatus: "PRESEASON" }), false);
+  assert.equal(crystalBallPredictionsPublic({ crystalBallLockedAt: new Date(), seasonStatus: "PRESEASON" }), true);
+  assert.equal(crystalBallPredictionsPublic({ crystalBallLockedAt: null, seasonStatus: "ACTIVE" }), true);
 });
