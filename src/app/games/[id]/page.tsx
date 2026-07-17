@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { parseScoring, fmtDate, fmtLength, ROLE_ORDER, round1 } from "@/lib/fantasy";
 import { playerGamePoints } from "@/lib/scoring";
 import { requireLeagueMember } from "@/lib/auth";
+import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
 
 export const dynamic = "force-dynamic";
 
@@ -47,12 +48,12 @@ export default async function GamePage({
       <p className="small">
         <Link href="/">← all games</Link>
       </p>
-      <h1>
-        {game.match.team1} vs {game.match.team2} — Game {game.gameNumber}
+      <h1 className="game-title-matchup">
+        <TeamLabel name={game.match.team1} size="md" /><em>vs</em><TeamLabel name={game.match.team2} size="md" /><span>— Game {game.gameNumber}</span>
       </h1>
       <p className="muted small">
         {fmtDate(game.playedAt)} · length {fmtLength(game.lengthSec)} · winner{" "}
-        <span className="badge win">{game.winner ?? "?"}</span> · series{" "}
+        {game.winner ? <TeamLabel name={game.winner} size="xs" className="game-winner" /> : "?"} · series{" "}
         {game.match.team1Score}–{game.match.team2Score}
         {game.patch && <> · patch {game.patch}</>}
       </p>
@@ -66,13 +67,9 @@ export default async function GamePage({
               const team = actions[0]?.teamId ?? side;
               return (
                 <div className="card" key={side}>
-                  <b>{side} · {team}</b>
-                  <p className="small">
-                    Bans: {actions.filter((a) => a.action === "BAN").map((a) => a.champion).join(" · ") || "—"}
-                  </p>
-                  <p className="small" style={{ marginBottom: 0 }}>
-                    Picks: {actions.filter((a) => a.action === "PICK").map((a) => `${a.champion}${a.role ? ` (${a.role})` : ""}`).join(" · ") || "—"}
-                  </p>
+                  <div className="draft-card-heading"><span className={`side-dot ${side.toLowerCase()}`} />{side} · <TeamLabel name={team} size="sm" /></div>
+                  <div className="draft-identity-row"><b>Bans</b><div className="entity-list">{actions.filter((a) => a.action === "BAN").map((a) => <ChampionLabel name={a.champion} size="xs" key={`${a.sequence}:${a.champion}`} />)}{actions.every((a) => a.action !== "BAN") && "—"}</div></div>
+                  <div className="draft-identity-row"><b>Picks</b><div className="entity-list">{actions.filter((a) => a.action === "PICK").map((a) => <span className="draft-champion" key={`${a.sequence}:${a.champion}`}><ChampionLabel name={a.champion} size="xs" />{a.role && <small>{a.role}</small>}</span>)}{actions.every((a) => a.action !== "PICK") && "—"}</div></div>
                 </div>
               );
             })}
@@ -88,7 +85,7 @@ export default async function GamePage({
         return (
           <section key={teamId}>
             <h2>
-              {teamId}{" "}
+              <TeamLabel name={teamId} size="md" />{" "}
               {ts?.won ? (
                 <span className="badge win">win</span>
               ) : (
@@ -157,7 +154,7 @@ export default async function GamePage({
                     return <tr key={p.id}>
                       <td className="muted">{p.role ?? "?"}</td>
                       <td>{p.player.name}</td>
-                      <td>{p.champion}</td>
+                      <td><ChampionLabel name={p.champion} size="sm" /></td>
                       <td>
                         {p.kills} / {p.deaths} / {p.assists}
                       </td>

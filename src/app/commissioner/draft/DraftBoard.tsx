@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DRAFT_ROLES } from "@/lib/draft";
 import { makeDraftPick, undoDraftPick } from "./actions";
+import { TeamLabel } from "@/components/GameIdentity";
 
 type Pick = { id: number; playerId: string; playerName: string; proTeam: string | null; role: string; price: number; overallPick: number };
 type Team = { id: number; name: string; username: string; picks: Pick[] };
@@ -64,7 +65,7 @@ export default function DraftBoard({
           const picks = selectedTeam.picks.filter((pick) => pick.role === role);
           return <div key={role}><h3>{role} <span className="muted">{picks.length}/{playersPerRole}</span></h3>{Array.from({ length: playersPerRole }, (_, index) => {
             const pick = picks[index];
-            return pick ? <div className="drafted-player" key={`${role}-${index}`}><b>{pick.playerName}</b><span>{pick.proTeam ?? "Free agent"} · #{pick.overallPick}</span></div> : <div className="drafted-player empty" key={`${role}-${index}`}>Open slot</div>;
+            return pick ? <div className="drafted-player" key={`${role}-${index}`}><b>{pick.playerName}</b><span className="draft-player-team">{pick.proTeam ? <TeamLabel name={pick.proTeam} size="xs" /> : "Free agent"}<i>#{pick.overallPick}</i></span></div> : <div className="drafted-player empty" key={`${role}-${index}`}>Open slot</div>;
           })}</div>;
         })}</div>
       </div>}
@@ -78,7 +79,7 @@ export default function DraftBoard({
         const insufficientBudget = budget - (currentTeam?.picks.reduce((sum, pick) => sum + pick.price, 0) ?? 0) < price;
         return <form action={submitPick} className="draft-player-card" key={player.id}>
           <input type="hidden" name="leagueId" value={leagueId} /><input type="hidden" name="playerId" value={player.id} />
-          <div><b>{player.name}</b><span>{player.teamId ?? "Free agent"}</span></div>
+          <div><b>{player.name}</b>{player.teamId ? <TeamLabel name={player.teamId} size="xs" /> : <span>Free agent</span>}</div>
           <button type="submit" disabled={busy || roleFull || insufficientBudget}>{busy ? "Updating…" : roleFull ? `${player.role} full` : `Draft · ${money(price)}`}</button>
         </form>;
       })}</div>

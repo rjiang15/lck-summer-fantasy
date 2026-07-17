@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { savePicks, type PickSaveState } from "./actions";
+import { TeamLabel } from "@/components/GameIdentity";
 
 type MatchPick = {
   id: string;
@@ -48,16 +49,16 @@ export default function PicksForm({ leagueId, leagueWeekId, matches, weekLocked 
       return <article className={`card pickem-card${match.started ? " locked" : ""}`} key={match.id}>
         <div className="pickem-meta"><span>{match.dateLabel}</span><span>Best of {match.bestOf}</span>{match.started && <span className="badge pending">locked</span>}</div>
         <div className="pickem-teams" aria-label={`${match.team1} versus ${match.team2}`}>
-          {[match.team1, match.team2].map((team) => <button type="button" aria-pressed={selection.winner === team} className={selection.winner === team ? "selected" : ""} disabled={match.started} onClick={() => chooseWinner(match, team)} key={team}><span>{team}</span><small>{selection.winner === team ? "Your winner" : "Pick to win"}</small></button>)}
+          {[match.team1, match.team2].map((team) => <button type="button" aria-pressed={selection.winner === team} className={selection.winner === team ? "selected" : ""} disabled={match.started} onClick={() => chooseWinner(match, team)} key={team}><TeamLabel name={team} size="lg" /><small>{selection.winner === team ? "Your winner" : "Pick to win"}</small></button>)}
         </div>
-        {match.started ? <p className="pickem-result">{selection.winner ? <><b>{selection.winner}</b> to win {score}</> : "No pick submitted"}</p> : selection.winner && loser ? <div className="loser-counter">
-          <span><b>{loser}</b> will get</span>
+        {match.started ? <p className="pickem-result">{selection.winner ? <><TeamLabel name={selection.winner} size="xs" /> to win {score}</> : "No pick submitted"}</p> : selection.winner && loser ? <div className="loser-counter">
+          <span><TeamLabel name={loser} size="xs" /> will get</span>
           <div className="counter-control">
             <button type="button" aria-label={`Decrease ${loser} games`} disabled={selection.loserGames === 0} onClick={() => adjustLoserGames(match, -1)}>−</button>
             <strong aria-live="polite">{selection.loserGames}</strong>
             <button type="button" aria-label={`Increase ${loser} games`} disabled={selection.loserGames >= needed - 1} onClick={() => adjustLoserGames(match, 1)}>＋</button>
           </div>
-          <span>game{selection.loserGames === 1 ? "" : "s"}</span><span className="pickem-score">Prediction: {selection.winner} {score}</span>
+          <span>game{selection.loserGames === 1 ? "" : "s"}</span><span className="pickem-score">Prediction: <TeamLabel name={selection.winner} size="xs" /> {score}</span>
         </div> : <p className="pickem-prompt">Click the team you think will win.</p>}
         <input type="hidden" name={`winner_${match.id}`} value={selection.winner ?? ""} />
         <input type="hidden" name={`loserGames_${match.id}`} value={selection.loserGames} />

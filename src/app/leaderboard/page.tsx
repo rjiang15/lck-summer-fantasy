@@ -7,6 +7,7 @@ import {
   computeStandings,
 } from "@/lib/fantasy";
 import { getViewState } from "@/lib/view";
+import { TeamLabel } from "@/components/GameIdentity";
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +87,7 @@ export default async function LeaderboardPage() {
               <tr key={p.id}>
                 <td>{i + 1}</td>
                 <td>{p.name}</td>
-                <td>{p.team}</td>
+                <td><TeamLabel name={p.team} size="xs" /></td>
                 <td className="muted">{p.role}</td>
                 <td className="num">{p.games}</td>
                 <td>

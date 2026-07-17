@@ -6,6 +6,7 @@ import { fmtDate, fmtLength } from "@/lib/fantasy";
 import { getViewState, isFinished } from "@/lib/view";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { TeamLabel } from "@/components/GameIdentity";
 
 export const dynamic = "force-dynamic";
 
@@ -65,20 +66,15 @@ export default async function GamesPage() {
                   return (
                     <tr key={m.id}>
                       <td>{fmtDate(m.scheduledAt)}</td>
-                      <td>
-                        <span className={done && m.winner === m.team1 ? "" : "muted"}>
-                          {m.team1}
-                        </span>
-                        {" vs "}
-                        <span className={done && m.winner === m.team2 ? "" : "muted"}>
-                          {m.team2}
-                        </span>
-                      </td>
+                      <td><span className="entity-matchup">
+                        <TeamLabel name={m.team1} size="xs" className={done && m.winner !== m.team1 ? "subtle muted" : ""} />
+                        <em>vs</em>
+                        <TeamLabel name={m.team2} size="xs" className={done && m.winner !== m.team2 ? "subtle muted" : ""} />
+                      </span></td>
                       <td>
                         {done ? (
                           <>
-                            <span className="badge win">{m.winner}</span>{" "}
-                            {m.team1Score}–{m.team2Score}
+                            <span className="series-result"><TeamLabel name={m.winner!} size="xs" /><b>{m.team1Score}–{m.team2Score}</b></span>
                           </>
                         ) : (
                           <span className="badge pending">upcoming</span>

@@ -14,6 +14,7 @@ import { playerGamePoints, pickemPoints } from "@/lib/scoring";
 import { getViewState, isFinished } from "@/lib/view";
 import { requireLeagueMember } from "@/lib/auth";
 import { areWeeklyPicksPublic } from "@/lib/pick-privacy";
+import { TeamLabel } from "@/components/GameIdentity";
 
 export const dynamic = "force-dynamic";
 
@@ -127,7 +128,7 @@ export default async function ParticipantPage({
                   <tr key={slot.id}>
                     <td className="muted">{slot.slot}</td>
                     <td>{slot.player.name}</td>
-                    <td>{slot.player.teamId ?? "?"}</td>
+                    <td>{slot.player.teamId ? <TeamLabel name={slot.player.teamId} size="xs" /> : "?"}</td>
                     <td className="num">
                       <b>{round1(slotTotals.get(slot.id) ?? 0)}</b>
                     </td>
@@ -212,17 +213,15 @@ export default async function ParticipantPage({
               return (
                 <tr key={p.id}>
                   <td>{fmtDate(m.scheduledAt)}</td>
+                  <td><span className="entity-matchup"><TeamLabel name={m.team1} size="xs" /><em>vs</em><TeamLabel name={m.team2} size="xs" /></span></td>
                   <td>
-                    {m.team1} vs {m.team2}
-                  </td>
-                  <td>
-                    {p.predictedWinner}{" "}
+                    <TeamLabel name={p.predictedWinner} size="xs" />{" "}
                     <span className="muted">({p.predictedScore ?? "no score"})</span>
                   </td>
                   <td>
                     {finished ? (
                       <>
-                        {m.winner} <span className="muted">({actualScore})</span>
+                        <TeamLabel name={m.winner!} size="xs" /> <span className="muted">({actualScore})</span>
                       </>
                     ) : (
                       <span className="badge pending">upcoming</span>

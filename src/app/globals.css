@@ -232,6 +232,44 @@ button:disabled { cursor: wait; opacity: 0.65; }
   font-size: 0.82rem;
 }
 
+.entity-label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  color: inherit;
+  font-weight: 650;
+  vertical-align: middle;
+}
+.entity-label > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.entity-label.subtle { font-weight: 550; }
+.entity-icon {
+  --entity-size: 2rem;
+  position: relative;
+  display: inline-grid;
+  width: var(--entity-size);
+  height: var(--entity-size);
+  flex: 0 0 var(--entity-size);
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, var(--text));
+  background: color-mix(in srgb, var(--card) 86%, var(--bg));
+  box-shadow: 0 2px 7px color-mix(in srgb, #000 15%, transparent);
+}
+.entity-icon.xs { --entity-size: 1.45rem; }
+.entity-icon.sm { --entity-size: 1.9rem; }
+.entity-icon.md { --entity-size: 2.4rem; }
+.entity-icon.lg { --entity-size: 3rem; }
+.entity-icon.champion { border-radius: 28%; }
+.entity-icon.team { border-radius: 28%; padding: 0.17rem; }
+.entity-icon img { width: 100%; height: 100%; object-fit: cover; }
+.entity-icon.team img { object-fit: contain; }
+.entity-fallback { color: var(--muted); font-size: calc(var(--entity-size) * 0.34); font-weight: 800; letter-spacing: -0.04em; }
+.entity-matchup { display: inline-flex; min-width: 0; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+.entity-matchup > em { color: var(--muted); font-size: 0.75rem; font-style: normal; font-weight: 500; }
+.entity-list { display: flex; gap: 0.42rem; align-items: center; flex-wrap: wrap; }
+.entity-list .entity-label { padding: 0.18rem 0.4rem 0.18rem 0.2rem; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); font-size: 0.82rem; }
+
 .draft-status { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 32%); gap: 1.25rem; align-items: center; }
 .draft-status h2 { margin: 0.2rem 0; font-size: 1.25rem; }
 .draft-kicker { color: var(--accent); font-size: 0.72rem; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -250,12 +288,15 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .draft-role-grid { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 0.75rem; overflow-x: auto; }
 .draft-role-grid h3 { margin: 0.5rem 0; font-size: 0.9rem; }
 .drafted-player { display: grid; gap: 0.05rem; min-height: 3.3rem; padding: 0.5rem; margin-bottom: 0.4rem; border: 1px solid var(--border); border-radius: 6px; }
-.drafted-player span { color: var(--muted); font-size: 0.78rem; }
+.drafted-player > span { color: var(--muted); font-size: 0.78rem; }
+.draft-player-team { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 0.35rem; }
+.draft-player-team i { font-style: normal; white-space: nowrap; }
 .drafted-player.empty { align-items: center; color: var(--muted); border-style: dashed; }
 .draft-player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 0.55rem; margin-bottom: 1.25rem; }
 .draft-player-card { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.65rem; background: var(--card); border: 1px solid var(--border); border-radius: 7px; }
 .draft-player-card div { display: grid; min-width: 0; }
-.draft-player-card div span { color: var(--muted); font-size: 0.78rem; }
+.draft-player-card div > span { color: var(--muted); font-size: 0.78rem; }
+.draft-player-card .entity-label { display: inline-flex; justify-self: start; margin-top: 0.15rem; }
 .draft-player-card button { white-space: nowrap; }
 .draft-order { display: flex; gap: 1.75rem; flex-wrap: wrap; padding-left: 1.5rem; }
 .draft-order li { padding-left: 0.2rem; }
@@ -268,12 +309,14 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .pickem-meta { display: flex; align-items: center; gap: 0.65rem; color: var(--muted); font-size: 0.78rem; margin-bottom: 0.7rem; }
 .pickem-meta span:nth-child(2) { margin-left: auto; }
 .pickem-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; }
-.pickem-teams button { display: grid; gap: 0.1rem; min-height: 4.2rem; text-align: left; padding: 0.65rem 0.8rem; color: var(--text); }
-.pickem-teams button span { font-size: 1rem; font-weight: 750; }
+.pickem-teams button { display: grid; gap: 0.25rem; min-height: 5.35rem; text-align: left; padding: 0.65rem 0.8rem; color: var(--text); }
+.pickem-teams button > .entity-label > span:last-child { font-size: 1rem; font-weight: 750; }
 .pickem-teams button small { color: var(--muted); font-weight: 500; }
 .pickem-teams button.selected { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--card)); box-shadow: inset 0 0 0 1px var(--accent); }
 .pickem-teams button.selected small { color: var(--accent); }
+.pickem-teams button.selected .entity-icon { border-color: color-mix(in srgb, var(--accent) 70%, var(--border)); box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 24%, transparent); }
 .pickem-prompt, .pickem-result { margin: 0.75rem 0 0; color: var(--muted); font-size: 0.85rem; }
+.pickem-result, .loser-counter > span, .pickem-score { display: flex; align-items: center; gap: 0.3rem; }
 .loser-counter { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--border); }
 .counter-control { display: inline-grid; grid-template-columns: 2.1rem 2.5rem 2.1rem; align-items: center; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 .counter-control button { border: 0; border-radius: 0; min-height: 2.15rem; padding: 0.2rem; font-size: 1.05rem; }
@@ -321,7 +364,11 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .macro-section-title p { margin: 0; color: var(--muted); font-size: 0.82rem; text-align: right; }
 .macro-record-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.7rem; }
 .macro-record strong { margin-top: 0.15rem; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; }
-.macro-table td { height: 2.55rem; }
+.macro-record-team { margin-top: 0.18rem; color: var(--muted); font-size: 0.78rem; }
+.macro-table td { height: 3rem; }
+.macro-team-cell { display: inline-flex; align-items: center; }
+.macro-champion-cell { display: inline-grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 0.5rem; }
+.macro-champion-cell .macro-presence { grid-column: 2; }
 .sortable-table th { padding: 0; }
 .sortable-table th > button {
   display: flex;
@@ -362,6 +409,21 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .macro-record-table li > span { display: grid; min-width: 0; }
 .macro-record-table li > span small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
 .macro-record-table li > strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.series-result { display: inline-flex; align-items: center; gap: 0.5rem; }
+.series-result > b { font-variant-numeric: tabular-nums; }
+.game-title-matchup { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
+.game-title-matchup em { color: var(--muted); font-size: 0.75em; font-style: normal; font-weight: 500; }
+.game-title-matchup > span:last-child { color: var(--muted); font-weight: 500; }
+.game-winner { color: var(--win); }
+.draft-card-heading { display: flex; align-items: center; gap: 0.4rem; padding-bottom: 0.65rem; border-bottom: 1px solid var(--border); font-weight: 700; }
+.side-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--muted); }
+.side-dot.blue { background: #4186e0; }
+.side-dot.red { background: #d95757; }
+.draft-identity-row { display: grid; grid-template-columns: 3.2rem minmax(0, 1fr); gap: 0.5rem; align-items: start; margin-top: 0.75rem; }
+.draft-identity-row > b { padding-top: 0.3rem; color: var(--muted); font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.draft-champion { display: inline-flex; align-items: center; gap: 0.3rem; }
+.draft-champion small { color: var(--muted); }
 
 @media (max-width: 720px) {
   .topnav { padding-top: 0.65rem; padding-bottom: 0.65rem; align-items: flex-start; }

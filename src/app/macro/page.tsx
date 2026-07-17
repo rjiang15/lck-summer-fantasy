@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getViewState } from "@/lib/view";
 import { ChampionMetaTable, TeamMacroTable } from "./MacroTables";
+import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,14 @@ type TeamRollup = {
   grubs: number;
   atakhans: number;
   inhibitors: number;
+};
+
+type RecordCard = {
+  label: string;
+  value: string;
+  detail: string;
+  champion?: boolean;
+  team?: string;
 };
 
 const pct = (part: number, total: number) => total === 0 ? "—" : `${((part / total) * 100).toFixed(1)}%`;
@@ -188,16 +197,15 @@ export default async function MacroDashboardPage() {
   const highestDamage = maxBy(playerRows, (player) => player.damage / player.games);
   const widestPool = maxBy(playerRows, (player) => player.champions.size);
 
-  const cards = [
-    mostPicked && { label: "Most picked", value: mostPicked[0], detail: `${mostPicked[1].picks} picks · ${pct(mostPicked[1].picks, games.length)} of games` },
-    mostBanned && { label: "Most banned", value: mostBanned[0], detail: `${mostBanned[1].bans} bans · ${pct(mostBanned[1].bans, games.length)} of games` },
-    bestWinRate && { label: `Best win rate (${winRateMinimum}+ picks)`, value: bestWinRate[0], detail: `${pct(bestWinRate[1].wins, bestWinRate[1].picks)} · ${bestWinRate[1].wins}-${bestWinRate[1].picks - bestWinRate[1].wins}` },
-    mostKillsChampion && { label: "Most champion kills", value: mostKillsChampion[0], detail: `${mostKillsChampion[1].kills} kills across ${mostKillsChampion[1].picks} picks` },
-    highestKda && { label: "Highest player KDA", value: highestKda.name, detail: `${kda(highestKda.kills, highestKda.deaths, highestKda.assists).toFixed(2)} KDA · ${highestKda.games} games` },
-    highestCs && { label: "Highest CS per game", value: highestCs.name, detail: `${perGame(highestCs.cs, highestCs.games)} CS/G · ${highestCs.team}` },
-    highestDamage && { label: "Highest damage per game", value: highestDamage.name, detail: `${Math.round(highestDamage.damage / highestDamage.games).toLocaleString()} Dmg/G · ${highestDamage.team}` },
-    widestPool && { label: "Widest champion pool", value: widestPool.name, detail: `${widestPool.champions.size} champions in ${widestPool.games} games` },
-  ].filter((card): card is { label: string; value: string; detail: string } => Boolean(card));
+  const cards: RecordCard[] = [];
+  if (mostPicked) cards.push({ label: "Most picked", value: mostPicked[0], detail: `${mostPicked[1].picks} picks · ${pct(mostPicked[1].picks, games.length)} of games`, champion: true });
+  if (mostBanned) cards.push({ label: "Most banned", value: mostBanned[0], detail: `${mostBanned[1].bans} bans · ${pct(mostBanned[1].bans, games.length)} of games`, champion: true });
+  if (bestWinRate) cards.push({ label: `Best win rate (${winRateMinimum}+ picks)`, value: bestWinRate[0], detail: `${pct(bestWinRate[1].wins, bestWinRate[1].picks)} · ${bestWinRate[1].wins}-${bestWinRate[1].picks - bestWinRate[1].wins}`, champion: true });
+  if (mostKillsChampion) cards.push({ label: "Most champion kills", value: mostKillsChampion[0], detail: `${mostKillsChampion[1].kills} kills across ${mostKillsChampion[1].picks} picks`, champion: true });
+  if (highestKda) cards.push({ label: "Highest player KDA", value: highestKda.name, detail: `${kda(highestKda.kills, highestKda.deaths, highestKda.assists).toFixed(2)} KDA · ${highestKda.games} games` });
+  if (highestCs) cards.push({ label: "Highest CS per game", value: highestCs.name, detail: `${perGame(highestCs.cs, highestCs.games)} CS/G`, team: highestCs.team });
+  if (highestDamage) cards.push({ label: "Highest damage per game", value: highestDamage.name, detail: `${Math.round(highestDamage.damage / highestDamage.games).toLocaleString()} Dmg/G`, team: highestDamage.team });
+  if (widestPool) cards.push({ label: "Widest champion pool", value: widestPool.name, detail: `${widestPool.champions.size} champions in ${widestPool.games} games` });
 
   const sortableTeamRows = teamRows.map(([team, row]) => ({ team, ...row }));
   const sortableChampionRows = championRows.map(([champion, row]) => ({ champion, ...row }));
@@ -222,7 +230,12 @@ export default async function MacroDashboardPage() {
     <section>
       <div className="macro-section-title"><div><span>League leaders</span><h2>Records at a glance</h2></div><p>All records honor the selected week cutoff.</p></div>
       <div className="macro-record-grid">
-        {cards.map((card) => <article className="macro-record" key={card.label}><span>{card.label}</span><strong>{card.value}</strong><small>{card.detail}</small></article>)}
+        {cards.map((card) => <article className="macro-record" key={card.label}>
+          <span>{card.label}</span>
+          <strong>{card.champion ? <ChampionLabel name={card.value} size="md" /> : card.value}</strong>
+          <small>{card.detail}</small>
+          {card.team && <TeamLabel name={card.team} size="xs" className="macro-record-team" />}
+        </article>)}
       </div>
     </section>
 
@@ -264,7 +277,7 @@ function RecordTable({
   mode: "time" | "kills";
 }) {
   return <div className="card macro-record-table"><h3>{title}</h3><ol>{games.map((game) => <li key={game.id}>
-    <span><Link href={`/games/${game.id}`}><b>{game.winner ?? game.team1}</b> vs {game.loser || game.team2}</Link><small>Game {game.id}</small></span>
+    <span><Link href={`/games/${game.id}`} className="entity-matchup"><TeamLabel name={game.winner ?? game.team1} size="xs" /><em>vs</em><TeamLabel name={game.loser || game.team2} size="xs" className="subtle" /></Link><small>Game {game.id}</small></span>
     <strong>{mode === "time" ? duration(game.lengthSec) : `${game.kills} kills`}</strong>
   </li>)}</ol></div>;
 }

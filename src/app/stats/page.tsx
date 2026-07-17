@@ -1,6 +1,7 @@
 // Deep statistical explorer: player performance, champion meta, and team macro.
 import { prisma } from "@/lib/db";
 import { getViewState } from "@/lib/view";
+import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
 
 export const dynamic = "force-dynamic";
 
@@ -117,7 +118,7 @@ export default async function StatsPage() {
     <div className="tablewrap"><table>
       <thead><tr><th>Player</th><th>Team</th><th>Role</th><th className="num">GP</th><th className="num">Win%</th><th className="num">KDA</th><th className="num">KP</th><th className="num">CS/G</th><th className="num">Dmg/G</th><th className="num">Vision/G</th><th className="num">Wards P/K</th><th className="num">Pentas</th></tr></thead>
       <tbody>{playerRows.map((p) => <tr key={`${p.name}:${p.team}`}>
-        <td>{p.name}</td><td>{p.team}</td><td>{p.role}</td><td className="num">{p.games}</td>
+        <td>{p.name}</td><td><TeamLabel name={p.team} size="xs" /></td><td>{p.role}</td><td className="num">{p.games}</td>
         <td className="num">{pct(p.wins, p.games)}</td><td className="num">{((p.kills + p.assists) / Math.max(1, p.deaths)).toFixed(2)}</td>
         <td className="num">{p.kpSamples ? `${((p.kpTotal / p.kpSamples) * 100).toFixed(1)}%` : "—"}</td>
         <td className="num">{perGame(p.cs, p.games)}</td><td className="num">{perGame(p.damage, p.games)}</td><td className="num">{perGame(p.vision, p.games)}</td>
@@ -129,7 +130,7 @@ export default async function StatsPage() {
     <div className="tablewrap"><table>
       <thead><tr><th>Champion</th><th className="num">Picks</th><th className="num">Bans</th><th className="num">Presence</th><th className="num">Wins</th><th className="num">Pick win%</th></tr></thead>
       <tbody>{championRows.map(([champion, row]) => <tr key={champion}>
-        <td>{champion}</td><td className="num">{row.picks}</td><td className="num">{row.bans}</td><td className="num">{row.picks + row.bans}</td><td className="num">{row.wins}</td><td className="num">{pct(row.wins, row.picks)}</td>
+        <td><ChampionLabel name={champion} size="sm" /></td><td className="num">{row.picks}</td><td className="num">{row.bans}</td><td className="num">{row.picks + row.bans}</td><td className="num">{row.wins}</td><td className="num">{pct(row.wins, row.picks)}</td>
       </tr>)}</tbody>
     </table></div>
 
@@ -137,7 +138,7 @@ export default async function StatsPage() {
     <div className="tablewrap"><table>
       <thead><tr><th>Team</th><th className="num">GP</th><th className="num">Win%</th><th className="num">Kills/G</th><th className="num">Towers/G</th><th className="num">Dragons/G</th><th className="num">Barons/G</th><th className="num">Heralds/G</th><th className="num">Grubs/G</th><th className="num">Atakhan/G</th><th className="num">First blood</th><th className="num">First dragon</th><th className="num">First baron</th><th className="num">First tower</th></tr></thead>
       <tbody>{teamRows.map(([team, row]) => <tr key={team}>
-        <td>{team}</td><td className="num">{row.games}</td><td className="num">{pct(row.wins, row.games)}</td>
+        <td><TeamLabel name={team} size="sm" /></td><td className="num">{row.games}</td><td className="num">{pct(row.wins, row.games)}</td>
         <td className="num">{perGame(row.kills, row.games)}</td><td className="num">{perGame(row.towers, row.games)}</td><td className="num">{perGame(row.dragons, row.games)}</td><td className="num">{perGame(row.barons, row.games)}</td><td className="num">{perGame(row.heralds, row.games)}</td><td className="num">{perGame(row.voidGrubs, row.games)}</td><td className="num">{perGame(row.atakhans, row.games)}</td>
         <td className="num">{pct(row.firstBloods, row.games)}</td><td className="num">{pct(row.firstDragons, row.games)}</td><td className="num">{pct(row.firstBarons, row.games)}</td><td className="num">{pct(row.firstTowers, row.games)}</td>
       </tr>)}</tbody>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
 
 type SortDirection = "asc" | "desc";
 type SortValue = string | number;
@@ -46,7 +47,7 @@ const kda = (kills: number, deaths: number, assists: number) => (kills + assists
 
 export function TeamMacroTable({ rows }: { rows: TeamRow[] }) {
   const columns: Column<TeamRow>[] = [
-    { key: "team", label: "Team", value: (row) => row.team, render: (row, index) => <><span className="macro-rank">{index + 1}</span><b>{row.team}</b></> },
+    { key: "team", label: "Team", value: (row) => row.team, render: (row, index) => <span className="macro-team-cell"><span className="macro-rank">{index + 1}</span><TeamLabel name={row.team} size="sm" /></span> },
     { key: "games", label: "GP", numeric: true, value: (row) => row.games, render: (row) => row.games },
     { key: "winRate", label: "Win%", numeric: true, value: (row) => row.wins / row.games, render: (row) => <Rate value={row.wins} total={row.games} /> },
     { key: "kills", label: "Kills/G", numeric: true, value: (row) => perGame(row.kills, row.games), render: (row) => perGame(row.kills, row.games).toFixed(1) },
@@ -76,7 +77,7 @@ function objectiveColumn(key: keyof Pick<TeamRow, "towers" | "dragons" | "elders
 export function ChampionMetaTable({ rows, games }: { rows: ChampionRow[]; games: number }) {
   const maxPresence = Math.max(1, ...rows.map((row) => row.picks + row.bans));
   const columns: Column<ChampionRow>[] = [
-    { key: "champion", label: "Champion", value: (row) => row.champion, render: (row) => <><b>{row.champion}</b><span className="macro-presence"><i style={{ width: `${((row.picks + row.bans) / maxPresence) * 100}%` }} /></span></> },
+    { key: "champion", label: "Champion", value: (row) => row.champion, render: (row) => <span className="macro-champion-cell"><ChampionLabel name={row.champion} size="sm" /><span className="macro-presence"><i style={{ width: `${((row.picks + row.bans) / maxPresence) * 100}%` }} /></span></span> },
     { key: "picks", label: "Picks", numeric: true, value: (row) => row.picks, render: (row) => row.picks },
     { key: "pickRate", label: "Pick%", numeric: true, value: (row) => row.picks / games, render: (row) => pct(row.picks, games) },
     { key: "bans", label: "Bans", numeric: true, value: (row) => row.bans, render: (row) => row.bans },
