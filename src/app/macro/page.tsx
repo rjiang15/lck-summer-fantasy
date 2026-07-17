@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getViewState } from "@/lib/view";
-import { ChampionMetaTable, PlayerLeaderTable, TeamMacroTable } from "./MacroTables";
+import { ChampionMetaTable, TeamMacroTable } from "./MacroTables";
 
 export const dynamic = "force-dynamic";
 
@@ -201,7 +201,6 @@ export default async function MacroDashboardPage() {
 
   const sortableTeamRows = teamRows.map(([team, row]) => ({ team, ...row }));
   const sortableChampionRows = championRows.map(([champion, row]) => ({ champion, ...row }));
-  const sortablePlayerRows = playerRows.map((player) => ({ ...player, champions: [...player.champions].sort() }));
 
   return <div className="macro-dashboard">
     <header className="macro-hero">
@@ -235,11 +234,6 @@ export default async function MacroDashboardPage() {
     <section>
       <div className="macro-section-title"><div><span>Draft</span><h2>Champion meta</h2></div><p>Pick, ban, presence, results and combat output.</p></div>
       <ChampionMetaTable rows={sortableChampionRows} games={games.length} />
-    </section>
-
-    <section>
-      <div className="macro-section-title"><div><span>Players</span><h2>Performance leaders</h2></div><p>Season-level rates and champion-pool breadth.</p></div>
-      <PlayerLeaderTable rows={sortablePlayerRows} />
     </section>
 
     <section>

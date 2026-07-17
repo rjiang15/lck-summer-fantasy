@@ -40,23 +40,6 @@ type ChampionRow = {
   damage: number;
 };
 
-type PlayerRow = {
-  id: string;
-  name: string;
-  team: string;
-  role: string;
-  games: number;
-  wins: number;
-  kills: number;
-  deaths: number;
-  assists: number;
-  cs: number;
-  damage: number;
-  vision: number;
-  pentas: number;
-  champions: string[];
-};
-
 const pct = (part: number, total: number) => total === 0 ? "—" : `${((part / total) * 100).toFixed(1)}%`;
 const perGame = (value: number, games: number) => games === 0 ? 0 : value / games;
 const kda = (kills: number, deaths: number, assists: number) => (kills + assists) / Math.max(1, deaths);
@@ -106,24 +89,6 @@ export function ChampionMetaTable({ rows, games }: { rows: ChampionRow[]; games:
     { key: "damage", label: "Dmg/G", numeric: true, value: (row) => perGame(row.damage, row.picks), render: (row) => row.picks ? Math.round(perGame(row.damage, row.picks)).toLocaleString() : "—" },
   ];
   return <SortableTable rows={rows} columns={columns} rowKey={(row) => row.champion} initialKey="presence" initialDirection="desc" />;
-}
-
-export function PlayerLeaderTable({ rows }: { rows: PlayerRow[] }) {
-  const columns: Column<PlayerRow>[] = [
-    { key: "name", label: "Player", value: (row) => row.name, render: (row) => <b>{row.name}</b> },
-    { key: "team", label: "Team", value: (row) => row.team, render: (row) => row.team },
-    { key: "role", label: "Role", value: (row) => row.role, render: (row) => row.role },
-    { key: "games", label: "GP", numeric: true, value: (row) => row.games, render: (row) => row.games },
-    { key: "winRate", label: "Win%", numeric: true, value: (row) => row.wins / row.games, render: (row) => pct(row.wins, row.games) },
-    { key: "kda", label: "KDA", numeric: true, value: (row) => kda(row.kills, row.deaths, row.assists), render: (row) => kda(row.kills, row.deaths, row.assists).toFixed(2) },
-    { key: "kills", label: "Kills", numeric: true, value: (row) => row.kills, render: (row) => row.kills },
-    { key: "cs", label: "CS/G", numeric: true, value: (row) => perGame(row.cs, row.games), render: (row) => perGame(row.cs, row.games).toFixed(1) },
-    { key: "damage", label: "Dmg/G", numeric: true, value: (row) => perGame(row.damage, row.games), render: (row) => Math.round(perGame(row.damage, row.games)).toLocaleString() },
-    { key: "vision", label: "Vision/G", numeric: true, value: (row) => perGame(row.vision, row.games), render: (row) => perGame(row.vision, row.games).toFixed(1) },
-    { key: "pool", label: "Pool", numeric: true, value: (row) => row.champions.length, render: (row) => <span title={row.champions.join(", ")}>{row.champions.length}</span> },
-    { key: "pentas", label: "Pentas", numeric: true, value: (row) => row.pentas, render: (row) => row.pentas },
-  ];
-  return <SortableTable rows={rows} columns={columns} rowKey={(row) => row.id} initialKey="kda" initialDirection="desc" />;
 }
 
 function SortableTable<Row>({
