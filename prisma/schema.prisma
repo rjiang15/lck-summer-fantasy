@@ -43,6 +43,7 @@ model ProPlayer {
   rosterSlots       RosterSlot[]
   weeklyRosterSlots WeeklyRosterSlot[]
   tournamentRosters TournamentPlayer[]
+  draftPicks        DraftPick[]
 }
 
 model TournamentPlayer {
@@ -336,6 +337,13 @@ model League {
   leagueWeeks         LeagueWeek[]
   memberships         LeagueMembership[]
   pickems             Pickem[]
+  draftStatus         String                @default("NOT_STARTED") // NOT_STARTED | ACTIVE | COMPLETE
+  draftOrder          String? // JSON array of FantasyTeam ids; immutable after the draft starts
+  draftCurrentPick    Int                   @default(0)
+  draftBudget         Int                   @default(10000)
+  draftPlayerPrice    Int                   @default(1000)
+  draftPlayersPerRole Int                   @default(2)
+  draftPicks          DraftPick[]
 }
 
 model LeagueMembership {
@@ -383,8 +391,28 @@ model FantasyTeam {
   roster       RosterSlot[]
   weeklyRoster WeeklyRosterSlot[]
   weeklyScores WeeklyScore[]
+  draftPicks   DraftPick[]
 
   @@unique([leagueId, userId])
+}
+
+model DraftPick {
+  id            Int         @id @default(autoincrement())
+  league        League      @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  leagueId      Int
+  fantasyTeam   FantasyTeam @relation(fields: [fantasyTeamId], references: [id], onDelete: Cascade)
+  fantasyTeamId Int
+  player        ProPlayer   @relation(fields: [playerId], references: [id])
+  playerId      String
+  overallPick   Int
+  round         Int
+  role          String
+  price         Int
+  pickedAt      DateTime    @default(now())
+
+  @@unique([leagueId, playerId])
+  @@unique([leagueId, overallPick])
+  @@index([fantasyTeamId, role])
 }
 
 model WeeklyRosterSlot {

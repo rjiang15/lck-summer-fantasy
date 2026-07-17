@@ -54,7 +54,9 @@ export async function getViewState(leagueId?: number): Promise<ViewState | null>
   if (isLive) {
     completedWeek = league.currentWeek;
   } else {
-    completedWeek = raw != null && raw !== "final" ? parseInt(raw, 10) : null;
+    completedWeek = raw == null
+      ? (league.seasonStatus === "FINAL" ? null : league.currentWeek)
+      : raw !== "final" ? parseInt(raw, 10) : null;
     // "after the last week" is the same as Final for archived/simulated splits.
     if (
       completedWeek !== null &&

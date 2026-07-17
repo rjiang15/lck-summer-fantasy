@@ -65,6 +65,7 @@ export default async function RootLayout({
             <NavGroup label="My league">
               <Link href="/picks">Picks</Link>
               <Link href="/crystal-ball">Crystal Ball</Link>
+              {activeMembership && isManagerRole(activeMembership.role) && activeMembership.league.currentWeek === 0 && activeMembership.league.seasonStatus === "PRESEASON" && <Link href="/commissioner/draft">Draft</Link>}
               {activeMembership && isManagerRole(activeMembership.role) && <Link href="/commissioner">Commissioner</Link>}
               {activeMembership && isManagerRole(activeMembership.role) && <Link href="/settings">Settings</Link>}
             </NavGroup>

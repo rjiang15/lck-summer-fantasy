@@ -207,6 +207,35 @@ button:disabled { cursor: wait; opacity: 0.65; }
   font-size: 0.82rem;
 }
 
+.draft-status { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 32%); gap: 1.25rem; align-items: center; }
+.draft-status h2 { margin: 0.2rem 0; font-size: 1.25rem; }
+.draft-kicker { color: var(--accent); font-size: 0.72rem; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; }
+.draft-progress { height: 0.65rem; overflow: hidden; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); }
+.draft-progress span { display: block; height: 100%; background: var(--accent); transition: width 180ms ease; }
+.draft-status-controls { display: grid; gap: 0.65rem; justify-items: end; }
+.draft-status-controls .draft-progress { width: 100%; }
+.draft-feedback { position: sticky; top: 0.5rem; z-index: 2; }
+.draft-tabs, .draft-role-filters { display: flex; gap: 0.45rem; overflow-x: auto; padding-bottom: 0.45rem; }
+.draft-tabs button, .draft-role-filters button { display: grid; gap: 0.1rem; min-width: 145px; text-align: left; color: var(--muted); }
+.draft-tabs button small, .draft-role-filters button small { font-weight: 500; }
+.draft-tabs button.active, .draft-role-filters button.active { color: var(--accent); border-color: var(--accent); background: var(--card); }
+.draft-role-filters button { display: flex; min-width: auto; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.draft-roster { border-top-left-radius: 0; }
+.draft-roster h2 { margin: 0.5rem 0 0; }
+.draft-role-grid { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 0.75rem; overflow-x: auto; }
+.draft-role-grid h3 { margin: 0.5rem 0; font-size: 0.9rem; }
+.drafted-player { display: grid; gap: 0.05rem; min-height: 3.3rem; padding: 0.5rem; margin-bottom: 0.4rem; border: 1px solid var(--border); border-radius: 6px; }
+.drafted-player span { color: var(--muted); font-size: 0.78rem; }
+.drafted-player.empty { align-items: center; color: var(--muted); border-style: dashed; }
+.draft-player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 0.55rem; margin-bottom: 1.25rem; }
+.draft-player-card { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.65rem; background: var(--card); border: 1px solid var(--border); border-radius: 7px; }
+.draft-player-card div { display: grid; min-width: 0; }
+.draft-player-card div span { color: var(--muted); font-size: 0.78rem; }
+.draft-player-card button { white-space: nowrap; }
+.draft-order { display: flex; gap: 1.75rem; flex-wrap: wrap; padding-left: 1.5rem; }
+.draft-order li { padding-left: 0.2rem; }
+.draft-order li span { display: block; }
+
 @media (max-width: 720px) {
   .topnav { padding-top: 0.65rem; padding-bottom: 0.65rem; align-items: flex-start; }
   .topnav-tools { gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; }
@@ -217,4 +246,6 @@ button:disabled { cursor: wait; opacity: 0.65; }
   .nav-group { grid-template-columns: 6rem minmax(0, 1fr); gap: 0.6rem; align-items: baseline; }
   .nav-group-links { gap: 0.45rem 0.9rem; }
   .section-heading { flex-direction: column; gap: 0.25rem; }
+  .draft-status { grid-template-columns: 1fr; }
+  .draft-role-grid { grid-template-columns: repeat(5, 140px); }
 }

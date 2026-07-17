@@ -120,6 +120,10 @@ export async function openWeek(formData: FormData) {
 export async function lockWeek(formData: FormData) {
   const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
   if (lw.status !== "OPEN") throw new Error("Only an open week can be locked");
+  if (lw.week.number === 1) {
+    const teams = await prisma.fantasyTeam.count({ where: { leagueId: lw.leagueId } });
+    if (teams > 0 && lw.league.draftStatus !== "COMPLETE") throw new Error("Complete the Week 0 roster draft before locking Week 1");
+  }
   await snapshotWeeklyRosters(lw.id);
   const now = new Date();
   await prisma.$transaction([
@@ -211,6 +215,7 @@ export async function updateRosterSlot(formData: FormData) {
     include: { fantasyTeam: { include: { league: true } } },
   });
   await requireLeagueManager(slot.fantasyTeam.leagueId);
+  if (slot.fantasyTeam.league.currentWeek === 0) throw new Error("Week 0 rosters can only be changed through the snake draft");
   const rosterWindow = await prisma.leagueWeek.findFirst({ where: { leagueId: slot.fantasyTeam.leagueId, status: "OPEN" } });
   if (!rosterWindow || rosterWindow.rosterLockedAt) throw new Error("Roster changes are only allowed while next week's slate is open");
   const eligibility = await prisma.tournamentPlayer.findUnique({
@@ -234,6 +239,7 @@ export async function addRosterSlot(formData: FormData) {
   if (!['TOP', 'JNG', 'MID', 'BOT', 'SUP', 'BENCH'].includes(slotName)) throw new Error("Invalid roster slot");
   const team = await prisma.fantasyTeam.findUniqueOrThrow({ where: { id: fantasyTeamId }, include: { league: true } });
   await requireLeagueManager(team.leagueId);
+  if (team.league.currentWeek === 0) throw new Error("Week 0 rosters can only be changed through the snake draft");
   const rosterWindow = await prisma.leagueWeek.findFirst({ where: { leagueId: team.leagueId, status: "OPEN" } });
   if (!rosterWindow || rosterWindow.rosterLockedAt) throw new Error("Roster changes are only allowed while next week's slate is open");
   const existingSlot = await prisma.rosterSlot.findFirst({ where: { fantasyTeamId, slot: slotName } });

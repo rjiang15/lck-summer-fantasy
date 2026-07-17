@@ -2,14 +2,17 @@
 import { prisma } from "./db";
 
 export interface Backup {
-  version: 3;
+  version: 3 | 4;
   exportedAt: string;
   league: {
     name: string; tournamentId: string; scoringConfig: string; currentWeek: number;
     seasonStatus: string; crystalBallLockedAt: string | null; isSimulation: boolean;
+    draftStatus?: string; draftOrder?: string[]; draftCurrentPick?: number;
+    draftBudget?: number; draftPlayerPrice?: number; draftPlayersPerRole?: number;
   };
   users: { username: string; passwordHash: string; role: string }[];
   fantasyTeams: { username: string; name: string; roster: { playerId: string; slot: string }[] }[];
+  draftPicks?: { username: string; playerId: string; overallPick: number; round: number; role: string; price: number; pickedAt: string }[];
   pickems: { username: string; matchId: string; predictedWinner: string; predictedScore: string | null }[];
   cbQuestions: {
     prompt: string; answerType: string; points: number; partialRule: string | null;
@@ -30,7 +33,7 @@ export async function exportLeague(leagueId: number): Promise<Backup | null> {
     where: { id: leagueId },
     include: {
       memberships: { include: { user: true } },
-      fantasyTeams: { include: { user: true, roster: true } },
+      fantasyTeams: { include: { user: true, roster: true, draftPicks: true } },
       cbQuestions: { include: { answers: { include: { user: true } } } },
       leagueWeeks: { include: { week: true, weeklyRosters: { include: { fantasyTeam: { include: { user: true } } } }, weeklyScores: { include: { fantasyTeam: { include: { user: true } } } } } },
     },
@@ -38,15 +41,20 @@ export async function exportLeague(leagueId: number): Promise<Backup | null> {
   if (!league) return null;
   const pickems = await prisma.pickem.findMany({ where: { leagueId }, include: { user: true } });
   return {
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     league: {
       name: league.name, tournamentId: league.tournamentId, scoringConfig: league.scoringConfig,
       currentWeek: league.currentWeek, seasonStatus: league.seasonStatus,
       crystalBallLockedAt: league.crystalBallLockedAt?.toISOString() ?? null, isSimulation: league.isSimulation,
+      draftStatus: league.draftStatus,
+      draftOrder: league.draftOrder ? (JSON.parse(league.draftOrder) as number[]).map((teamId) => league.fantasyTeams.find((team) => team.id === teamId)?.user.username).filter((name): name is string => Boolean(name)) : [],
+      draftCurrentPick: league.draftCurrentPick, draftBudget: league.draftBudget,
+      draftPlayerPrice: league.draftPlayerPrice, draftPlayersPerRole: league.draftPlayersPerRole,
     },
     users: league.memberships.map((m) => ({ username: m.user.username, passwordHash: m.user.passwordHash, role: m.role })),
     fantasyTeams: league.fantasyTeams.map((ft) => ({ username: ft.user.username, name: ft.name, roster: ft.roster.map((r) => ({ playerId: r.playerId, slot: r.slot })) })),
+    draftPicks: league.fantasyTeams.flatMap((ft) => ft.draftPicks.map((pick) => ({ username: ft.user.username, playerId: pick.playerId, overallPick: pick.overallPick, round: pick.round, role: pick.role, price: pick.price, pickedAt: pick.pickedAt.toISOString() }))),
     pickems: pickems.map((p) => ({ username: p.user.username, matchId: p.matchId, predictedWinner: p.predictedWinner, predictedScore: p.predictedScore })),
     cbQuestions: league.cbQuestions.map((q) => ({
       prompt: q.prompt, answerType: q.answerType, points: q.points, partialRule: q.partialRule,
@@ -66,7 +74,7 @@ export async function exportLeague(leagueId: number): Promise<Backup | null> {
 }
 
 export async function importLeague(leagueId: number, backup: Backup): Promise<{ ok: boolean; error?: string }> {
-  if (backup.version !== 3 || !backup.league || !Array.isArray(backup.users)) return { ok: false, error: "Only version 3 league backups can be imported." };
+  if (![3, 4].includes(backup.version) || !backup.league || !Array.isArray(backup.users)) return { ok: false, error: "Only version 3 or 4 league backups can be imported." };
   const target = await prisma.league.findUnique({ where: { id: leagueId } });
   if (!target) return { ok: false, error: "Target league does not exist." };
   if (target.tournamentId !== backup.league.tournamentId) return { ok: false, error: "Backup tournament does not match this league." };
@@ -83,6 +91,7 @@ export async function importLeague(leagueId: number, backup: Backup): Promise<{ 
     await tx.crystalBallAnswer.deleteMany({ where: { question: { leagueId } } });
     await tx.crystalBallQuestion.deleteMany({ where: { leagueId } });
     await tx.pickem.deleteMany({ where: { leagueId } });
+    await tx.draftPick.deleteMany({ where: { leagueId } });
     await tx.rosterSlot.deleteMany({ where: { fantasyTeam: { leagueId } } });
     await tx.fantasyTeam.deleteMany({ where: { leagueId } });
     await tx.leagueMembership.deleteMany({ where: { leagueId } });
@@ -101,6 +110,19 @@ export async function importLeague(leagueId: number, backup: Backup): Promise<{ 
       const userId = userIds.get(saved.username); if (!userId) throw new Error(`Unknown user: ${saved.username}`);
       const team = await tx.fantasyTeam.create({ data: { leagueId, userId, name: saved.name, roster: { create: saved.roster } } });
       teamIds.set(saved.username, team.id);
+    }
+    const restoredOrder = (backup.league.draftOrder ?? []).map((username) => teamIds.get(username)).filter((id): id is number => id !== undefined);
+    await tx.league.update({ where: { id: leagueId }, data: {
+      draftStatus: backup.league.draftStatus ?? (backup.fantasyTeams.some((team) => team.roster.length > 0) ? "COMPLETE" : "NOT_STARTED"),
+      draftOrder: restoredOrder.length ? JSON.stringify(restoredOrder) : null,
+      draftCurrentPick: backup.league.draftCurrentPick ?? 0,
+      draftBudget: backup.league.draftBudget ?? 10000,
+      draftPlayerPrice: backup.league.draftPlayerPrice ?? 1000,
+      draftPlayersPerRole: backup.league.draftPlayersPerRole ?? 2,
+    } });
+    for (const saved of backup.draftPicks ?? []) {
+      const fantasyTeamId = teamIds.get(saved.username); if (!fantasyTeamId) continue;
+      await tx.draftPick.create({ data: { leagueId, fantasyTeamId, playerId: saved.playerId, overallPick: saved.overallPick, round: saved.round, role: saved.role, price: saved.price, pickedAt: new Date(saved.pickedAt) } });
     }
     for (const saved of backup.pickems) {
       const userId = userIds.get(saved.username); if (!userId) continue;

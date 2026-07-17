@@ -49,14 +49,16 @@ export async function resetTestLeague(formData: FormData) {
   await prisma.$transaction(async (tx) => {
     await tx.crystalBallAnswer.deleteMany({ where: { question: { leagueId } } });
     await tx.pickem.deleteMany({ where: { leagueId } });
+    await tx.draftPick.deleteMany({ where: { leagueId } });
+    await tx.rosterSlot.deleteMany({ where: { fantasyTeam: { leagueId } } });
     await tx.weeklyScore.deleteMany({ where: { leagueWeek: { leagueId } } });
     await tx.weeklyRosterSlot.deleteMany({ where: { leagueWeek: { leagueId } } });
     await tx.leagueWeek.deleteMany({ where: { leagueId } });
     const firstWeek = await tx.week.findFirst({ where: { tournamentId: league.tournamentId, scheduleImportedAt: { not: null } }, orderBy: { number: "asc" } });
     if (firstWeek) await tx.leagueWeek.create({ data: { leagueId, weekId: firstWeek.id, status: "OPEN", picksOpenAt: new Date() } });
-    await tx.league.update({ where: { id: leagueId }, data: { currentWeek: 0, seasonStatus: "PRESEASON", crystalBallLockedAt: null } });
+    await tx.league.update({ where: { id: leagueId }, data: { currentWeek: 0, seasonStatus: "PRESEASON", crystalBallLockedAt: null, draftStatus: "NOT_STARTED", draftOrder: null, draftCurrentPick: 0 } });
   });
   revalidatePath("/", "layout");
   (await cookies()).set(`viewWeek_${leagueId}`, "0", { httpOnly: true, sameSite: "lax", path: "/" });
-  back("Test league reset to Week 0; members and current rosters were kept");
+  back("Test league reset to Week 0; members and teams were kept, and the initial draft was cleared");
 }

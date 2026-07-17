@@ -42,7 +42,7 @@ export default async function CommissionerPage({
         Picks for: <b>{weeks.find((week) => week.status === "OPEN")?.week.number ?? "none"}</b>{" · "}
         Crystal Ball: <b>{league.crystalBallLockedAt ? "locked" : "open"}</b>
       </p>
-      <p><Link href="/commissioner/rosters">Manage future rosters →</Link></p>
+      <p>{league.currentWeek === 0 && league.seasonStatus === "PRESEASON" ? <Link href="/commissioner/draft">Run the Week 0 roster draft →</Link> : <Link href="/commissioner/rosters">Manage future rosters →</Link>}</p>
       <section className="card stack">
         <div>
           <h2 style={{ margin: 0 }}>Week {targetWeek} data pipeline</h2>
@@ -81,7 +81,7 @@ export default async function CommissionerPage({
           <h2 style={{ marginTop: 0 }}>Week 0 checklist</h2>
           <ol>
             <li>Use the data-pipeline button above to pull the Week 1 slate and preseason player pool without results.</li>
-            <li>Assign participant rosters and submit Crystal Ball answers.</li>
+            <li>Set the snake order and complete all 10 roster picks per participant in the <Link href="/commissioner/draft">Week 0 draft</Link>.</li>
             <li>Submit Week 1 pickems, then lock Week 1 before play begins.</li>
           </ol>
         </section>

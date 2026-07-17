@@ -1,6 +1,7 @@
 import { requireLeagueManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { addRosterSlot, updateRosterSlot } from "../actions";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export default async function RostersPage() {
     include: { fantasyTeams: { orderBy: { id: "asc" }, include: { user: true, roster: { include: { player: true } } } } },
   });
   if (!league) return <p>No league exists.</p>;
+  if (league.currentWeek === 0) return <><h1>Future rosters</h1><p className="card">Initial rosters are built through the commissioner-run <Link href="/commissioner/draft">Week 0 snake draft</Link>. Manual roster changes begin after Week 1.</p></>;
   const eligibleRows = await prisma.tournamentPlayer.findMany({
     where: { tournamentId: league.tournamentId }, include: { player: true }, orderBy: [{ role: "asc" }, { player: { name: "asc" } }],
   });
