@@ -425,6 +425,70 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .draft-champion { display: inline-flex; align-items: center; gap: 0.3rem; }
 .draft-champion small { color: var(--muted); }
 
+.crystal-page { display: grid; gap: 1rem; }
+.crystal-heading { align-items: center; }
+.crystal-heading h1 { margin-bottom: 0.15rem; }
+.crystal-heading p { margin: 0; }
+.crystal-rules { display: flex; align-items: center; gap: 0.75rem; margin: 0; border-color: color-mix(in srgb, var(--accent) 32%, var(--border)); background: color-mix(in srgb, var(--accent) 6%, var(--card)); }
+.crystal-rules > b { color: var(--accent); white-space: nowrap; }
+.crystal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
+.crystal-question { display: grid; align-content: start; gap: 0.85rem; min-width: 0; margin: 0; padding: 1rem; }
+.crystal-question-title { display: grid; grid-template-columns: 1.75rem minmax(0, 1fr); gap: 0.65rem; align-items: start; }
+.crystal-question-title > span { display: grid; width: 1.75rem; height: 1.75rem; place-items: center; border-radius: 50%; color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); font-size: 0.75rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.crystal-question-title h2 { margin: 0.05rem 0 0.15rem; font-size: 0.98rem; line-height: 1.3; }
+.crystal-question-title p { margin: 0; color: var(--muted); font-size: 0.75rem; }
+.crystal-question.answered { border-color: color-mix(in srgb, var(--accent) 42%, var(--border)); }
+.crystal-form { display: grid; gap: 1rem; }
+.crystal-choice-button, .crystal-number-control, .crystal-option-control { min-width: 0; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.crystal-choice-button { display: grid; width: 100%; min-height: 4rem; gap: 0.35rem; align-content: center; padding: 0.65rem 0.75rem; text-align: left; border-radius: 8px; background: var(--bg); }
+.crystal-choice-button:hover, .crystal-choice-button:focus-visible { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--card)); }
+.crystal-choice-button.selected { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.crystal-choice-caption, .crystal-number-control > span, .crystal-option-control > span { color: var(--muted); font-size: 0.68rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
+.crystal-choice-placeholder { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-weight: 650; }
+.crystal-choice-placeholder b { color: var(--accent); font-size: 1rem; }
+.crystal-player-choice { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
+.crystal-player-choice small { color: var(--accent); font-weight: 650; }
+.crystal-number-control, .crystal-option-control { display: grid; gap: 0.4rem; }
+.crystal-number-control input { width: 100%; min-height: 2.8rem; padding: 0.55rem 0.65rem; font-weight: 650; }
+.crystal-inline-options { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.crystal-inline-options button { flex: 1 1 auto; min-width: 3.1rem; padding: 0.5rem 0.65rem; font-size: 0.82rem; font-weight: 650; }
+.crystal-inline-options button.selected { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--card)); box-shadow: inset 0 0 0 1px var(--accent); }
+.crystal-save-bar { position: sticky; z-index: 4; bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0; padding: 1rem; border-color: color-mix(in srgb, var(--accent) 38%, var(--border)); box-shadow: 0 8px 28px color-mix(in srgb, #000 18%, transparent); }
+.crystal-save-bar div { display: grid; gap: 0.1rem; }
+.crystal-save-bar button { padding: 0.58rem 0.9rem; white-space: nowrap; }
+.crystal-answer-block, .crystal-result { display: grid; gap: 0.3rem; padding: 0.65rem 0.75rem; border-radius: 7px; background: var(--bg); }
+.crystal-answer-block > span, .crystal-result > span { color: var(--muted); font-size: 0.68rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
+.crystal-result { grid-template-columns: minmax(0, 1fr) auto; align-items: center; border: 1px solid var(--border); background: var(--card); }
+.crystal-result > span, .crystal-resolved-values { grid-column: 1; }
+.crystal-result > b { grid-column: 2; grid-row: 1 / span 2; }
+.crystal-resolved-values { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+.picker-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 1.25rem; background: color-mix(in srgb, #08080c 72%, transparent); backdrop-filter: blur(3px); }
+.picker-dialog { display: grid; grid-template-rows: auto minmax(0, 1fr); width: min(780px, 100%); max-height: min(82vh, 760px); overflow: hidden; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); border-radius: 14px; background: var(--card); box-shadow: 0 24px 80px color-mix(in srgb, #000 42%, transparent); }
+.picker-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem 1.1rem; border-bottom: 1px solid var(--border); }
+.picker-header h2 { margin: 0 0 0.15rem; font-size: 1.1rem; }
+.picker-header p { margin: 0; color: var(--muted); font-size: 0.8rem; }
+.picker-close { display: grid; width: 2rem; height: 2rem; flex: 0 0 2rem; place-items: center; padding: 0; border-radius: 50%; color: var(--muted); font-size: 1.35rem; line-height: 1; }
+.picker-body { min-height: 0; overflow-y: auto; padding: 1rem; }
+.picker-search { position: sticky; z-index: 2; top: -1rem; display: grid; gap: 0.3rem; margin: -1rem -1rem 0.85rem; padding: 0.85rem 1rem; color: var(--muted); background: var(--card); border-bottom: 1px solid var(--border); font-size: 0.72rem; font-weight: 700; }
+.picker-search input { min-height: 2.55rem; font-weight: 550; }
+.team-picker-grid, .champion-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 0.65rem; }
+.picker-option { min-width: 0; color: var(--text); }
+.team-option, .champion-option { display: grid; min-height: 7rem; place-items: center; align-content: center; gap: 0.55rem; padding: 0.75rem 0.45rem; text-align: center; }
+.picker-option:hover, .picker-option:focus-visible { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--card)); }
+.team-option b, .champion-option b { max-width: 100%; overflow: hidden; font-size: 0.8rem; text-overflow: ellipsis; }
+.empty-picker { padding: 2.5rem 1rem; text-align: center; }
+.player-team-tabs { display: flex; gap: 0.45rem; overflow-x: auto; margin: -0.1rem -0.1rem 1rem; padding: 0.1rem 0.1rem 0.65rem; }
+.player-team-tabs button { display: flex; min-width: max-content; align-items: center; gap: 0.45rem; padding: 0.4rem 0.55rem; color: var(--muted); font-size: 0.78rem; font-weight: 650; }
+.player-team-tabs button.selected { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+.player-role-sections { display: grid; gap: 0.9rem; }
+.player-role-group { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 0.75rem; align-items: start; }
+.player-role-group h3 { margin: 0.6rem 0 0; color: var(--muted); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.player-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 0.5rem; min-height: 3.25rem; align-items: center; }
+.player-option { display: grid; gap: 0.08rem; padding: 0.6rem 0.7rem; text-align: left; }
+.player-option small { color: var(--muted); font-size: 0.72rem; }
+.win-text { color: var(--win); }
+.loss-text { color: var(--loss); }
+
 @media (max-width: 720px) {
   .topnav { padding-top: 0.65rem; padding-bottom: 0.65rem; align-items: flex-start; }
   .topnav-tools { gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; }
@@ -445,6 +509,17 @@ button:disabled { cursor: wait; opacity: 0.65; }
   .macro-section-title { align-items: flex-start; flex-direction: column; }
   .macro-section-title p { text-align: left; }
   .macro-record-tables { grid-template-columns: 1fr; }
+  .crystal-grid { grid-template-columns: 1fr; }
+  .crystal-rules { align-items: flex-start; flex-direction: column; }
+  .crystal-save-bar { align-items: stretch; flex-direction: column; }
+  .picker-backdrop { padding: 0.5rem; }
+  .picker-dialog { max-height: 92vh; }
+  .player-role-group { grid-template-columns: 1fr; gap: 0.25rem; }
+  .player-role-group h3 { margin-top: 0; }
+}
+
+@media (max-width: 460px) {
+  .team-picker-grid, .champion-picker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 430px) {

@@ -5,6 +5,7 @@
 
 import { prisma } from "./db";
 import { DEFAULT_SCORING, playerGamePoints } from "./scoring";
+import { DEFAULT_CRYSTAL_BALL } from "./crystal-ball";
 
 // Deterministic PRNG so reruns produce the same mock picks
 function mulberry32(seed: number) {
@@ -59,6 +60,7 @@ export async function seedMockSeason(tournamentId: string, opts: MockOptions = {
       scoringConfig: JSON.stringify(DEFAULT_SCORING),
       currentWeek: 0,
       isSimulation: true,
+      cbQuestions: { create: [...DEFAULT_CRYSTAL_BALL] },
     },
   });
 

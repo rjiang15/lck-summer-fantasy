@@ -15,6 +15,7 @@ import { getViewState, isFinished } from "@/lib/view";
 import { requireLeagueMember } from "@/lib/auth";
 import { areWeeklyPicksPublic } from "@/lib/pick-privacy";
 import { TeamLabel } from "@/components/GameIdentity";
+import { crystalBallPoints } from "@/lib/crystal-ball";
 
 export const dynamic = "force-dynamic";
 
@@ -159,14 +160,7 @@ export default async function ParticipantPage({
                   let status = <span className="badge pending">pending</span>;
                   let earned: number | null = null;
                   if (ft.league.seasonStatus === "FINAL" && q.correctAnswer && answer) {
-                    const partials: string[] = q.partialAnswers
-                      ? JSON.parse(q.partialAnswers)
-                      : [];
-                    const rule = q.partialRule ? JSON.parse(q.partialRule) : null;
-                    if (answer.answer === q.correctAnswer) earned = q.points;
-                    else if (rule && partials.includes(answer.answer))
-                      earned = q.points * (rule.fraction ?? 0.5);
-                    else earned = 0;
+                    earned = crystalBallPoints(q, ft.userId);
                     status =
                       earned > 0 ? (
                         <span className="badge win">+{earned}</span>

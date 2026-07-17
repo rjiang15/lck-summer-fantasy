@@ -4,17 +4,10 @@ import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "./db";
 import { DEFAULT_SCORING } from "./scoring";
+import { DEFAULT_CRYSTAL_BALL } from "./crystal-ball";
 
 export const ACTIVE_LEAGUE_COOKIE = "activeLeague";
 export const MANAGER_ROLES = ["OWNER", "COMMISSIONER"] as const;
-
-export const DEFAULT_CRYSTAL_BALL = [
-  { prompt: "Who will win the split?", answerType: "team", points: 20 },
-  { prompt: "Who will be regular-season MVP?", answerType: "player", points: 15 },
-  { prompt: "Which champion will be picked most?", answerType: "champion", points: 10 },
-  { prompt: "Will there be a pentakill?", answerType: "yes_no", points: 10 },
-  { prompt: "Who will have the most kills?", answerType: "player", points: 15 },
-];
 
 export function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 48) || "league";
@@ -51,7 +44,7 @@ export async function createLeagueForOwner(input: {
         isSimulation: input.isSimulation,
         scoringConfig: JSON.stringify(DEFAULT_SCORING),
         memberships: { create: { userId: input.ownerId, role: "OWNER" } },
-        cbQuestions: { create: DEFAULT_CRYSTAL_BALL },
+        cbQuestions: { create: [...DEFAULT_CRYSTAL_BALL] },
         ...(input.teamName ? { fantasyTeams: { create: { userId: input.ownerId, name: input.teamName } } } : {}),
       },
     });

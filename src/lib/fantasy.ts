@@ -4,6 +4,7 @@
 // snapshots; raw recomputation remains only as a legacy fallback.
 
 import { prisma } from "./db";
+import { crystalBallPoints } from "./crystal-ball";
 import {
   DEFAULT_SCORING,
   type ScoringConfig,
@@ -152,15 +153,9 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
           pickemPts: score?.pickemPts ?? 0,
         };
       });
-      const crystalBallTotal = crystalSettled ? league.cbQuestions.reduce((sum, q) => {
-        if (!q.correctAnswer) return sum;
-        const answer = q.answers.find((row) => row.userId === ft.userId);
-        if (!answer) return sum;
-        if (answer.answer === q.correctAnswer) return sum + q.points;
-        const partials: string[] = q.partialAnswers ? JSON.parse(q.partialAnswers) : [];
-        const rule = q.partialRule ? JSON.parse(q.partialRule) : null;
-        return rule && partials.includes(answer.answer) ? sum + q.points * (rule.fraction ?? 0.5) : sum;
-      }, 0) : 0;
+      const crystalBallTotal = crystalSettled
+        ? league.cbQuestions.reduce((sum, question) => sum + crystalBallPoints(question, ft.userId), 0)
+        : 0;
       const rosterTotal = round1(weekly.reduce((sum, row) => sum + row.rosterPts, 0));
       const pickemTotal = weekly.reduce((sum, row) => sum + row.pickemPts, 0);
       return {
@@ -217,16 +212,9 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
       weekly.push({ weekNumber: week.number, rosterPts: round1(rosterPts), pickemPts });
     }
     // Crystal ball settles at the end of the split — mid-split cursor shows 0
-    const crystalBallTotal = cutoff !== null ? 0 : league.cbQuestions.reduce((sum, q) => {
-      if (!q.correctAnswer) return sum;
-      const a = q.answers.find((ans) => ans.userId === ft.userId);
-      if (!a) return sum;
-      if (a.answer === q.correctAnswer) return sum + q.points;
-      const partials: string[] = q.partialAnswers ? JSON.parse(q.partialAnswers) : [];
-      const rule = q.partialRule ? JSON.parse(q.partialRule) : null;
-      if (rule && partials.includes(a.answer)) return sum + q.points * (rule.fraction ?? 0.5);
-      return sum;
-    }, 0);
+    const crystalBallTotal = cutoff !== null
+      ? 0
+      : league.cbQuestions.reduce((sum, question) => sum + crystalBallPoints(question, ft.userId), 0);
 
     const rosterTotal = round1(weekly.reduce((s, w) => s + w.rosterPts, 0));
     const pickemTotal = weekly.reduce((s, w) => s + w.pickemPts, 0);

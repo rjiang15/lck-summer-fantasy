@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { hashPassword, requireLeagueOwner } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { DEFAULT_CRYSTAL_BALL } from "@/lib/crystal-ball";
 
 function back(message: string, error = false): never {
   redirect(`/settings?${error ? "error" : "notice"}=${encodeURIComponent(message)}`);
@@ -48,6 +49,8 @@ export async function resetTestLeague(formData: FormData) {
   if (!league.isSimulation) throw new Error("Only a test league can be reset");
   await prisma.$transaction(async (tx) => {
     await tx.crystalBallAnswer.deleteMany({ where: { question: { leagueId } } });
+    await tx.crystalBallQuestion.deleteMany({ where: { leagueId } });
+    await tx.crystalBallQuestion.createMany({ data: DEFAULT_CRYSTAL_BALL.map((question) => ({ leagueId, ...question })) });
     await tx.pickem.deleteMany({ where: { leagueId } });
     await tx.draftPick.deleteMany({ where: { leagueId } });
     await tx.rosterSlot.deleteMany({ where: { fantasyTeam: { leagueId } } });

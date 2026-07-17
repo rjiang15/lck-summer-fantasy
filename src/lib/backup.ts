@@ -2,7 +2,7 @@
 import { prisma } from "./db";
 
 export interface Backup {
-  version: 3 | 4 | 5;
+  version: 3 | 4 | 5 | 6;
   exportedAt: string;
   league: {
     name: string; tournamentId: string; scoringConfig: string; currentWeek: number;
@@ -17,6 +17,8 @@ export interface Backup {
   cbQuestions: {
     prompt: string; answerType: string; points: number; partialRule: string | null;
     correctAnswer: string | null; partialAnswers: string | null;
+    metricKey?: string | null; gradingMode?: string; resolverConfig?: string | null;
+    resolvedAnswers?: string | null; resolutionData?: string | null; resolvedAt?: string | null;
     answers: { username: string; answer: string }[];
   }[];
   leagueWeeks: {
@@ -41,7 +43,7 @@ export async function exportLeague(leagueId: number): Promise<Backup | null> {
   if (!league) return null;
   const pickems = await prisma.pickem.findMany({ where: { leagueId }, include: { user: true } });
   return {
-    version: 5,
+    version: 6,
     exportedAt: new Date().toISOString(),
     league: {
       name: league.name, tournamentId: league.tournamentId, scoringConfig: league.scoringConfig,
@@ -60,6 +62,9 @@ export async function exportLeague(leagueId: number): Promise<Backup | null> {
     cbQuestions: league.cbQuestions.map((q) => ({
       prompt: q.prompt, answerType: q.answerType, points: q.points, partialRule: q.partialRule,
       correctAnswer: q.correctAnswer, partialAnswers: q.partialAnswers,
+      metricKey: q.metricKey, gradingMode: q.gradingMode, resolverConfig: q.resolverConfig,
+      resolvedAnswers: q.resolvedAnswers, resolutionData: q.resolutionData,
+      resolvedAt: q.resolvedAt?.toISOString() ?? null,
       answers: q.answers.map((a) => ({ username: a.user.username, answer: a.answer })),
     })),
     leagueWeeks: league.leagueWeeks.map((lw) => ({
@@ -75,7 +80,7 @@ export async function exportLeague(leagueId: number): Promise<Backup | null> {
 }
 
 export async function importLeague(leagueId: number, backup: Backup): Promise<{ ok: boolean; error?: string }> {
-  if (![3, 4, 5].includes(backup.version) || !backup.league || !Array.isArray(backup.users)) return { ok: false, error: "Only version 3, 4, or 5 league backups can be imported." };
+  if (![3, 4, 5, 6].includes(backup.version) || !backup.league || !Array.isArray(backup.users)) return { ok: false, error: "Only version 3, 4, 5, or 6 league backups can be imported." };
   const target = await prisma.league.findUnique({ where: { id: leagueId } });
   if (!target) return { ok: false, error: "Target league does not exist." };
   if (target.tournamentId !== backup.league.tournamentId) return { ok: false, error: "Backup tournament does not match this league." };
@@ -133,6 +138,9 @@ export async function importLeague(leagueId: number, backup: Backup): Promise<{ 
     for (const saved of backup.cbQuestions) await tx.crystalBallQuestion.create({ data: {
       leagueId, prompt: saved.prompt, answerType: saved.answerType, points: saved.points, partialRule: saved.partialRule,
       correctAnswer: saved.correctAnswer, partialAnswers: saved.partialAnswers,
+      metricKey: saved.metricKey ?? null, gradingMode: saved.gradingMode ?? "EXACT", resolverConfig: saved.resolverConfig ?? null,
+      resolvedAnswers: saved.resolvedAnswers ?? null, resolutionData: saved.resolutionData ?? null,
+      resolvedAt: saved.resolvedAt ? new Date(saved.resolvedAt) : null,
       answers: { create: saved.answers.filter((a) => userIds.has(a.username)).map((a) => ({ userId: userIds.get(a.username)!, answer: a.answer })) },
     } });
     for (const saved of backup.leagueWeeks) {

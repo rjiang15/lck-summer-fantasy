@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { isIngestionRunStale } from "@/lib/ingestion-progress";
 import { calculateWeeklyScores, ensureLeagueWeeks, snapshotWeeklyRosters, validateLeagueWeek } from "@/lib/season";
 import { DEFAULT_SCORING } from "@/lib/scoring";
+import { settleCrystalBall } from "@/lib/crystal-ball";
 import { runLeaguepediaIngest } from "@/scripts/ingest";
 
 async function authorizedWeek(id: number) {
@@ -316,9 +317,12 @@ export async function finishSeason(formData: FormData) {
   const unfinished = await prisma.leagueWeek.count({ where: { leagueId, status: { not: "PUBLISHED" } } });
   const published = await prisma.leagueWeek.count({ where: { leagueId, status: "PUBLISHED" } });
   if (unfinished > 0 || published === 0) throw new Error("Publish every imported week before finishing the season");
+  await settleCrystalBall(leagueId);
   await prisma.league.update({ where: { id: league.id }, data: { seasonStatus: "FINAL" } });
   revalidatePath("/commissioner");
   revalidatePath("/leaderboard");
+  revalidatePath("/crystal-ball");
+  revalidatePath("/participants");
 }
 
 export async function recoverStaleIngestion(formData: FormData) {
@@ -412,19 +416,4 @@ export async function updateScoringConfig(formData: FormData) {
   await prisma.league.update({ where: { id: league.id }, data: { scoringConfig: JSON.stringify(parsed) } });
   revalidatePath("/commissioner");
   revalidatePath("/settings");
-}
-
-export async function gradeCrystalBall(formData: FormData) {
-  const questionId = Number(formData.get("questionId"));
-  const question = await prisma.crystalBallQuestion.findUniqueOrThrow({ where: { id: questionId } });
-  await requireLeagueManager(question.leagueId);
-  const correctAnswer = String(formData.get("correctAnswer") ?? "").trim();
-  const partialAnswers = String(formData.get("partialAnswers") ?? "").split(",").map((value) => value.trim()).filter(Boolean);
-  if (!correctAnswer) throw new Error("A correct answer is required");
-  await prisma.crystalBallQuestion.update({
-    where: { id: questionId },
-    data: { correctAnswer, partialAnswers: JSON.stringify(partialAnswers) },
-  });
-  revalidatePath("/commissioner");
-  revalidatePath("/leaderboard");
 }

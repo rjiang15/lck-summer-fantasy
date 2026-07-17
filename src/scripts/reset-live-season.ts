@@ -29,7 +29,7 @@ async function main() {
     await tx.ingestionRun.deleteMany();
 
     await tx.crystalBallQuestion.updateMany({
-      data: { correctAnswer: null, partialAnswers: null },
+      data: { correctAnswer: null, partialAnswers: null, resolvedAnswers: null, resolutionData: null, resolvedAt: null },
     });
     await tx.league.updateMany({
       data: {

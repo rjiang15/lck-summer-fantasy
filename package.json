@@ -13,6 +13,8 @@
     "backfill:stats": "tsx src/scripts/backfill-stats.ts",
     "season:init": "tsx src/scripts/init-season.ts",
     "season:reset": "tsx src/scripts/reset-live-season.ts",
+    "crystal-ball:sync": "tsx src/scripts/sync-crystal-ball.ts",
+    "crystal-ball:verify": "tsx src/scripts/verify-crystal-ball.ts",
     "test": "node --import tsx --test src/**/*.test.ts",
     "test:pipeline": "node --import tsx src/scripts/smoke-season.ts",
     "report": "tsx src/scripts/report.ts"

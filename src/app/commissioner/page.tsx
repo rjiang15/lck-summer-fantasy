@@ -6,7 +6,6 @@ import {
   finishSeason,
   fetchNextWeekResults,
   fetchNextWeekSchedule,
-  gradeCrystalBall,
   lockPicks,
   lockRosters,
   openWeek,
@@ -18,6 +17,7 @@ import {
   validateAndScoreWeek,
 } from "./actions";
 import { IngestButton } from "./IngestButton";
+import { parseResolutionEvidence } from "@/lib/crystal-ball";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 3600;
@@ -245,7 +245,7 @@ export default async function CommissionerPage({
       {league.currentWeek > 0 && league.seasonStatus !== "FINAL" && weeks.length > 0 && weeks.every((week) => week.status === "PUBLISHED") && (
         <form action={finishSeason} className="card">
           <input type="hidden" name="leagueId" value={league.id} />
-          <button type="submit">Finish season and settle Crystal Ball</button>
+          <button type="submit">Finish season + automatically grade Crystal Ball</button>
         </form>
       )}
       <h2>Ingestion audit</h2>
@@ -266,15 +266,23 @@ export default async function CommissionerPage({
         <button type="submit">Save scoring configuration</button>
         <span className="muted small">Locks permanently after the first published week.</span>
       </form>
-      <h2>Crystal Ball grading</h2>
-      <div className="grid2">
-        {league.cbQuestions.map((question) => <form action={gradeCrystalBall} className="card stack" key={question.id}>
-          <b>{question.prompt}</b><input type="hidden" name="questionId" value={question.id} />
-          <label>Correct answer <input name="correctAnswer" defaultValue={question.correctAnswer ?? ""} required /></label>
-          <label>Partial-credit answers (comma separated) <input name="partialAnswers" defaultValue={question.partialAnswers ? (JSON.parse(question.partialAnswers) as string[]).join(", ") : ""} /></label>
-          <button type="submit">Save grading</button>
-        </form>)}
-      </div>
+      <h2>Crystal Ball settlement</h2>
+      <p className="muted small">No manual grading is required. Finishing the season calculates every result from the stored tournament data; tied leaders all receive full credit and closest-number questions compare every submitted answer.</p>
+      <div className="tablewrap"><table>
+        <thead><tr><th>#</th><th>Question</th><th>Mode</th><th>Result</th><th>Audit</th></tr></thead>
+        <tbody>{league.cbQuestions.map((question, index) => {
+          const resolution = parseResolutionEvidence(question.resolutionData);
+          const accepted = question.resolvedAnswers ? JSON.parse(question.resolvedAnswers) as string[] : [];
+          const result = question.gradingMode === "CLOSEST" && question.correctAnswer
+            ? `${question.correctAnswer} (closest prediction)`
+            : accepted.join(" / ") || "Pending season finish";
+          return <tr key={question.id}>
+            <td>{index + 1}</td><td style={{ whiteSpace: "normal" }}>{question.prompt}</td><td>{question.gradingMode === "CLOSEST" ? "Closest" : "Exact"}</td>
+            <td>{question.resolvedAt ? <span className="badge win">{result}</span> : <span className="badge pending">pending</span>}</td>
+            <td className="small muted" style={{ whiteSpace: "normal" }}>{resolution?.evidence ?? "Calculated automatically after all weeks are published."}</td>
+          </tr>;
+        })}</tbody>
+      </table></div>
     </>
   );
 }
