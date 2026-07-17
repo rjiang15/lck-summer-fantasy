@@ -1,6 +1,6 @@
 // Leaderboard: participant standings and the running Crystal Ball answer key.
 import Link from "next/link";
-import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
+import { ChampionLabel, TeamLabel, TeamLogo } from "@/components/GameIdentity";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/fantasy";
 import { crystalBallPredictionsPublic, loadCrystalBallSnapshot, resolveCrystalBallMetric, type MetricResolution } from "@/lib/crystal-ball";
@@ -13,6 +13,11 @@ type Participant = {
   username: string;
   teamName: string;
   rank: number;
+};
+
+type PlayerIdentity = {
+  name: string;
+  team: string | null;
 };
 
 export default async function LeaderboardPage() {
@@ -43,7 +48,10 @@ export default async function LeaderboardPage() {
     teamName: team.name,
     rank: ranks.get(team.id) ?? Number.MAX_SAFE_INTEGER,
   })).sort((left, right) => left.rank - right.rank || left.username.localeCompare(right.username));
-  const playerNames = new Map(rosterPlayers.map((row) => [row.playerId, row.player.name]));
+  const playerIdentities = new Map<string, PlayerIdentity>(rosterPlayers.map((row) => [row.playerId, {
+    name: row.player.name,
+    team: row.teamId ?? row.player.teamId,
+  }]));
   const revealPredictions = crystalBallPredictionsPublic(league);
   const answerKey = league.cbQuestions.filter((question) => question.metricKey).map((question, index) => {
     let resolution: MetricResolution | null = null;
@@ -99,7 +107,7 @@ export default async function LeaderboardPage() {
           resolution={question.resolution}
           answers={question.answers}
           participants={participants}
-          playerNames={playerNames}
+          playerIdentities={playerIdentities}
           revealPredictions={revealPredictions}
         />)}
       </div>
@@ -115,7 +123,7 @@ function AnswerKeyCard({
   resolution,
   answers,
   participants,
-  playerNames,
+  playerIdentities,
   revealPredictions,
 }: {
   number: number;
@@ -125,7 +133,7 @@ function AnswerKeyCard({
   resolution: MetricResolution | null;
   answers: Array<{ userId: number; answer: string }>;
   participants: Participant[];
-  playerNames: Map<string, string>;
+  playerIdentities: Map<string, PlayerIdentity>;
   revealPredictions: boolean;
 }) {
   const currentAnswers = resolution
@@ -141,10 +149,10 @@ function AnswerKeyCard({
     {podium.length > 0 ? <div className="crystal-podium">
       {podium.map((tier) => <div className={`crystal-podium-tier place-${tier.rank}`} key={tier.rank}>
         <span><b>{ordinal(tier.rank)}</b><small>{tier.rank === 1 ? "50 pts" : tier.rank === 2 ? "30 pts" : "10 pts"}</small></span>
-        <div>{tier.answers.map((answer) => <PredictionValue answer={answer} answerType={answerType} playerNames={playerNames} size="xs" key={answer} />)}</div>
+        <div className={`crystal-podium-values${answerType === "player" ? " player-values" : ""}`}>{tier.answers.map((answer) => <PredictionValue answer={answer} answerType={answerType} playerIdentities={playerIdentities} size="xs" key={answer} />)}</div>
       </div>)}
     </div> : <div className="macro-answer-values">
-      {currentAnswers.length === 0 ? <strong>Not enough data yet</strong> : currentAnswers.map((answer) => <PredictionValue answer={answer} answerType={answerType} playerNames={playerNames} size="md" key={answer} />)}
+      {currentAnswers.length === 0 ? <strong>Not enough data yet</strong> : currentAnswers.map((answer) => <PredictionValue answer={answer} answerType={answerType} playerIdentities={playerIdentities} size="md" key={answer} />)}
     </div>}
     <small>{resolution?.evidence ?? "This metric cannot be determined from the completed games yet."}</small>
     {revealPredictions ? <div className="crystal-participant-picks">
@@ -153,7 +161,7 @@ function AnswerKeyCard({
         const prediction = predictions.get(participant.userId);
         return <div className="crystal-participant-pick" key={participant.userId}>
           <span><b>{participant.username}</b><small>{participant.teamName}</small></span>
-          <span className={prediction ? "" : "muted"}>{prediction ? <PredictionValue answer={prediction} answerType={answerType} playerNames={playerNames} size="xs" /> : "No prediction"}</span>
+          <span className={prediction ? "" : "muted"}>{prediction ? <PredictionValue answer={prediction} answerType={answerType} playerIdentities={playerIdentities} size="xs" /> : "No prediction"}</span>
         </div>;
       })}
     </div> : <div className="crystal-private-progress"><b>{submitted}/{participants.length}</b><span>participants submitted · choices hidden until lock</span></div>}
@@ -169,15 +177,24 @@ function ordinal(rank: number) {
 function PredictionValue({
   answer,
   answerType,
-  playerNames,
+  playerIdentities,
   size,
 }: {
   answer: string;
   answerType: string;
-  playerNames: Map<string, string>;
+  playerIdentities: Map<string, PlayerIdentity>;
   size: "xs" | "md";
 }) {
   if (answerType === "champion") return <ChampionLabel name={answer} size={size} />;
   if (answerType === "team") return <TeamLabel name={answer} size={size} />;
-  return <b>{answerType === "player" ? playerNames.get(answer) ?? answer : answer}</b>;
+  if (answerType === "player") {
+    const player = playerIdentities.get(answer);
+    const fullName = player?.name ?? answer;
+    const handle = fullName.replace(/\s*\([^)]*\)\s*$/, "");
+    return <span className="crystal-player-value" title={fullName}>
+      {player?.team && <TeamLogo name={player.team} size="xs" />}
+      <b>{handle}</b>
+    </span>;
+  }
+  return <b>{answer}</b>;
 }

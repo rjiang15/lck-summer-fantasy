@@ -422,6 +422,12 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .crystal-podium-tier > span small { padding: 0; font-size: 0.57rem; }
 .crystal-podium-tier > div { display: flex; min-width: 0; justify-content: flex-end; gap: 0.3rem; flex-wrap: wrap; }
 .crystal-podium-tier .entity-label { max-width: 100%; }
+.crystal-podium-values.player-values { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.28rem 0.45rem; }
+.crystal-player-value { display: inline-flex; min-width: 0; align-items: center; gap: 0.25rem; color: var(--text); font-size: 0.68rem; line-height: 1.1; }
+.crystal-player-value b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crystal-player-value .entity-icon { --entity-size: 1.15rem; flex: 0 0 var(--entity-size); padding: 0.1rem; }
+.crystal-podium-values.player-values .crystal-player-value:only-child { grid-column: 1 / -1; justify-self: end; }
+.crystal-participant-pick .crystal-player-value { justify-content: flex-end; }
 .crystal-podium-tier.place-1 { border-color: color-mix(in srgb, #d9ad3d 52%, var(--border)); background: color-mix(in srgb, #d9ad3d 7%, var(--bg)); }
 .crystal-podium-tier.place-2 { border-color: color-mix(in srgb, #a9b1bf 45%, var(--border)); }
 .crystal-podium-tier.place-3 { border-color: color-mix(in srgb, #b8784b 40%, var(--border)); }
