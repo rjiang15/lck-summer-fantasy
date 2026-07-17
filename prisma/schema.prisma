@@ -333,6 +333,7 @@ model League {
   currentWeek         Int                   @default(0)
   seasonStatus        String                @default("PRESEASON") // PRESEASON | ACTIVE | FINAL
   crystalBallLockedAt DateTime?
+  rostersLockedAt     DateTime?             // league-wide editing lock; weekly scoring uses immutable WeeklyRosterSlot snapshots
   isSimulation        Boolean               @default(false)
   leagueWeeks         LeagueWeek[]
   memberships         LeagueMembership[]
@@ -368,7 +369,7 @@ model LeagueWeek {
   status            String             @default("UPCOMING") // UPCOMING | OPEN | LOCKED | RESULTS_IMPORTED | SCORED | PUBLISHED
   picksOpenAt       DateTime?
   picksLockedAt     DateTime?
-  rosterLockedAt    DateTime?
+  rosterLockedAt    DateTime?           // weekly roster snapshot timestamp; does not control current-roster editing
   resultsImportedAt DateTime?
   scoredAt          DateTime?
   publishedAt       DateTime?

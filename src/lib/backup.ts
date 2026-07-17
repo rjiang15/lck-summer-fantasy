@@ -2,11 +2,11 @@
 import { prisma } from "./db";
 
 export interface Backup {
-  version: 3 | 4;
+  version: 3 | 4 | 5;
   exportedAt: string;
   league: {
     name: string; tournamentId: string; scoringConfig: string; currentWeek: number;
-    seasonStatus: string; crystalBallLockedAt: string | null; isSimulation: boolean;
+    seasonStatus: string; crystalBallLockedAt: string | null; rostersLockedAt?: string | null; isSimulation: boolean;
     draftStatus?: string; draftOrder?: string[]; draftCurrentPick?: number;
     draftBudget?: number; draftPlayerPrice?: number; draftPlayersPerRole?: number;
   };
@@ -41,12 +41,13 @@ export async function exportLeague(leagueId: number): Promise<Backup | null> {
   if (!league) return null;
   const pickems = await prisma.pickem.findMany({ where: { leagueId }, include: { user: true } });
   return {
-    version: 4,
+    version: 5,
     exportedAt: new Date().toISOString(),
     league: {
       name: league.name, tournamentId: league.tournamentId, scoringConfig: league.scoringConfig,
       currentWeek: league.currentWeek, seasonStatus: league.seasonStatus,
       crystalBallLockedAt: league.crystalBallLockedAt?.toISOString() ?? null, isSimulation: league.isSimulation,
+      rostersLockedAt: league.rostersLockedAt?.toISOString() ?? null,
       draftStatus: league.draftStatus,
       draftOrder: league.draftOrder ? (JSON.parse(league.draftOrder) as number[]).map((teamId) => league.fantasyTeams.find((team) => team.id === teamId)?.user.username).filter((name): name is string => Boolean(name)) : [],
       draftCurrentPick: league.draftCurrentPick, draftBudget: league.draftBudget,
@@ -74,7 +75,7 @@ export async function exportLeague(leagueId: number): Promise<Backup | null> {
 }
 
 export async function importLeague(leagueId: number, backup: Backup): Promise<{ ok: boolean; error?: string }> {
-  if (![3, 4].includes(backup.version) || !backup.league || !Array.isArray(backup.users)) return { ok: false, error: "Only version 3 or 4 league backups can be imported." };
+  if (![3, 4, 5].includes(backup.version) || !backup.league || !Array.isArray(backup.users)) return { ok: false, error: "Only version 3, 4, or 5 league backups can be imported." };
   const target = await prisma.league.findUnique({ where: { id: leagueId } });
   if (!target) return { ok: false, error: "Target league does not exist." };
   if (target.tournamentId !== backup.league.tournamentId) return { ok: false, error: "Backup tournament does not match this league." };
@@ -98,6 +99,7 @@ export async function importLeague(leagueId: number, backup: Backup): Promise<{ 
     await tx.league.update({ where: { id: leagueId }, data: {
       scoringConfig: backup.league.scoringConfig, currentWeek: backup.league.currentWeek,
       seasonStatus: backup.league.seasonStatus, crystalBallLockedAt: backup.league.crystalBallLockedAt ? new Date(backup.league.crystalBallLockedAt) : null,
+      rostersLockedAt: backup.league.rostersLockedAt ? new Date(backup.league.rostersLockedAt) : null,
     } });
     const userIds = new Map<string, number>();
     for (const saved of backup.users) {

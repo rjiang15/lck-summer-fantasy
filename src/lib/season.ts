@@ -11,6 +11,10 @@ export const WEEK_STATUSES = [
   "PUBLISHED",
 ] as const;
 
+export function canReplaceWeeklyRosterSnapshot(week: { status: string; picksLockedAt: Date | null }) {
+  return week.status === "OPEN" && week.picksLockedAt === null;
+}
+
 export async function ensureLeagueWeeks(leagueId: number) {
   const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
   const weeks = await prisma.week.findMany({
@@ -96,10 +100,21 @@ function validateLoadedWeek(lw: {
 export async function snapshotWeeklyRosters(leagueWeekId: number) {
   const lw = await prisma.leagueWeek.findUniqueOrThrow({
     where: { id: leagueWeekId },
-    include: { league: { include: { fantasyTeams: { include: { roster: true } } } } },
+    include: {
+      league: { include: { fantasyTeams: { include: { roster: true } } } },
+      weeklyRosters: true,
+    },
   });
+  if (lw.weeklyRosters.length > 0 && !canReplaceWeeklyRosterSnapshot(lw)) {
+    return;
+  }
   await prisma.$transaction(async (tx) => {
-    await tx.weeklyRosterSlot.deleteMany({ where: { leagueWeekId } });
+    // An orphaned snapshot may exist if an earlier lock attempt stopped before
+    // the LeagueWeek state was committed. It is safe to replace only while the
+    // week is still open and picks have never been locked.
+    if (lw.weeklyRosters.length > 0) {
+      await tx.weeklyRosterSlot.deleteMany({ where: { leagueWeekId } });
+    }
     for (const team of lw.league.fantasyTeams) {
       const required = ["TOP", "JNG", "MID", "BOT", "SUP"];
       const missing = required.filter((slot) => !team.roster.some((row) => row.slot === slot));
@@ -131,6 +146,10 @@ export async function calculateWeeklyScores(leagueWeekId: number) {
       weeklyRosters: true,
     },
   });
+  if (lw.status === "PUBLISHED") throw new Error("Published weekly scores are immutable");
+  if (lw.weeklyRosters.length === 0) {
+    throw new Error("This week has no frozen roster snapshot; unlock and relock its picks before importing results");
+  }
   const config = parseScoring(lw.league.scoringConfig);
   const picks = await prisma.pickem.findMany({
     where: { leagueId: lw.leagueId, match: { weekId: lw.weekId } },

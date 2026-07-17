@@ -5,35 +5,51 @@ import { prisma } from "@/lib/db";
 import { requireLeagueMember } from "@/lib/auth";
 import { validSeriesPrediction } from "@/lib/season";
 
-export async function savePick(formData: FormData) {
+export type PickSaveState = { ok: boolean; message: string } | null;
+
+export async function savePicks(_previous: PickSaveState, formData: FormData): Promise<PickSaveState> {
   const leagueId = Number(formData.get("leagueId"));
-  const { user, league } = await requireLeagueMember(leagueId);
-  const matchId = String(formData.get("matchId"));
-  const choice = String(formData.get("choice")); // "winner|t1Score-t2Score"
-  if (!matchId || !choice.includes("|")) throw new Error("Invalid prediction");
-  const [predictedWinner, predictedScore] = choice.split("|");
-  const match = await prisma.match.findUniqueOrThrow({
-    where: { id: matchId },
-    include: { week: true },
-  });
-  const fantasyTeam = await prisma.fantasyTeam.findUnique({ where: { leagueId_userId: { leagueId, userId: user.id } } });
-  if (!fantasyTeam || !match.weekId || match.tournamentId !== league.tournamentId) throw new Error("This match is not part of your league");
-  const leagueWeek = await prisma.leagueWeek.findUnique({
-    where: { leagueId_weekId: { leagueId, weekId: match.weekId } },
-  });
-  if (!leagueWeek || leagueWeek.status !== "OPEN" || league.currentWeek + 1 !== match.week?.number) {
-    throw new Error("Picks are locked for this week");
+  const leagueWeekId = Number(formData.get("leagueWeekId"));
+  try {
+    const { user, league } = await requireLeagueMember(leagueId);
+    const fantasyTeam = await prisma.fantasyTeam.findUnique({ where: { leagueId_userId: { leagueId, userId: user.id } } });
+    if (!fantasyTeam) throw new Error("You need a fantasy team to submit pick'ems");
+    const leagueWeek = await prisma.leagueWeek.findUnique({
+      where: { id: leagueWeekId },
+      include: { week: { include: { matches: { orderBy: { scheduledAt: "asc" } } } } },
+    });
+    if (!leagueWeek || leagueWeek.leagueId !== leagueId || leagueWeek.status !== "OPEN" || leagueWeek.picksLockedAt || leagueWeek.week.number !== league.currentWeek + 1) {
+      throw new Error("Picks are locked for this week");
+    }
+    const now = new Date();
+    const updates: { matchId: string; predictedWinner: string; predictedScore: string }[] = [];
+    let locked = 0;
+    for (const match of leagueWeek.week.matches) {
+      if (!league.isSimulation && match.scheduledAt <= now) {
+        locked++;
+        continue;
+      }
+      const winner = String(formData.get(`winner_${match.id}`) ?? "");
+      const loserGames = Number(formData.get(`loserGames_${match.id}`));
+      const needed = Math.floor(match.bestOf / 2) + 1;
+      if (![match.team1, match.team2].includes(winner) || !Number.isInteger(loserGames) || loserGames < 0 || loserGames >= needed) {
+        throw new Error(`Choose a winner and valid score for ${match.team1} vs ${match.team2}`);
+      }
+      const predictedScore = winner === match.team1 ? `${needed}-${loserGames}` : `${loserGames}-${needed}`;
+      if (!validSeriesPrediction(match.bestOf, match.team1, match.team2, winner, predictedScore)) {
+        throw new Error(`Invalid series result for ${match.team1} vs ${match.team2}`);
+      }
+      updates.push({ matchId: match.id, predictedWinner: winner, predictedScore });
+    }
+    if (updates.length === 0) throw new Error("There are no unlocked series to save");
+    await prisma.$transaction(updates.map((pick) => prisma.pickem.upsert({
+      where: { leagueId_userId_matchId: { leagueId, userId: user.id, matchId: pick.matchId } },
+      create: { leagueId, userId: user.id, ...pick },
+      update: { predictedWinner: pick.predictedWinner, predictedScore: pick.predictedScore },
+    })));
+    revalidatePath("/picks");
+    return { ok: true, message: `Saved ${updates.length} pick${updates.length === 1 ? "" : "s"}${locked ? `; ${locked} started series stayed locked` : ""}.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : String(error) };
   }
-  if (!league.isSimulation && match.scheduledAt <= new Date()) {
-    throw new Error("This series has already started");
-  }
-  if (!validSeriesPrediction(match.bestOf, match.team1, match.team2, predictedWinner, predictedScore)) {
-    throw new Error("Invalid series result");
-  }
-  await prisma.pickem.upsert({
-    where: { leagueId_userId_matchId: { leagueId, userId: user.id, matchId } },
-    create: { leagueId, userId: user.id, matchId, predictedWinner, predictedScore },
-    update: { predictedWinner, predictedScore },
-  });
-  revalidatePath("/picks");
 }

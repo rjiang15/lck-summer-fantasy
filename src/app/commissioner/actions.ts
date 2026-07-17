@@ -36,8 +36,8 @@ async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean) {
   if (!scheduleOnly) {
     if (!week) throw new Error(`Fetch the Week ${weekNumber} schedule before fetching results`);
     const leagueWeek = await prisma.leagueWeek.findUnique({ where: { leagueId_weekId: { leagueId, weekId: week.id } } });
-    if (!leagueWeek || !["LOCKED", "RESULTS_IMPORTED"].includes(leagueWeek.status)) {
-      throw new Error(`Lock Week ${weekNumber} picks and rosters before fetching results`);
+    if (!leagueWeek || !["LOCKED", "RESULTS_IMPORTED"].includes(leagueWeek.status) || !leagueWeek.picksLockedAt || !leagueWeek.rosterLockedAt) {
+      throw new Error(`Lock Week ${weekNumber} picks to freeze its predictions and roster snapshot before fetching results`);
     }
   }
   const globallyReady = scheduleOnly ? Boolean(week?.scheduleImportedAt) : Boolean(week?.resultsImportedAt);
@@ -112,18 +112,26 @@ export async function openWeek(formData: FormData) {
     where: { leagueId: lw.leagueId, status: "OPEN", NOT: { id: lw.id } },
   });
   if (otherOpen) throw new Error("Publish or lock the currently open week first");
-  await prisma.leagueWeek.update({ where: { id: lw.id }, data: { status: "OPEN", picksOpenAt: new Date() } });
+  await prisma.leagueWeek.update({
+    where: { id: lw.id },
+    data: { status: "OPEN", picksOpenAt: new Date(), picksLockedAt: null, rosterLockedAt: null },
+  });
   revalidatePath("/commissioner");
   revalidatePath("/picks");
 }
 
-export async function lockWeek(formData: FormData) {
+export async function lockPicks(formData: FormData) {
   const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
-  if (lw.status !== "OPEN") throw new Error("Only an open week can be locked");
+  if (lw.status !== "OPEN") throw new Error("Only an open week's picks can be locked");
+  if (lw.picksLockedAt) throw new Error(`Week ${lw.week.number} picks are already locked`);
   if (lw.week.number === 1) {
     const teams = await prisma.fantasyTeam.count({ where: { leagueId: lw.leagueId } });
-    if (teams > 0 && lw.league.draftStatus !== "COMPLETE") throw new Error("Complete the Week 0 roster draft before locking Week 1");
+    if (teams > 0 && lw.league.draftStatus !== "COMPLETE") {
+      throw new Error("Complete the Week 0 roster draft before locking Week 1 picks");
+    }
   }
+  // This is a scoring snapshot, not a roster editing lock. Future roster
+  // changes cannot alter this week's player ownership after this point.
   await snapshotWeeklyRosters(lw.id);
   const now = new Date();
   await prisma.$transaction([
@@ -135,13 +143,54 @@ export async function lockWeek(formData: FormData) {
       where: { id: lw.leagueId },
       data: {
         seasonStatus: "ACTIVE",
-        ...(lw.week.number === 1 && !lw.league.crystalBallLockedAt ? { crystalBallLockedAt: now } : {}),
+        ...(lw.week.number === 1 ? { crystalBallLockedAt: now } : {}),
       },
     }),
   ]);
-  revalidatePath("/commissioner");
-  revalidatePath("/picks");
+  revalidateDataPages();
   revalidatePath("/crystal-ball");
+}
+
+export async function unlockPicks(formData: FormData) {
+  const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
+  if (!["OPEN", "LOCKED"].includes(lw.status)) throw new Error("Picks cannot be unlocked after results are imported");
+  if (!lw.picksLockedAt) throw new Error(`Week ${lw.week.number} picks are already open`);
+  await prisma.$transaction([
+    prisma.weeklyRosterSlot.deleteMany({ where: { leagueWeekId: lw.id } }),
+    prisma.leagueWeek.update({ where: { id: lw.id }, data: { status: "OPEN", picksLockedAt: null, rosterLockedAt: null } }),
+    ...(lw.week.number === 1 && lw.league.currentWeek === 0
+      ? [prisma.league.update({
+          where: { id: lw.leagueId },
+          data: { seasonStatus: "PRESEASON", crystalBallLockedAt: null },
+        })]
+      : []),
+  ]);
+  revalidateDataPages();
+  revalidatePath("/crystal-ball");
+}
+
+export async function lockRosters(formData: FormData) {
+  const leagueId = Number(formData.get("leagueId"));
+  await requireLeagueManager(leagueId);
+  const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
+  if (league.rostersLockedAt) throw new Error("Roster editing is already locked");
+  if (league.currentWeek === 0 && league.draftStatus !== "COMPLETE") {
+    throw new Error("Complete the initial roster draft before locking roster editing");
+  }
+  await prisma.league.update({ where: { id: leagueId }, data: { rostersLockedAt: new Date() } });
+  revalidateDataPages();
+  revalidatePath("/commissioner/rosters");
+}
+
+export async function unlockRosters(formData: FormData) {
+  const leagueId = Number(formData.get("leagueId"));
+  await requireLeagueManager(leagueId);
+  const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
+  if (!league.rostersLockedAt) throw new Error("Roster editing is already unlocked");
+  if (league.seasonStatus === "FINAL") throw new Error("Rosters cannot be unlocked after the season is final");
+  await prisma.league.update({ where: { id: leagueId }, data: { rostersLockedAt: null } });
+  revalidateDataPages();
+  revalidatePath("/commissioner/rosters");
 }
 
 export async function validateAndScoreWeek(formData: FormData) {
@@ -157,7 +206,7 @@ export async function validateAndScoreWeek(formData: FormData) {
     return;
   }
   if ((await prisma.weeklyRosterSlot.count({ where: { leagueWeekId: lw.id } })) === 0) {
-    await snapshotWeeklyRosters(lw.id);
+    throw new Error("The frozen weekly roster snapshot is missing; scoring was stopped to protect historical ownership");
   }
   await prisma.leagueWeek.update({
     where: { id: lw.id },
@@ -216,8 +265,8 @@ export async function updateRosterSlot(formData: FormData) {
   });
   await requireLeagueManager(slot.fantasyTeam.leagueId);
   if (slot.fantasyTeam.league.currentWeek === 0) throw new Error("Week 0 rosters can only be changed through the snake draft");
-  const rosterWindow = await prisma.leagueWeek.findFirst({ where: { leagueId: slot.fantasyTeam.leagueId, status: "OPEN" } });
-  if (!rosterWindow || rosterWindow.rosterLockedAt) throw new Error("Roster changes are only allowed while next week's slate is open");
+  if (slot.fantasyTeam.league.seasonStatus === "FINAL") throw new Error("Rosters cannot change after the season is final");
+  if (slot.fantasyTeam.league.rostersLockedAt) throw new Error("Roster editing is locked by the commissioner");
   const eligibility = await prisma.tournamentPlayer.findUnique({
     where: { tournamentId_playerId: { tournamentId: slot.fantasyTeam.league.tournamentId, playerId } },
     include: { player: true },
@@ -240,8 +289,8 @@ export async function addRosterSlot(formData: FormData) {
   const team = await prisma.fantasyTeam.findUniqueOrThrow({ where: { id: fantasyTeamId }, include: { league: true } });
   await requireLeagueManager(team.leagueId);
   if (team.league.currentWeek === 0) throw new Error("Week 0 rosters can only be changed through the snake draft");
-  const rosterWindow = await prisma.leagueWeek.findFirst({ where: { leagueId: team.leagueId, status: "OPEN" } });
-  if (!rosterWindow || rosterWindow.rosterLockedAt) throw new Error("Roster changes are only allowed while next week's slate is open");
+  if (team.league.seasonStatus === "FINAL") throw new Error("Rosters cannot change after the season is final");
+  if (team.league.rostersLockedAt) throw new Error("Roster editing is locked by the commissioner");
   const existingSlot = await prisma.rosterSlot.findFirst({ where: { fantasyTeamId, slot: slotName } });
   if (existingSlot) throw new Error(`${slotName} is already filled`);
   const eligibility = await prisma.tournamentPlayer.findUnique({ where: { tournamentId_playerId: { tournamentId: team.league.tournamentId, playerId } }, include: { player: true } });

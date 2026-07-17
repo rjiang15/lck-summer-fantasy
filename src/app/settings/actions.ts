@@ -56,7 +56,7 @@ export async function resetTestLeague(formData: FormData) {
     await tx.leagueWeek.deleteMany({ where: { leagueId } });
     const firstWeek = await tx.week.findFirst({ where: { tournamentId: league.tournamentId, scheduleImportedAt: { not: null } }, orderBy: { number: "asc" } });
     if (firstWeek) await tx.leagueWeek.create({ data: { leagueId, weekId: firstWeek.id, status: "OPEN", picksOpenAt: new Date() } });
-    await tx.league.update({ where: { id: leagueId }, data: { currentWeek: 0, seasonStatus: "PRESEASON", crystalBallLockedAt: null, draftStatus: "NOT_STARTED", draftOrder: null, draftCurrentPick: 0 } });
+    await tx.league.update({ where: { id: leagueId }, data: { currentWeek: 0, seasonStatus: "PRESEASON", crystalBallLockedAt: null, rostersLockedAt: null, draftStatus: "NOT_STARTED", draftOrder: null, draftCurrentPick: 0 } });
   });
   revalidatePath("/", "layout");
   (await cookies()).set(`viewWeek_${leagueId}`, "0", { httpOnly: true, sameSite: "lax", path: "/" });

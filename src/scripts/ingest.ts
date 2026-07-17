@@ -1,10 +1,11 @@
 // Ingest a tournament from Leaguepedia into the local DB.
 // Usage: npx tsx src/scripts/ingest.ts "LCK/2026 Season/Rounds 1-2"
 
-import { cargoQuery, parseUtc } from "../lib/leaguepedia";
+import { cargoQuery, parseUtc, type CargoProgressEvent } from "../lib/leaguepedia";
 import { prisma } from "../lib/db";
 import { validateWeekData } from "../lib/season";
 import { assertSequentialIngest } from "../lib/ingest-order";
+import { encodeIngestionProgress } from "../lib/ingestion-progress";
 
 const int = (s: string | undefined) => {
   const n = parseInt(s ?? "", 10);
@@ -31,6 +32,44 @@ export interface LeaguepediaIngestCounts {
   draftActions: number;
 }
 
+async function reportIngestionProgress(runId: number, percent: number, message: string) {
+  await prisma.ingestionRun.update({
+    where: { id: runId },
+    data: { summary: encodeIngestionProgress(percent, message) },
+  });
+}
+
+async function reportLoopProgress(
+  runId: number,
+  index: number,
+  total: number,
+  start: number,
+  end: number,
+  label: string,
+) {
+  if (total === 0) return;
+  const interval = Math.max(1, Math.ceil(total / 10));
+  if (index !== total - 1 && index % interval !== 0) return;
+  const completed = index + 1;
+  const percent = start + ((end - start) * completed) / total;
+  await reportIngestionProgress(runId, percent, `${label} ${completed} of ${total}`);
+}
+
+function cargoHeartbeat(runId: number, percent: number, label: string) {
+  return async (event: CargoProgressEvent) => {
+    if (event.kind === "retry") {
+      await reportIngestionProgress(
+        runId,
+        percent,
+        `Leaguepedia rate limit reached; retrying ${label.toLowerCase()} in ${event.retryInSeconds}s`,
+      );
+      return;
+    }
+    const page = event.offset > 0 ? ` (page ${Math.floor(event.offset / 500) + 1})` : "";
+    await reportIngestionProgress(runId, percent, `${label}${page}…`);
+  };
+}
+
 async function ingestTournament(
   overviewPage: string,
   weekNumber: number | null,
@@ -44,12 +83,15 @@ async function ingestTournament(
   }
 
   console.log(`Ingesting: ${overviewPage}`);
+  await reportIngestionProgress(runId, 3, "Connecting to Leaguepedia…");
 
   // 1. Tournament metadata
+  await reportIngestionProgress(runId, 5, "Fetching tournament metadata…");
   const [t] = await cargoQuery({
     tables: "Tournaments",
     fields: "Name,OverviewPage,DateStart,Date",
     where: `OverviewPage="${esc}"`,
+    onProgress: cargoHeartbeat(runId, 5, "Fetching tournament metadata"),
   });
   if (!t) throw new Error(`Tournament not found: ${overviewPage}`);
   await prisma.tournament.upsert({
@@ -62,17 +104,21 @@ async function ingestTournament(
     },
     update: { name: t.Name },
   });
+  await reportIngestionProgress(runId, 10, "Tournament metadata saved");
 
   // Tournament rosters exist before Week 1 is played, so ingest them
   // independently of scoreboard rows. This makes Week 0 drafting possible.
+  await reportIngestionProgress(runId, 12, "Fetching tournament player pool…");
   const rosterPlayers = await cargoQuery({
     tables: "TournamentPlayers",
     fields: "OverviewPage,Player,Team,Role,N_PlayerInTeam",
     where: `OverviewPage="${esc}"`,
     orderBy: "Team,N_PlayerInTeam",
+    onProgress: cargoHeartbeat(runId, 12, "Fetching tournament player pool"),
   });
   console.log(`  tournament roster players: ${rosterPlayers.length}`);
-  for (const player of rosterPlayers) {
+  for (const [index, player] of rosterPlayers.entries()) {
+    await reportLoopProgress(runId, index, rosterPlayers.length, 15, 28, "Saving eligible players");
     if (!player.Player) continue;
     if (player.Team) {
       await prisma.proTeam.upsert({
@@ -105,18 +151,21 @@ async function ingestTournament(
   }
 
   // 2. Match schedule (also defines weeks via the Tab field, e.g. "Week 1")
+  await reportIngestionProgress(runId, 30, "Fetching the match schedule…");
   const scheduleRows = await cargoQuery({
     tables: "MatchSchedule",
     fields:
       "MatchId,Team1,Team2,Winner,Team1Score,Team2Score,DateTime_UTC,BestOf,Tab",
     where: `OverviewPage="${esc}"`,
     orderBy: "DateTime_UTC",
+    onProgress: cargoHeartbeat(runId, 30, "Fetching the match schedule"),
   });
   const allTabs = [...new Set(scheduleRows.map((m) => m.Tab).filter(Boolean))];
   const selectedTab = weekNumber === null ? null : allTabs[weekNumber - 1];
   if (weekNumber !== null && !selectedTab) throw new Error(`Week ${weekNumber} does not exist`);
   const schedule = selectedTab ? scheduleRows.filter((m) => m.Tab === selectedTab) : scheduleRows;
   console.log(`  matches in schedule: ${schedule.length}`);
+  await reportIngestionProgress(runId, 38, `Found ${schedule.length} scheduled matches`);
 
   // Weeks: one per distinct Tab, numbered in chronological order
   const tabs = selectedTab ? [selectedTab] : allTabs;
@@ -139,7 +188,8 @@ async function ingestTournament(
     weekIdByTab.set(tab, week.id);
   }
 
-  for (const m of schedule) {
+  for (const [index, m] of schedule.entries()) {
+    await reportLoopProgress(runId, index, schedule.length, 40, scheduleOnly ? 90 : 46, "Saving matches");
     const scheduledAt = parseUtc(m.DateTime_UTC);
     if (!m.MatchId || !scheduledAt) continue;
     const winner = scheduleOnly ? null :
@@ -163,6 +213,7 @@ async function ingestTournament(
   }
 
   if (scheduleOnly) {
+    await reportIngestionProgress(runId, 96, "Finalizing schedule and player counts…");
     const counts: LeaguepediaIngestCounts = {
       mode: "SCHEDULE_ONLY",
       matches: schedule.length,
@@ -177,6 +228,7 @@ async function ingestTournament(
   }
 
   // 3. Games + team-level stats
+  await reportIngestionProgress(runId, 48, "Fetching completed games and team statistics…");
   const gameRows = await cargoQuery({
     tables: "ScoreboardGames",
     fields:
@@ -190,12 +242,14 @@ async function ingestTournament(
       "Team1Inhibitors,Team2Inhibitors",
     where: `OverviewPage="${esc}"`,
     orderBy: "DateTime_UTC",
+    onProgress: cargoHeartbeat(runId, 48, "Fetching completed games and team statistics"),
   });
   const selectedMatchIds = new Set(schedule.map((m) => m.MatchId));
   const games = weekNumber === null ? gameRows : gameRows.filter((g) => selectedMatchIds.has(g.MatchId));
   console.log(`  games played: ${games.length}`);
 
-  for (const g of games) {
+  for (const [index, g] of games.entries()) {
+    await reportLoopProgress(runId, index, games.length, 52, 64, "Saving games");
     if (!g.GameId || !g.MatchId) continue;
     const match = await prisma.match.findUnique({ where: { id: g.MatchId } });
     if (!match) {
@@ -272,6 +326,7 @@ async function ingestTournament(
   }
 
   // 4. Per-player stats (also builds the player pool)
+  await reportIngestionProgress(runId, 66, "Fetching player game statistics…");
   const allPlayerRows = await cargoQuery({
     tables: "ScoreboardPlayers",
     fields:
@@ -279,6 +334,7 @@ async function ingestTournament(
       "DamageToChampions,VisionScore,PlayerWin,SummonerSpells,Items,Trinket," +
       "PrimaryTree,SecondaryTree,KeystoneRune,Pentakills,TeamKills,TeamGold",
     where: `OverviewPage="${esc}"`,
+    onProgress: cargoHeartbeat(runId, 66, "Fetching player game statistics"),
   });
   const selectedGameIds = new Set(games.map((g) => g.GameId));
   const playerRows = weekNumber === null ? allPlayerRows : allPlayerRows.filter((p) => selectedGameIds.has(p.GameId));
@@ -294,7 +350,8 @@ async function ingestTournament(
     }
   }
 
-  for (const p of playerRows) {
+  for (const [index, p] of playerRows.entries()) {
+    await reportLoopProgress(runId, index, playerRows.length, 70, 84, "Saving player stat lines");
     if (!p.GameId || !p.Link) continue;
     const game = await prisma.game.findUnique({ where: { id: p.GameId } });
     if (!game) continue;
@@ -371,6 +428,7 @@ async function ingestTournament(
 
   // 5. Ordered champion draft. This table records each side's pick/ban order
   // and role assignment, which ScoreboardGames' comma-separated lists lose.
+  await reportIngestionProgress(runId, 86, "Fetching champion picks and bans…");
   const allDrafts = await cargoQuery({
     tables: "PicksAndBansS7",
     fields:
@@ -381,10 +439,12 @@ async function ingestTournament(
       "Team1Role1,Team1Role2,Team1Role3,Team1Role4,Team1Role5," +
       "Team2Role1,Team2Role2,Team2Role3,Team2Role4,Team2Role5",
     where: `OverviewPage="${esc}" AND IsFilled=1`,
+    onProgress: cargoHeartbeat(runId, 86, "Fetching champion picks and bans"),
   });
   const drafts = weekNumber === null ? allDrafts : allDrafts.filter((d) => selectedGameIds.has(d.GameId));
   console.log(`  completed drafts: ${drafts.length}`);
-  for (const d of drafts) {
+  for (const [index, d] of drafts.entries()) {
+    await reportLoopProgress(runId, index, drafts.length, 89, 95, "Saving game drafts");
     if (!d.GameId) continue;
     const game = await prisma.game.findUnique({ where: { id: d.GameId } });
     if (!game) continue;
@@ -420,6 +480,7 @@ async function ingestTournament(
   }
 
   // Summary
+  await reportIngestionProgress(runId, 97, "Verifying imported row counts…");
   const matchScope = {
     tournamentId: overviewPage,
     ...(weekNumber === null ? {} : { week: { number: weekNumber } }),
@@ -488,6 +549,7 @@ export async function runLeaguepediaIngest({
       source: scheduleOnly ? "LEAGUEPEDIA_SCHEDULE" : "LEAGUEPEDIA",
       tournamentId: overviewPage,
       weekNumber,
+      summary: encodeIngestionProgress(1, "Import queued…"),
     },
   });
 
@@ -495,6 +557,7 @@ export async function runLeaguepediaIngest({
     const counts = await ingestTournament(overviewPage, weekNumber, run.id, scheduleOnly);
 
     if (!scheduleOnly && weekNumber !== null) {
+      await reportIngestionProgress(run.id, 98, "Validating game, player, team, and draft data…");
       const target = await prisma.week.findUnique({ where: { tournamentId_number: { tournamentId: overviewPage, number: weekNumber } }, select: { id: true } });
       if (target) {
         const validation = await validateWeekData(target.id);

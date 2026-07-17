@@ -88,7 +88,16 @@ export interface CargoParams {
   where?: string;
   joinOn?: string;
   orderBy?: string;
+  onProgress?: (event: CargoProgressEvent) => Promise<void> | void;
 }
+
+export type CargoProgressEvent = {
+  kind: "request" | "page" | "retry";
+  offset: number;
+  rows: number;
+  attempt?: number;
+  retryInSeconds?: number;
+};
 
 type CargoRow = Record<string, string>;
 
@@ -98,9 +107,15 @@ const MAX_RETRIES = 8;
 const backoffMs = (attempt: number) =>
   Math.min(120_000 * 2 ** (attempt - 1), 300_000);
 
-async function fetchPage(search: URLSearchParams): Promise<{ title: CargoRow }[]> {
+async function fetchPage(
+  search: URLSearchParams,
+  offset: number,
+  rows: number,
+  onProgress?: CargoParams["onProgress"],
+): Promise<{ title: CargoRow }[]> {
   await loginIfConfigured();
   for (let attempt = 1; ; attempt++) {
+    await onProgress?.({ kind: "request", offset, rows, attempt });
     const res = await fetch(`${API_URL}?${search}`, { headers: headers() });
     storeCookies(res);
     if (!res.ok) throw new Error(`Leaguepedia HTTP ${res.status}`);
@@ -111,7 +126,13 @@ async function fetchPage(search: URLSearchParams): Promise<{ title: CargoRow }[]
     if (json.error?.code === "ratelimited" && attempt <= MAX_RETRIES) {
       const wait = backoffMs(attempt);
       console.warn(`  rate limited, waiting ${wait / 1000}s (attempt ${attempt}/${MAX_RETRIES})`);
-      await new Promise((r) => setTimeout(r, wait));
+      let remaining = Math.ceil(wait / 1000);
+      while (remaining > 0) {
+        await onProgress?.({ kind: "retry", offset, rows, attempt, retryInSeconds: remaining });
+        const slice = Math.min(15, remaining);
+        await new Promise((r) => setTimeout(r, slice * 1000));
+        remaining -= slice;
+      }
       continue;
     }
     if (json.error) {
@@ -144,8 +165,9 @@ export async function cargoQuery(params: CargoParams): Promise<CargoRow[]> {
     if (params.joinOn) search.set("join_on", params.joinOn);
     if (params.orderBy) search.set("order_by", params.orderBy);
 
-    const page = (await fetchPage(search)).map((r) => r.title);
+    const page = (await fetchPage(search, offset, rows.length, params.onProgress)).map((r) => r.title);
     rows.push(...page);
+    await params.onProgress?.({ kind: "page", offset, rows: rows.length });
     if (page.length < PAGE_SIZE) return rows;
   }
 }

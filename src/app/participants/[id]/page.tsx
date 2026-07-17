@@ -13,6 +13,7 @@ import {
 import { playerGamePoints, pickemPoints } from "@/lib/scoring";
 import { getViewState, isFinished } from "@/lib/view";
 import { requireLeagueMember } from "@/lib/auth";
+import { areWeeklyPicksPublic } from "@/lib/pick-privacy";
 
 export const dynamic = "force-dynamic";
 
@@ -53,17 +54,25 @@ export default async function ParticipantPage({
   const publishedWeekIds = new Set(
     ft.league.leagueWeeks.filter((week) => week.status === "PUBLISHED").map((week) => week.weekId),
   );
+  const publicPickWeekIds = new Set(
+    ft.league.leagueWeeks.filter(areWeeklyPicksPublic).map((week) => week.weekId),
+  );
   const viewerIsMember = viewer ? await prisma.fantasyTeam.count({ where: { leagueId: ft.leagueId, userId: viewer.id } }) > 0 : false;
-  // Per-current-slot totals include published weeks only. Weekly score records
-  // remain authoritative when historical rosters differ.
+  // A current player only receives points for published weeks whose immutable
+  // snapshot shows that player on this fantasy team. This prevents a midseason
+  // acquisition from inheriting points earned before they were rostered.
   const slotTotals = new Map<number, number>();
   for (const week of weeks) {
     if (!publishedWeekIds.has(week.id)) continue;
+    const leagueWeek = ft.league.leagueWeeks.find((row) => row.weekId === week.id);
+    const rosteredPlayerIds = new Set(
+      leagueWeek?.weeklyRosters.filter((row) => row.fantasyTeamId === ft.id).map((row) => row.playerId) ?? [],
+    );
     for (const match of week.matches) {
       if (cutoff !== null && match.scheduledAt >= cutoff) continue;
       for (const game of match.games) {
         for (const slot of ft.roster) {
-          if (slot.slot === "BENCH") continue;
+          if (slot.slot === "BENCH" || !rosteredPlayerIds.has(slot.playerId)) continue;
           const ps = game.playerStats.find((p) => p.playerId === slot.playerId);
           if (ps)
             slotTotals.set(
@@ -79,7 +88,7 @@ export default async function ParticipantPage({
     (a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot),
   );
   const visiblePickems = pickems.filter((pick) =>
-    viewer?.id === ft.userId || (pick.match.weekId !== null && publishedWeekIds.has(pick.match.weekId)),
+    viewer?.id === ft.userId || (pick.match.weekId !== null && publicPickWeekIds.has(pick.match.weekId)),
   );
   const sortedPickems = [...visiblePickems].sort(
     (a, b) => a.match.scheduledAt.getTime() - b.match.scheduledAt.getTime(),
@@ -110,7 +119,7 @@ export default async function ParticipantPage({
                   <th>Slot</th>
                   <th>Player</th>
                   <th>Pro team</th>
-                  <th className="num">Season pts</th>
+                  <th className="num">Pts while rostered</th>
                 </tr>
               </thead>
               <tbody>
@@ -127,6 +136,7 @@ export default async function ParticipantPage({
               </tbody>
             </table>
           </div>
+          <p className="muted small" style={{ marginBottom: 0 }}>Team totals also retain points earned by players who are no longer on the current roster.</p>
         </div>
 
         <div className="card">
