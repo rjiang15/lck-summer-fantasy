@@ -8,7 +8,7 @@ import { DEFAULT_SCORING, playerGamePoints } from "../lib/scoring";
 async function report(overviewPage: string) {
   const stats = await prisma.playerGameStat.findMany({
     where: { game: { match: { tournamentId: overviewPage } } },
-    include: { player: true },
+    include: { player: true, game: { include: { teamStats: true } } },
   });
   if (stats.length === 0) {
     console.log("No player stats found — has this tournament been ingested?");
@@ -20,7 +20,10 @@ async function report(overviewPage: string) {
     { name: string; team: string; role: string; games: number; pts: number; k: number; d: number; a: number }
   >();
   for (const s of stats) {
-    const pts = playerGamePoints(s, DEFAULT_SCORING);
+    const pts = playerGamePoints(s, DEFAULT_SCORING, {
+      lengthSec: s.game.lengthSec,
+      teamObjectives: s.game.teamStats.find((team) => team.teamId === s.teamId),
+    });
     const row = perPlayer.get(s.playerId) ?? {
       name: s.player.name,
       team: s.teamId,
@@ -39,14 +42,27 @@ async function report(overviewPage: string) {
     perPlayer.set(s.playerId, row);
   }
 
-  const top = [...perPlayer.values()].sort((a, b) => b.pts - a.pts).slice(0, 15);
+  const top = [...perPlayer.values()].sort((a, b) => b.pts / b.games - a.pts / a.games).slice(0, 15);
+  const roleSummary = new Map<string, { players: number; ppg: number[] }>();
+  for (const player of perPlayer.values()) {
+    const role = roleSummary.get(player.role) ?? { players: 0, ppg: [] };
+    role.players++;
+    role.ppg.push(player.pts / player.games);
+    roleSummary.set(player.role, role);
+  }
+  console.log("\nRole balance (player-season PPG)\n");
+  console.log("role       players  mean   min    max");
+  for (const [role, values] of [...roleSummary].sort(([left], [right]) => left.localeCompare(right))) {
+    const mean = values.ppg.reduce((sum, value) => sum + value, 0) / values.ppg.length;
+    console.log(`${role.padEnd(10)} ${String(values.players).padStart(7)}  ${mean.toFixed(1).padStart(4)}  ${Math.min(...values.ppg).toFixed(1).padStart(5)}  ${Math.max(...values.ppg).toFixed(1).padStart(5)}`);
+  }
   console.log(`\nTop 15 fantasy scorers — ${overviewPage} (default scoring)\n`);
   console.log(
-    "rank  player            team                    role     games  K/D/A          points",
+    "rank  player            team                    role     games  K/D/A          points/game",
   );
   top.forEach((r, i) => {
     console.log(
-      `${String(i + 1).padStart(4)}  ${r.name.padEnd(16)}  ${r.team.padEnd(22)}  ${r.role.padEnd(7)}  ${String(r.games).padStart(5)}  ${`${r.k}/${r.d}/${r.a}`.padEnd(13)}  ${r.pts.toFixed(1)}`,
+      `${String(i + 1).padStart(4)}  ${r.name.padEnd(16)}  ${r.team.padEnd(22)}  ${r.role.padEnd(7)}  ${String(r.games).padStart(5)}  ${`${r.k}/${r.d}/${r.a}`.padEnd(13)}  ${(r.pts / r.games).toFixed(1)}`,
     );
   });
 

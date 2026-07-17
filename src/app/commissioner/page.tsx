@@ -18,6 +18,7 @@ import {
 } from "./actions";
 import { IngestButton } from "./IngestButton";
 import { parseResolutionEvidence } from "@/lib/crystal-ball";
+import { parseScoring } from "@/lib/fantasy";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 3600;
@@ -31,6 +32,7 @@ export default async function CommissionerPage({
   const feedback = await searchParams;
   const league = await prisma.league.findUnique({ where: { id: access.league.id }, include: { cbQuestions: true } });
   if (!league) return <p>No league exists.</p>;
+  const scoring = parseScoring(league.scoringConfig);
   const weeks = await prisma.leagueWeek.findMany({
     where: { leagueId: league.id },
     orderBy: { week: { number: "asc" } },
@@ -262,7 +264,7 @@ export default async function CommissionerPage({
       <h2>Scoring configuration</h2>
       <form action={updateScoringConfig} className="stack card">
         <input type="hidden" name="leagueId" value={league.id} />
-        <textarea name="scoringConfig" rows={14} defaultValue={JSON.stringify(JSON.parse(league.scoringConfig), null, 2)} />
+        <textarea name="scoringConfig" rows={22} defaultValue={JSON.stringify(scoring, null, 2)} />
         <button type="submit">Save scoring configuration</button>
         <span className="muted small">Locks permanently after the first published week.</span>
       </form>

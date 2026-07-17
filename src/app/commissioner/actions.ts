@@ -404,9 +404,11 @@ export async function updateScoringConfig(formData: FormData) {
   const published = await prisma.leagueWeek.count({ where: { leagueId, status: "PUBLISHED" } });
   if (published > 0) throw new Error("Scoring cannot change after the first week is published");
   const raw = String(formData.get("scoringConfig") ?? "");
-  const parsed = JSON.parse(raw) as { player?: Record<string, unknown>; pickem?: Record<string, unknown> };
-  for (const [section, defaults] of Object.entries(DEFAULT_SCORING)) {
-    const supplied = parsed[section as keyof typeof parsed];
+  const parsed = JSON.parse(raw) as { version?: unknown; player?: Record<string, unknown>; pickem?: Record<string, unknown> };
+  if (parsed.version !== DEFAULT_SCORING.version) throw new Error(`Scoring version must be ${DEFAULT_SCORING.version}`);
+  for (const section of ["player", "pickem"] as const) {
+    const defaults = DEFAULT_SCORING[section];
+    const supplied = parsed[section];
     if (!supplied) throw new Error(`Missing scoring section: ${section}`);
     for (const key of Object.keys(defaults)) {
       if (typeof supplied[key] !== "number" || !Number.isFinite(supplied[key])) throw new Error(`Invalid scoring value: ${section}.${key}`);

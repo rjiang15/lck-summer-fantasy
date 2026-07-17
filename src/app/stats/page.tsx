@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getViewState } from "@/lib/view";
 import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
 import { parseScoring, round1 } from "@/lib/fantasy";
-import { playerGamePoints } from "@/lib/scoring";
+import { playerGameScore } from "@/lib/scoring";
 import DeepPlayerTable, { type DeepPlayerRow } from "./DeepPlayerTable";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +30,13 @@ type PlayerAggregate = {
   games: number;
   wins: number;
   fantasyPoints: number;
+  combatPoints: number;
+  farmPoints: number;
+  visionPoints: number;
+  winPoints: number;
+  killParticipationPoints: number;
+  efficiencyPoints: number;
+  jungleObjectivePoints: number;
   kills: number;
   deaths: number;
   assists: number;
@@ -90,6 +97,13 @@ export default async function StatsPage() {
         games: 0,
         wins: 0,
         fantasyPoints: 0,
+        combatPoints: 0,
+        farmPoints: 0,
+        visionPoints: 0,
+        winPoints: 0,
+        killParticipationPoints: 0,
+        efficiencyPoints: 0,
+        jungleObjectivePoints: 0,
         kills: 0,
         deaths: 0,
         assists: 0,
@@ -102,7 +116,18 @@ export default async function StatsPage() {
       };
       row.games++;
       row.wins += stat.won ? 1 : 0;
-      row.fantasyPoints += playerGamePoints(stat, scoring);
+      const score = playerGameScore(stat, scoring, {
+        lengthSec: game.lengthSec,
+        teamObjectives: game.teamStats.find((team) => team.teamId === stat.teamId),
+      });
+      row.fantasyPoints += score.total;
+      row.combatPoints += score.combat;
+      row.farmPoints += score.farm;
+      row.visionPoints += score.vision;
+      row.winPoints += score.win;
+      row.killParticipationPoints += score.killParticipation;
+      row.efficiencyPoints += score.efficiency;
+      row.jungleObjectivePoints += score.jungleObjectives;
       row.kills += stat.kills;
       row.deaths += stat.deaths;
       row.assists += stat.assists;
@@ -169,6 +194,13 @@ export default async function StatsPage() {
       role: row.role,
       fantasyPoints,
       fantasyPerGame: fantasyPoints / row.games,
+      combatPointsPerGame: row.combatPoints / row.games,
+      farmPointsPerGame: row.farmPoints / row.games,
+      visionPointsPerGame: row.visionPoints / row.games,
+      winPointsPerGame: row.winPoints / row.games,
+      killParticipationPointsPerGame: row.killParticipationPoints / row.games,
+      efficiencyPointsPerGame: row.efficiencyPoints / row.games,
+      jungleObjectivePointsPerGame: row.jungleObjectivePoints / row.games,
       games: row.games,
       wins: row.wins,
       winRate: row.wins / row.games,
@@ -226,6 +258,13 @@ export default async function StatsPage() {
     <p className="muted small">
       {view.tournamentName} · {games.length} games. Blank advanced fields mean the selected source did not publish that metric; raw source rows are retained for future parsers.
     </p>
+
+    <div className="card">
+      <b>Fantasy scoring v{scoring.version}</b>
+      <p className="small muted" style={{ marginBottom: 0 }}>
+        Pts/G is the official player value: total game scores divided by games played. Standard KP awards {scoring.player.kpLowBonus}/{scoring.player.kpMidBonus}/{scoring.player.kpHighBonus} points at {scoring.player.kpLowThreshold * 100}%/{scoring.player.kpMidThreshold * 100}%/{scoring.player.kpHighThreshold * 100}%; Top uses role-calibrated {scoring.player.topKpLowThreshold * 100}%/{scoring.player.topKpMidThreshold * 100}%/{scoring.player.topKpHighThreshold * 100}% tiers. Efficiency awards up to {scoring.player.efficiencyHighBonus} points from damage share versus gold share, with Jungle thresholds adjusted for its lower gold/damage profile; supports use vision per 30 minutes instead. Jungle objective points use the team&apos;s dragons, elders, barons, heralds, grubs, and Atakhans.
+      </p>
+    </div>
 
     <div className="macro-section-title deep-stats-title"><div><span>Players</span><h2>Complete player detail</h2></div><p>Fantasy scoring uses {view.leagueName}&apos;s active rules. Click any column to sort.</p></div>
     <DeepPlayerTable rows={playerRows} />

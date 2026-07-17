@@ -128,7 +128,26 @@ th {
 tr:last-child td { border-bottom: none; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
-.tablewrap { overflow-x: auto; margin-bottom: 1rem; }
+.tablewrap {
+  position: relative;
+  max-height: min(72vh, 48rem);
+  overflow: auto;
+  margin-bottom: 1rem;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.tablewrap table {
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: visible;
+}
+.tablewrap thead th {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  background: var(--card);
+  box-shadow: inset 0 -1px var(--border);
+}
 
 .badge {
   display: inline-block;
@@ -444,11 +463,11 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .deep-stats-wrap { max-height: 72vh; border: 1px solid var(--border); border-radius: 8px; }
 .deep-stats-table { width: max-content; min-width: 100%; border: 0; border-radius: 0; }
 .deep-stats-table th, .deep-stats-table td { height: 2.75rem; }
-.deep-stats-table thead { position: sticky; z-index: 4; top: 0; }
 .deep-stats-table thead th { background: var(--card); }
-.deep-stats-table .deep-stat-groups th { height: 1.75rem; padding: 0.25rem 0.65rem; color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--card)); border-right: 1px solid var(--border); text-align: center; }
+.deep-stats-table .deep-stat-groups th { z-index: 5; top: 0; height: 1.75rem; padding: 0.25rem 0.65rem; color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--card)); border-right: 1px solid var(--border); text-align: center; }
+.deep-stats-table thead tr:nth-child(2) th { z-index: 4; top: 1.75rem; }
 .deep-stats-table thead tr:nth-child(2) th:first-child, .deep-stats-table tbody td:first-child { position: sticky; z-index: 3; left: 0; background: var(--card); box-shadow: 1px 0 var(--border); }
-.deep-stats-table thead tr:nth-child(2) th:first-child { z-index: 5; }
+.deep-stats-table thead tr:nth-child(2) th:first-child { z-index: 6; }
 .deep-player-name { display: inline-flex; min-width: 7.5rem; align-items: center; gap: 0.45rem; }
 .deep-player-name > span { display: inline-grid; width: 1.35rem; height: 1.35rem; place-items: center; border-radius: 50%; color: var(--muted); background: var(--bg); font-size: 0.68rem; }
 

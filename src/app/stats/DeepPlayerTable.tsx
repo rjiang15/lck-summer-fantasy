@@ -10,6 +10,13 @@ export type DeepPlayerRow = {
   role: string;
   fantasyPoints: number;
   fantasyPerGame: number;
+  combatPointsPerGame: number;
+  farmPointsPerGame: number;
+  visionPointsPerGame: number;
+  winPointsPerGame: number;
+  killParticipationPointsPerGame: number;
+  efficiencyPointsPerGame: number;
+  jungleObjectivePointsPerGame: number;
   games: number;
   wins: number;
   winRate: number;
@@ -74,8 +81,15 @@ const columns: Column[] = [
   { key: "name", label: "Player", group: "Identity", render: (row, index) => <span className="deep-player-name"><span>{index + 1}</span><b>{row.name}</b></span> },
   { key: "team", label: "Team", group: "Identity", render: (row) => <TeamLabel name={row.team} size="xs" /> },
   { key: "role", label: "Role", group: "Identity", render: (row) => row.role },
-  { key: "fantasyPoints", label: "Pts", group: "Fantasy", numeric: true, render: (row) => <b>{row.fantasyPoints.toFixed(1)}</b> },
-  { key: "fantasyPerGame", label: "Pts/G", group: "Fantasy", numeric: true, render: (row) => row.fantasyPerGame.toFixed(1) },
+  { key: "fantasyPerGame", label: "Pts/G", group: "Fantasy score", numeric: true, render: (row) => <b>{row.fantasyPerGame.toFixed(1)}</b> },
+  { key: "fantasyPoints", label: "Raw pts", group: "Fantasy score", numeric: true, render: (row) => row.fantasyPoints.toFixed(1) },
+  { key: "efficiencyPointsPerGame", label: "Eff/G", group: "Fantasy score", numeric: true, render: (row) => number(row.efficiencyPointsPerGame) },
+  { key: "killParticipationPointsPerGame", label: "KP pts/G", group: "Fantasy score", numeric: true, render: (row) => number(row.killParticipationPointsPerGame) },
+  { key: "combatPointsPerGame", label: "Combat/G", group: "Fantasy score", numeric: true, render: (row) => number(row.combatPointsPerGame) },
+  { key: "farmPointsPerGame", label: "Farm/G", group: "Fantasy score", numeric: true, render: (row) => number(row.farmPointsPerGame) },
+  { key: "visionPointsPerGame", label: "Vision pts/G", group: "Fantasy score", numeric: true, render: (row) => number(row.visionPointsPerGame) },
+  { key: "jungleObjectivePointsPerGame", label: "Obj pts/G", group: "Fantasy score", numeric: true, render: (row) => number(row.jungleObjectivePointsPerGame) },
+  { key: "winPointsPerGame", label: "Win pts/G", group: "Fantasy score", numeric: true, render: (row) => number(row.winPointsPerGame) },
   { key: "games", label: "GP", group: "Record", numeric: true, render: (row) => row.games },
   { key: "wins", label: "W-L", group: "Record", numeric: true, render: (row) => `${row.wins}-${row.games - row.wins}` },
   { key: "winRate", label: "Win%", group: "Record", numeric: true, render: (row) => percent(row.winRate) },
@@ -124,7 +138,7 @@ const columns: Column[] = [
 ];
 
 export default function DeepPlayerTable({ rows }: { rows: DeepPlayerRow[] }) {
-  const [sort, setSort] = useState<{ key: keyof DeepPlayerRow; direction: SortDirection }>({ key: "fantasyPoints", direction: "desc" });
+  const [sort, setSort] = useState<{ key: keyof DeepPlayerRow; direction: SortDirection }>({ key: "fantasyPerGame", direction: "desc" });
   const sorted = useMemo(() => [...rows].sort((left, right) => {
     const leftValue = left[sort.key];
     const rightValue = right[sort.key];

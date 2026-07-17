@@ -1,6 +1,6 @@
 import { prisma } from "./db";
 import { parseScoring, round1 } from "./fantasy";
-import { pickemPoints, playerGamePoints } from "./scoring";
+import { pickemPoints, playerGamePoints, playerPointsPerGame } from "./scoring";
 
 export const WEEK_STATUSES = [
   "UPCOMING",
@@ -131,7 +131,10 @@ export async function snapshotWeeklyRosters(leagueWeekId: number) {
   });
 }
 
-export async function calculateWeeklyScores(leagueWeekId: number) {
+export async function calculateWeeklyScores(
+  leagueWeekId: number,
+  options: { allowPublished?: boolean; auditReason?: string } = {},
+) {
   const lw = await prisma.leagueWeek.findUniqueOrThrow({
     where: { id: leagueWeekId },
     include: {
@@ -139,14 +142,17 @@ export async function calculateWeeklyScores(leagueWeekId: number) {
       week: {
         include: {
           matches: {
-            include: { games: { include: { playerStats: true } } },
+            include: { games: { include: { playerStats: true, teamStats: true } } },
           },
         },
       },
       weeklyRosters: true,
+      weeklyScores: true,
     },
   });
-  if (lw.status === "PUBLISHED") throw new Error("Published weekly scores are immutable");
+  if (lw.status === "PUBLISHED" && !options.allowPublished) {
+    throw new Error("Published weekly scores are immutable unless an audited recalculation is explicitly requested");
+  }
   if (lw.weeklyRosters.length === 0) {
     throw new Error("This week has no frozen roster snapshot; unlock and relock its picks before importing results");
   }
@@ -160,14 +166,30 @@ export async function calculateWeeklyScores(leagueWeekId: number) {
         (slot) => slot.fantasyTeamId === team.id && slot.slot !== "BENCH",
       );
       let rosterPts = 0;
-      for (const match of lw.week.matches) {
-        for (const game of match.games) {
-          for (const slot of roster) {
+      const playerContributions = roster.map((slot) => {
+        const gamePoints: number[] = [];
+        for (const match of lw.week.matches) {
+          for (const game of match.games) {
             const stat = game.playerStats.find((row) => row.playerId === slot.playerId);
-            if (stat) rosterPts += playerGamePoints(stat, config);
+            if (!stat) continue;
+            const teamObjectives = game.teamStats.find((row) => row.teamId === stat.teamId);
+            gamePoints.push(playerGamePoints(stat, config, {
+              lengthSec: game.lengthSec,
+              teamObjectives,
+            }));
           }
         }
-      }
+        const rawPoints = gamePoints.reduce((sum, points) => sum + points, 0);
+        const pointsPerGame = playerPointsPerGame(gamePoints);
+        rosterPts += pointsPerGame;
+        return {
+          playerId: slot.playerId,
+          slot: slot.slot,
+          gamesPlayed: gamePoints.length,
+          rawPoints: round1(rawPoints),
+          pointsPerGame: round1(pointsPerGame),
+        };
+      });
       let pickemPts = 0;
       for (const match of lw.week.matches) {
         if (!match.winner || match.team1Score == null || match.team2Score == null) continue;
@@ -183,6 +205,20 @@ export async function calculateWeeklyScores(leagueWeekId: number) {
         }
       }
       rosterPts = round1(rosterPts);
+      const previous = lw.weeklyScores.find((score) => score.fantasyTeamId === team.id);
+      const breakdown = {
+        scoringVersion: config.version,
+        roster: playerContributions,
+        ...(options.auditReason && previous ? {
+          recalculation: {
+            reason: options.auditReason,
+            previousRosterPts: previous.rosterPts,
+            previousPickemPts: previous.pickemPts,
+            previousTotal: previous.total,
+            previousCalculatedAt: previous.calculatedAt.toISOString(),
+          },
+        } : {}),
+      };
       await tx.weeklyScore.upsert({
         where: { leagueWeekId_fantasyTeamId: { leagueWeekId, fantasyTeamId: team.id } },
         create: {
@@ -191,13 +227,13 @@ export async function calculateWeeklyScores(leagueWeekId: number) {
           rosterPts,
           pickemPts,
           total: round1(rosterPts + pickemPts),
-          breakdown: JSON.stringify({ roster: roster.map((r) => ({ playerId: r.playerId, slot: r.slot })) }),
+          breakdown: JSON.stringify(breakdown),
         },
         update: {
           rosterPts,
           pickemPts,
           total: round1(rosterPts + pickemPts),
-          breakdown: JSON.stringify({ roster: roster.map((r) => ({ playerId: r.playerId, slot: r.slot })) }),
+          breakdown: JSON.stringify(breakdown),
           calculatedAt: new Date(),
         },
       });

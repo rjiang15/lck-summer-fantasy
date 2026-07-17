@@ -9,6 +9,7 @@ import {
   DEFAULT_SCORING,
   type ScoringConfig,
   playerGamePoints,
+  playerPointsPerGame,
   pickemPoints,
 } from "./scoring";
 
@@ -19,7 +20,17 @@ export function parseScoring(json: string | null | undefined): ScoringConfig {
   if (!json) return DEFAULT_SCORING;
   try {
     const parsed = JSON.parse(json);
+    // Versionless configs used the old raw-total formula. Published WeeklyScore
+    // rows already preserve those historical results; future calculations move
+    // to v2 while retaining any league-specific pickem values.
+    if (parsed.version !== DEFAULT_SCORING.version) {
+      return {
+        ...DEFAULT_SCORING,
+        pickem: { ...DEFAULT_SCORING.pickem, ...parsed.pickem },
+      };
+    }
     return {
+      version: DEFAULT_SCORING.version,
       player: { ...DEFAULT_SCORING.player, ...parsed.player },
       pickem: { ...DEFAULT_SCORING.pickem, ...parsed.pickem },
     };
@@ -187,12 +198,18 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
       let rosterPts = 0;
       for (const slot of ft.roster) {
         if (slot.slot === "BENCH") continue;
+        const gamePoints: number[] = [];
         for (const match of week.matches) {
           for (const game of match.games) {
             const ps = game.playerStats.find((p) => p.playerId === slot.playerId);
-            if (ps) rosterPts += playerGamePoints(ps, cfg);
+            if (!ps) continue;
+            gamePoints.push(playerGamePoints(ps, cfg, {
+              lengthSec: game.lengthSec,
+              teamObjectives: game.teamStats.find((row) => row.teamId === ps.teamId),
+            }));
           }
         }
+        rosterPts += playerPointsPerGame(gamePoints);
       }
       let pickemPts = 0;
       for (const match of week.matches) {
@@ -236,7 +253,7 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
   };
 }
 
-/** Pro-player leaderboard for a tournament (total fantasy points, default = league config). */
+/** Pro-player leaderboard for a tournament (fantasy points per game). */
 export async function proLeaderboard(
   tournamentId: string,
   cfg: ScoringConfig,
@@ -251,7 +268,7 @@ export async function proLeaderboard(
         },
       },
     },
-    include: { player: true },
+    include: { player: true, game: { include: { teamStats: true } } },
   });
   const rows = new Map<
     string,
@@ -262,14 +279,22 @@ export async function proLeaderboard(
       rows.get(s.playerId) ??
       { id: s.playerId, name: s.player.name, team: s.teamId, role: s.role ?? "?", games: 0, pts: 0, k: 0, d: 0, a: 0 };
     row.games++;
-    row.pts = round1(row.pts + playerGamePoints(s, cfg));
+    row.pts += playerGamePoints(s, cfg, {
+      lengthSec: s.game.lengthSec,
+      teamObjectives: s.game.teamStats.find((team) => team.teamId === s.teamId),
+    });
     row.k += s.kills;
     row.d += s.deaths;
     row.a += s.assists;
     row.team = s.teamId; // latest team
     rows.set(s.playerId, row);
   }
-  return [...rows.values()].sort((a, b) => b.pts - a.pts);
+  const result = [...rows.values()].map((row) => ({
+    ...row,
+    totalPts: round1(row.pts),
+    pts: round1(row.games > 0 ? row.pts / row.games : 0),
+  }));
+  return result.sort((a, b) => b.pts - a.pts);
 }
 
 export const round1 = (n: number) => Math.round(n * 10) / 10;

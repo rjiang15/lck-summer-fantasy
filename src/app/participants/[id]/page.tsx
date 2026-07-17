@@ -10,7 +10,7 @@ import {
   round1,
   SLOT_ORDER,
 } from "@/lib/fantasy";
-import { playerGamePoints, pickemPoints } from "@/lib/scoring";
+import { playerGamePoints, playerPointsPerGame, pickemPoints } from "@/lib/scoring";
 import { getViewState, isFinished } from "@/lib/view";
 import { requireLeagueMember } from "@/lib/auth";
 import { areWeeklyPicksPublic } from "@/lib/pick-privacy";
@@ -70,18 +70,23 @@ export default async function ParticipantPage({
     const rosteredPlayerIds = new Set(
       leagueWeek?.weeklyRosters.filter((row) => row.fantasyTeamId === ft.id).map((row) => row.playerId) ?? [],
     );
-    for (const match of week.matches) {
-      if (cutoff !== null && match.scheduledAt >= cutoff) continue;
-      for (const game of match.games) {
-        for (const slot of ft.roster) {
-          if (slot.slot === "BENCH" || !rosteredPlayerIds.has(slot.playerId)) continue;
+    for (const slot of ft.roster) {
+      if (slot.slot === "BENCH" || !rosteredPlayerIds.has(slot.playerId)) continue;
+      const gamePoints: number[] = [];
+      for (const match of week.matches) {
+        if (cutoff !== null && match.scheduledAt >= cutoff) continue;
+        for (const game of match.games) {
           const ps = game.playerStats.find((p) => p.playerId === slot.playerId);
-          if (ps)
-            slotTotals.set(
-              slot.id,
-              (slotTotals.get(slot.id) ?? 0) + playerGamePoints(ps, cfg),
-            );
+          if (ps) {
+            gamePoints.push(playerGamePoints(ps, cfg, {
+              lengthSec: game.lengthSec,
+              teamObjectives: game.teamStats.find((team) => team.teamId === ps.teamId),
+            }));
+          }
         }
+      }
+      if (gamePoints.length > 0) {
+        slotTotals.set(slot.id, (slotTotals.get(slot.id) ?? 0) + playerPointsPerGame(gamePoints));
       }
     }
   }
@@ -121,7 +126,7 @@ export default async function ParticipantPage({
                   <th>Slot</th>
                   <th>Player</th>
                   <th>Pro team</th>
-                  <th className="num">Pts while rostered</th>
+                  <th className="num">Weekly PPG points</th>
                 </tr>
               </thead>
               <tbody>
