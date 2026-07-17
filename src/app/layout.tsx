@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import ViewControls from "@/components/ViewControls";
-import { getViewState, listTournaments } from "@/lib/view";
+import LeagueSwitcher from "@/components/LeagueSwitcher";
+import { getViewState } from "@/lib/view";
 import { getCurrentUser } from "@/lib/auth";
 import { logout } from "@/app/login/actions";
+import { prisma } from "@/lib/db";
+import { isManagerRole } from "@/lib/leagues";
 
 export const metadata: Metadata = {
   title: "LCK Fantasy",
@@ -19,8 +22,11 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const view = await getViewState();
-  const tournaments = await listTournaments();
   const user = await getCurrentUser();
+  const memberships = user ? await prisma.leagueMembership.findMany({
+    where: { userId: user.id }, include: { league: true }, orderBy: { joinedAt: "asc" },
+  }) : [];
+  const activeMembership = view ? memberships.find((row) => row.leagueId === view.leagueId) : undefined;
   return (
     <html lang="en">
       <body>
@@ -28,24 +34,25 @@ export default async function RootLayout({
           <div className="topnav">
             <Link href="/" className="brand">LCK Fantasy</Link>
             <div className="topnav-tools">
+              {user && <LeagueSwitcher leagues={memberships.map((row) => ({ slug: row.league.slug, name: row.league.name }))} activeSlug={view?.leagueSlug} />}
               {view && (
                 <ViewControls
-                  tournaments={tournaments}
-                  tournamentId={view.tournamentId}
+                  leagueId={view.leagueId}
                   completedWeek={view.completedWeek}
                   maxWeek={view.maxWeek}
                   isLive={view.isLive}
                 />
               )}
-              {user ? (
+              {user ? (<>
+                <Link href="/leagues" className="nav-signin">My leagues</Link>
                 <form action={logout} className="nav-auth">
                   <span className="muted small">{user.username}</span>
                   <button type="submit">Log out</button>
-                </form>
+                </form></>
               ) : <Link href="/login" className="nav-signin">Sign in</Link>}
             </div>
           </div>
-          <nav className="nav-sections" aria-label="Primary navigation">
+          {view && <nav className="nav-sections" aria-label="Primary navigation">
             <NavGroup label="Game data">
               <Link href="/">Games</Link>
               <Link href="/stats">Deep Stats</Link>
@@ -58,10 +65,10 @@ export default async function RootLayout({
             <NavGroup label="My league">
               <Link href="/picks">Picks</Link>
               <Link href="/crystal-ball">Crystal Ball</Link>
-              {user?.isCommish && <Link href="/commissioner">Commissioner</Link>}
-              {user?.isCommish && <Link href="/settings">Settings</Link>}
+              {activeMembership && isManagerRole(activeMembership.role) && <Link href="/commissioner">Commissioner</Link>}
+              {activeMembership && isManagerRole(activeMembership.role) && <Link href="/settings">Settings</Link>}
             </NavGroup>
-          </nav>
+          </nav>}
         </header>
         <main>{children}</main>
       </body>

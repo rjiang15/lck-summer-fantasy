@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth";
+import { requireLeagueMember } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { fmtDate } from "@/lib/fantasy";
 import { savePick } from "./actions";
@@ -18,9 +18,9 @@ function scorelines(bestOf: number, team1: string, team2: string) {
 }
 
 export default async function PicksPage() {
-  const user = await requireUser();
-  const fantasyTeam = await prisma.fantasyTeam.findFirst({
-    where: { userId: user.id },
+  const { user, league } = await requireLeagueMember();
+  const fantasyTeam = await prisma.fantasyTeam.findUnique({
+    where: { leagueId_userId: { leagueId: league.id, userId: user.id } },
     include: { league: true },
   });
   if (!fantasyTeam) return <p>You are not a member of a fantasy league.</p>;
@@ -44,7 +44,7 @@ export default async function PicksPage() {
     );
   }
   const picks = await prisma.pickem.findMany({
-    where: { userId: user.id, match: { weekId: leagueWeek.weekId } },
+    where: { leagueId: league.id, userId: user.id, match: { weekId: leagueWeek.weekId } },
   });
 
   return (
@@ -70,6 +70,7 @@ export default async function PicksPage() {
                   <td>
                     {started ? <span className="badge pending">locked</span> : (
                       <form action={savePick} className="inline-form">
+                        <input type="hidden" name="leagueId" value={league.id} />
                         <input type="hidden" name="matchId" value={match.id} />
                         <select name="choice" defaultValue={current} required>
                           <option value="" disabled>— pick a result —</option>

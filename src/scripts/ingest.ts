@@ -3,8 +3,8 @@
 
 import { cargoQuery, parseUtc } from "../lib/leaguepedia";
 import { prisma } from "../lib/db";
+import { validateWeekData } from "../lib/season";
 import { assertSequentialIngest } from "../lib/ingest-order";
-import { ensureLeagueWeeks, validateLeagueWeek } from "../lib/season";
 
 const int = (s: string | undefined) => {
   const n = parseInt(s ?? "", 10);
@@ -20,21 +20,6 @@ const sideName = (s: string | undefined) =>
     : s === "2" || s?.toLowerCase() === "red"
       ? "Red"
       : null;
-
-async function syncLeagueWeeksForTournament(overviewPage: string) {
-  const leagues = await prisma.league.findMany({ where: { tournamentId: overviewPage } });
-  for (const league of leagues) {
-    const leagueWeeks = await ensureLeagueWeeks(league.id);
-    const target = leagueWeeks.find((row) => row.week.number === league.currentWeek + 1);
-    const alreadyOpen = leagueWeeks.some((row) => row.status === "OPEN");
-    if (target?.status === "UPCOMING" && !alreadyOpen) {
-      await prisma.leagueWeek.update({
-        where: { id: target.id },
-        data: { status: "OPEN", picksOpenAt: new Date() },
-      });
-    }
-  }
-}
 
 export interface LeaguepediaIngestCounts {
   mode?: "SCHEDULE_ONLY";
@@ -112,6 +97,11 @@ async function ingestTournament(
         tournamentId: overviewPage,
       },
     });
+    await prisma.tournamentPlayer.upsert({
+      where: { tournamentId_playerId: { tournamentId: overviewPage, playerId: player.Player } },
+      create: { tournamentId: overviewPage, playerId: player.Player, teamId: player.Team || null, role: player.Role || null },
+      update: { teamId: player.Team || null, role: player.Role || null, importedAt: new Date() },
+    });
   }
 
   // 2. Match schedule (also defines weeks via the Tab field, e.g. "Week 1")
@@ -143,8 +133,8 @@ async function ingestTournament(
       where: {
         tournamentId_number: { tournamentId: overviewPage, number: selectedTab ? weekNumber! : i + 1 },
       },
-      create: { tournamentId: overviewPage, number: selectedTab ? weekNumber! : i + 1, startsAt, endsAt },
-      update: { startsAt, endsAt },
+      create: { tournamentId: overviewPage, number: selectedTab ? weekNumber! : i + 1, startsAt, endsAt, scheduleImportedAt: new Date() },
+      update: { startsAt, endsAt, scheduleImportedAt: new Date() },
     });
     weekIdByTab.set(tab, week.id);
   }
@@ -173,7 +163,6 @@ async function ingestTournament(
   }
 
   if (scheduleOnly) {
-    await syncLeagueWeeksForTournament(overviewPage);
     const counts: LeaguepediaIngestCounts = {
       mode: "SCHEDULE_ONLY",
       matches: schedule.length,
@@ -450,10 +439,6 @@ async function ingestTournament(
     }),
   };
 
-  // A successful weekly pull should immediately expose the next slate. At
-  // Week 0 this creates/opens LeagueWeek 1; publishing it later advances the
-  // league to Week 1 and opens Week 2.
-  await syncLeagueWeeksForTournament(overviewPage);
   console.log(`Done:`, counts);
   return counts;
 }
@@ -469,30 +454,12 @@ async function validateIngestRequest(
     throw new Error("The ingest week must be a positive whole number");
   }
 
-  const leagues = await prisma.league.findMany({
-    where: { tournamentId: overviewPage },
-    select: {
-      currentWeek: true,
-      leagueWeeks: {
-        where: weekNumber === null ? undefined : { week: { number: weekNumber } },
-        select: { status: true },
-      },
-    },
-  });
-  if (leagues.length > 0 && weekNumber === null) {
-    throw new Error("This tournament is attached to a live league; fetch one week at a time");
-  }
   if (weekNumber !== null) {
-    assertSequentialIngest(
-      weekNumber,
-      scheduleOnly,
-      leagues.map((league) => ({
-        currentWeek: league.currentWeek,
-        targetStatus: league.leagueWeeks[0]?.status ?? null,
-      })),
-    );
+    const weeks = await prisma.week.findMany({ where: { tournamentId: overviewPage }, orderBy: { number: "asc" } });
+    const target = weeks.find((week) => week.number === weekNumber);
+    const published = !scheduleOnly && target ? await prisma.leagueWeek.count({ where: { weekId: target.id, status: "PUBLISHED" } }) : 0;
+    assertSequentialIngest(weekNumber, scheduleOnly, weeks.map((week) => ({ number: week.number, scheduleReady: Boolean(week.scheduleImportedAt), resultsReady: Boolean(week.resultsImportedAt) })), published > 0);
   }
-  return leagues;
 }
 
 export async function runLeaguepediaIngest({
@@ -528,12 +495,9 @@ export async function runLeaguepediaIngest({
     const counts = await ingestTournament(overviewPage, weekNumber, run.id, scheduleOnly);
 
     if (!scheduleOnly && weekNumber !== null) {
-      const target = await prisma.leagueWeek.findFirst({
-        where: { league: { tournamentId: overviewPage }, week: { number: weekNumber } },
-        select: { id: true },
-      });
+      const target = await prisma.week.findUnique({ where: { tournamentId_number: { tournamentId: overviewPage, number: weekNumber } }, select: { id: true } });
       if (target) {
-        const validation = await validateLeagueWeek(target.id);
+        const validation = await validateWeekData(target.id);
         if (!validation.ok) {
           const details = validation.errors.slice(0, 5).join("; ");
           throw new Error(
@@ -549,14 +513,7 @@ export async function runLeaguepediaIngest({
     });
 
     if (!scheduleOnly && weekNumber !== null) {
-      await prisma.leagueWeek.updateMany({
-        where: {
-          league: { tournamentId: overviewPage },
-          week: { number: weekNumber },
-          status: { in: ["LOCKED", "RESULTS_IMPORTED"] },
-        },
-        data: { status: "RESULTS_IMPORTED", resultsImportedAt: new Date() },
-      });
+      await prisma.week.update({ where: { tournamentId_number: { tournamentId: overviewPage, number: weekNumber } }, data: { resultsImportedAt: new Date() } });
     }
     return counts;
   } catch (error) {

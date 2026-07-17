@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export default function ImportForm() {
+export default function ImportForm({ leagueId }: { leagueId: number }) {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -14,14 +14,14 @@ export default function ImportForm() {
       setStatus("Choose a backup file first.");
       return;
     }
-    if (!confirm("Importing REPLACES all current rosters, picks, and crystal ball answers. Continue?")) {
+    if (!confirm("Importing replaces this league's rosters, picks, Crystal Ball answers, roles, and scores. Other leagues and LCK data are untouched. Continue?")) {
       return;
     }
     setBusy(true);
     setStatus("Importing…");
     try {
       const text = await file.text();
-      const res = await fetch("/api/import", {
+      const res = await fetch(`/api/import?leagueId=${leagueId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: text,

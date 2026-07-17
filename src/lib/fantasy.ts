@@ -54,8 +54,17 @@ export async function getDefaultTournamentId(): Promise<string | null> {
   )?.id ?? null;
 }
 
-export async function getDemoLeague() {
-  return prisma.league.findFirst({
+export async function getDemoLeague(leagueId?: number) {
+  let id = leagueId;
+  if (!id) {
+    const [{ getCurrentUser }, { getPreferredMembership }] = await Promise.all([import("./auth"), import("./leagues")]);
+    const user = await getCurrentUser();
+    if (!user) return null;
+    id = (await getPreferredMembership(user.id))?.leagueId;
+  }
+  if (!id) return null;
+  return prisma.league.findUnique({
+    where: { id },
     include: {
       fantasyTeams: {
         include: {
@@ -119,11 +128,11 @@ export interface FantasyStanding {
  * Full league standings: per-week roster + pickem points for every participant.
  * With a cutoff, matches scheduled at/after it count as not-yet-played.
  */
-export async function computeStandings(cutoff: Date | null = null): Promise<{
+export async function computeStandings(cutoff: Date | null = null, leagueId?: number): Promise<{
   standings: FantasyStanding[];
   weeks: { number: number; startsAt: Date; endsAt: Date }[];
 } | null> {
-  const league = await getDemoLeague();
+  const league = await getDemoLeague(leagueId);
   if (!league) return null;
   const cfg = parseScoring(league.scoringConfig);
   const allWeeks = await loadWeeks(league.tournamentId);
@@ -174,7 +183,7 @@ export async function computeStandings(cutoff: Date | null = null): Promise<{
     ...w,
     matches: w.matches.filter((m) => cutoff === null || m.scheduledAt < cutoff),
   }));
-  const pickems = await prisma.pickem.findMany();
+  const pickems = await prisma.pickem.findMany({ where: { leagueId: league.id } });
 
   const standings: FantasyStanding[] = [];
   for (const ft of league.fantasyTeams) {

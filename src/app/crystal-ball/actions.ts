@@ -13,10 +13,10 @@ export async function saveCrystalBall(formData: FormData) {
     where: { id: questionId },
     include: { league: true },
   });
-  const member = await prisma.fantasyTeam.findUnique({
+  const membership = await prisma.leagueMembership.findUnique({
     where: { leagueId_userId: { leagueId: question.leagueId, userId: user.id } },
   });
-  if (!member) throw new Error("You are not a member of this league");
+  if (!membership) throw new Error("You are not a member of this league");
   if (question.league.crystalBallLockedAt || question.league.seasonStatus !== "PRESEASON") {
     throw new Error("Crystal Ball answers are locked for the season");
   }

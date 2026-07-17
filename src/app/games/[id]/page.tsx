@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { parseScoring, fmtDate, fmtLength, ROLE_ORDER, round1 } from "@/lib/fantasy";
 import { playerGamePoints } from "@/lib/scoring";
+import { requireLeagueMember } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export default async function GamePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const access = await requireLeagueMember();
   const gameId = decodeURIComponent(id);
   const game = await prisma.game.findUnique({
     where: { id: gameId },
@@ -26,10 +28,9 @@ export default async function GamePage({
       events: { orderBy: { timestampMs: "asc" } },
     },
   });
-  if (!game) notFound();
+  if (!game || game.match.tournamentId !== access.league.tournamentId) notFound();
 
-  const league = await prisma.league.findFirst();
-  const cfg = parseScoring(league?.scoringConfig);
+  const cfg = parseScoring(access.league.scoringConfig);
 
   const sides = [...new Set(game.playerStats.map((p) => p.teamId))];
   const roleIdx = (r: string | null) => {

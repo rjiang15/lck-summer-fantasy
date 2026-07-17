@@ -4,13 +4,16 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { fmtDate, fmtLength } from "@/lib/fantasy";
 import { getViewState, isFinished } from "@/lib/view";
+import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function GamesPage() {
   const view = await getViewState();
   if (!view) {
-    return <p>No data ingested yet. Run an ingest script first.</p>;
+    if (await getCurrentUser()) redirect("/leagues");
+    return <section className="card empty-state"><h1>LCK Fantasy</h1><p>Run one account across multiple live or test leagues, with weekly pick&apos;ems, rosters, Crystal Ball predictions, and granular LCK stats.</p><div className="inline-form"><Link href="/signup">Create account</Link><Link href="/login">Sign in</Link><Link href="/join">Join with invite</Link></div></section>;
   }
   const weeks = await prisma.week.findMany({
     where: { tournamentId: view.tournamentId },

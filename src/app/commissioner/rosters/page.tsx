@@ -1,4 +1,4 @@
-import { requireCommish } from "@/lib/auth";
+import { requireLeagueManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { addRosterSlot, updateRosterSlot } from "../actions";
 
@@ -8,14 +8,15 @@ const slotRole: Record<string, string | undefined> = { TOP: "Top", JNG: "Jungle"
 const requiredSlots = ["TOP", "JNG", "MID", "BOT", "SUP"];
 
 export default async function RostersPage() {
-  await requireCommish();
-  const league = await prisma.league.findFirst({
+  const access = await requireLeagueManager();
+  const league = await prisma.league.findUnique({ where: { id: access.league.id },
     include: { fantasyTeams: { orderBy: { id: "asc" }, include: { user: true, roster: { include: { player: true } } } } },
   });
   if (!league) return <p>No league exists.</p>;
-  const players = await prisma.proPlayer.findMany({
-    where: { tournamentId: league.tournamentId }, orderBy: [{ role: "asc" }, { name: "asc" }],
+  const eligibleRows = await prisma.tournamentPlayer.findMany({
+    where: { tournamentId: league.tournamentId }, include: { player: true }, orderBy: [{ role: "asc" }, { player: { name: "asc" } }],
   });
+  const players = eligibleRows.map((row) => ({ ...row.player, role: row.role ?? row.player.role, teamId: row.teamId ?? row.player.teamId }));
   return (
     <>
       <h1>Future rosters</h1>

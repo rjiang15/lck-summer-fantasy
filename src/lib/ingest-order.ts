@@ -1,45 +1,27 @@
-export interface LeagueIngestState {
-  currentWeek: number;
-  targetStatus: string | null;
+export interface SharedWeekState {
+  number: number;
+  scheduleReady: boolean;
+  resultsReady: boolean;
 }
 
-const SCHEDULE_STATUSES = new Set<string | null>([null, "UPCOMING", "OPEN"]);
-const RESULT_STATUSES = new Set<string | null>(["LOCKED", "RESULTS_IMPORTED"]);
-
-/** Enforce the season's one-week-at-a-time import state machine. */
+/** Enforce one canonical, chronological LCK dataset independent of fantasy leagues. */
 export function assertSequentialIngest(
   requestedWeek: number,
   scheduleOnly: boolean,
-  leagues: LeagueIngestState[],
+  weeks: SharedWeekState[],
+  resultsPublished = false,
 ) {
-  if (!Number.isInteger(requestedWeek) || requestedWeek < 1) {
-    throw new Error("The ingest week must be a positive whole number");
+  if (!Number.isInteger(requestedWeek) || requestedWeek < 1) throw new Error("The ingest week must be a positive whole number");
+  const target = weeks.find((week) => week.number === requestedWeek);
+  if (scheduleOnly) {
+    const ready = weeks.filter((week) => week.scheduleReady).map((week) => week.number);
+    const next = ready.length ? Math.max(...ready) + 1 : 1;
+    if (!target?.scheduleReady && requestedWeek !== next) throw new Error(`Week ${next} schedule must be fetched next`);
+    if (requestedWeek > 1 && !weeks.find((week) => week.number === requestedWeek - 1)?.resultsReady) {
+      throw new Error(`Import Week ${requestedWeek - 1} results before fetching Week ${requestedWeek}`);
+    }
+    return;
   }
-
-  for (const league of leagues) {
-    const expectedWeek = league.currentWeek + 1;
-    if (requestedWeek !== expectedWeek) {
-      throw new Error(
-        `Week ${expectedWeek} must be fetched next; Week ${requestedWeek} would be out of order`,
-      );
-    }
-
-    if (scheduleOnly && !SCHEDULE_STATUSES.has(league.targetStatus)) {
-      throw new Error(
-        `Week ${requestedWeek} is already ${league.targetStatus}; its schedule can no longer be changed`,
-      );
-    }
-
-    if (!scheduleOnly && !RESULT_STATUSES.has(league.targetStatus)) {
-      if (league.targetStatus === null) {
-        throw new Error(`Fetch the Week ${requestedWeek} schedule before fetching results`);
-      }
-      if (league.targetStatus === "UPCOMING" || league.targetStatus === "OPEN") {
-        throw new Error(`Lock Week ${requestedWeek} picks and rosters before fetching results`);
-      }
-      throw new Error(
-        `Week ${requestedWeek} is already ${league.targetStatus}; its results can no longer be changed`,
-      );
-    }
-  }
+  if (!target?.scheduleReady) throw new Error(`Fetch the Week ${requestedWeek} schedule before fetching results`);
+  if (target.resultsReady && resultsPublished) throw new Error(`Week ${requestedWeek} results are already used by a published league and cannot be refreshed`);
 }

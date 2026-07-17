@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireCommish } from "@/lib/auth";
+import { requireLeagueManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { finishSeason, fetchNextWeekResults, fetchNextWeekSchedule, gradeCrystalBall, lockWeek, openWeek, publishWeek, updateScoringConfig, validateAndScoreWeek } from "./actions";
 import { IngestButton } from "./IngestButton";
@@ -12,9 +12,9 @@ export default async function CommissionerPage({
 }: {
   searchParams: Promise<{ notice?: string; error?: string }>;
 }) {
-  await requireCommish();
+  const access = await requireLeagueManager();
   const feedback = await searchParams;
-  const league = await prisma.league.findFirst({ include: { cbQuestions: true } });
+  const league = await prisma.league.findUnique({ where: { id: access.league.id }, include: { cbQuestions: true } });
   if (!league) return <p>No league exists.</p>;
   const weeks = await prisma.leagueWeek.findMany({
     where: { leagueId: league.id },

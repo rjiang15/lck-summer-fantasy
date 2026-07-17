@@ -1,13 +1,13 @@
-import { requireUser } from "@/lib/auth";
+import { requireLeagueMember } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { saveCrystalBall } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function CrystalBallPage() {
-  const user = await requireUser();
-  const team = await prisma.fantasyTeam.findFirst({
-    where: { userId: user.id },
+  const { user, league } = await requireLeagueMember();
+  const team = await prisma.fantasyTeam.findUnique({
+    where: { leagueId_userId: { leagueId: league.id, userId: user.id } },
     include: {
       league: {
         include: {

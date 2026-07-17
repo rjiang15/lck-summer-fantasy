@@ -46,9 +46,30 @@ export async function validateLeagueWeek(leagueWeekId: number) {
       },
     },
   });
+  return validateLoadedWeek(lw.week);
+}
+
+export async function validateWeekData(weekId: number) {
+  const week = await prisma.week.findUniqueOrThrow({
+    where: { id: weekId },
+    include: {
+      matches: {
+        include: { games: { include: { playerStats: true, teamStats: true, draftActions: true } } },
+      },
+    },
+  });
+  return validateLoadedWeek(week);
+}
+
+function validateLoadedWeek(lw: {
+  matches: Array<{
+    team1: string; team2: string; winner: string | null; team1Score: number | null; team2Score: number | null;
+    games: Array<{ id: string; winner: string | null; playerStats: unknown[]; teamStats: unknown[]; draftActions: unknown[] }>;
+  }>;
+}) {
   const errors: string[] = [];
-  if (lw.week.matches.length === 0) errors.push("Week has no scheduled matches");
-  for (const match of lw.week.matches) {
+  if (lw.matches.length === 0) errors.push("Week has no scheduled matches");
+  for (const match of lw.matches) {
     if (!match.winner || ![match.team1, match.team2].includes(match.winner)) {
       errors.push(`${match.team1} vs ${match.team2}: missing or invalid winner`);
     }
@@ -67,8 +88,8 @@ export async function validateLeagueWeek(leagueWeekId: number) {
   return {
     ok: errors.length === 0,
     errors,
-    matches: lw.week.matches.length,
-    games: lw.week.matches.reduce((n, m) => n + m.games.length, 0),
+    matches: lw.matches.length,
+    games: lw.matches.reduce((n, m) => n + m.games.length, 0),
   };
 }
 
@@ -112,7 +133,7 @@ export async function calculateWeeklyScores(leagueWeekId: number) {
   });
   const config = parseScoring(lw.league.scoringConfig);
   const picks = await prisma.pickem.findMany({
-    where: { match: { weekId: lw.weekId } },
+    where: { leagueId: lw.leagueId, match: { weekId: lw.weekId } },
   });
   await prisma.$transaction(async (tx) => {
     for (const team of lw.league.fantasyTeams) {

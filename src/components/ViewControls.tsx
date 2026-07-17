@@ -5,21 +5,19 @@
 import { usePathname } from "next/navigation";
 
 export default function ViewControls({
-  tournaments,
-  tournamentId,
+  leagueId,
   completedWeek,
   maxWeek,
   isLive,
 }: {
-  tournaments: { id: string; name: string }[];
-  tournamentId: string;
+  leagueId: number;
   completedWeek: number | null; // null = Final
   maxWeek: number;
   isLive: boolean;
 }) {
   const pathname = usePathname();
   const go = (params: string) => {
-    window.location.href = `/api/view?${params}&back=${encodeURIComponent(pathname)}`;
+    window.location.href = `/api/view?leagueId=${leagueId}&${params}&back=${encodeURIComponent(pathname)}`;
   };
 
   const prev = completedWeek === null ? maxWeek - 1 : Math.max(0, completedWeek - 1);
@@ -38,17 +36,6 @@ export default function ViewControls({
 
   return (
     <span className="view-controls">
-      <select
-        value={tournamentId}
-        onChange={(e) => go(`tournament=${encodeURIComponent(e.target.value)}`)}
-        style={{ maxWidth: "220px" }}
-      >
-        {tournaments.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.name}
-          </option>
-        ))}
-      </select>
       {!isLive && <button
           onClick={() => go(`week=${prev}`)}
           disabled={completedWeek === 0}

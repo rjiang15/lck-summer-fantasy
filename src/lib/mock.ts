@@ -53,6 +53,7 @@ export async function seedMockSeason(tournamentId: string, opts: MockOptions = {
   const league = await prisma.league.create({
     data: {
       name: "Mock Season",
+      slug: "mock-season",
       inviteCode: "MOCK",
       tournamentId,
       scoringConfig: JSON.stringify(DEFAULT_SCORING),
@@ -63,16 +64,19 @@ export async function seedMockSeason(tournamentId: string, opts: MockOptions = {
 
   const usernames = [human, ...bots];
   const users = [];
-  for (const [i, username] of usernames.entries()) {
+  for (const username of usernames) {
     users.push(
       await prisma.user.create({
         data: {
           username,
           passwordHash: username === human && opts.humanPasswordHash ? opts.humanPasswordHash : "mock-no-login-yet",
-          isCommish: i === 0,
+          siteAdmin: false,
         },
       }),
     );
+  }
+  for (const [index, user] of users.entries()) {
+    await prisma.leagueMembership.create({ data: { leagueId: league.id, userId: user.id, role: index === 0 ? "OWNER" : "PARTICIPANT" } });
   }
   const teams = [];
   for (const u of users) {
@@ -150,7 +154,7 @@ export async function seedMockSeason(tournamentId: string, opts: MockOptions = {
           ? `${winsNeeded}-${loserGames}`
           : `${loserGames}-${winsNeeded}`;
       await prisma.pickem.create({
-        data: { userId: u.id, matchId: m.id, predictedWinner, predictedScore },
+        data: { leagueId: league.id, userId: u.id, matchId: m.id, predictedWinner, predictedScore },
       });
       pickemCount++;
     }

@@ -12,7 +12,7 @@ import {
 } from "@/lib/fantasy";
 import { playerGamePoints, pickemPoints } from "@/lib/scoring";
 import { getViewState, isFinished } from "@/lib/view";
-import { getCurrentUser } from "@/lib/auth";
+import { requireLeagueMember } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +22,7 @@ export default async function ParticipantPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const access = await requireLeagueMember();
   const ft = await prisma.fantasyTeam.findUnique({
     where: { id: Number(id) },
     include: {
@@ -35,18 +36,18 @@ export default async function ParticipantPage({
       roster: { include: { player: true } },
     },
   });
-  if (!ft) notFound();
+  if (!ft || ft.leagueId !== access.league.id) notFound();
 
   const view = await getViewState();
-  const viewer = await getCurrentUser();
+  const viewer = access.user;
   const cutoff = view?.cutoff ?? null;
   const cfg = parseScoring(ft.league.scoringConfig);
   const weeks = await loadWeeks(ft.league.tournamentId);
   const pickems = await prisma.pickem.findMany({
-    where: { userId: ft.userId },
+    where: { leagueId: ft.leagueId, userId: ft.userId },
     include: { match: { include: { week: true } } },
   });
-  const standings = await computeStandings(cutoff);
+  const standings = await computeStandings(cutoff, ft.leagueId);
   const mine = standings?.standings.find((s) => s.fantasyTeamId === ft.id);
 
   const publishedWeekIds = new Set(

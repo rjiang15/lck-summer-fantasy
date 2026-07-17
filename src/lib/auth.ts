@@ -4,6 +4,7 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "./db";
+import { getPreferredMembership, isManagerRole } from "./leagues";
 
 const COOKIE_NAME = "lck_session";
 const SESSION_DAYS = 30;
@@ -70,10 +71,32 @@ export async function requireUser() {
   return user;
 }
 
-export async function requireCommish() {
+export async function requireLeagueMember(leagueId?: number) {
   const user = await requireUser();
-  if (!user.isCommish) throw new Error("Commissioner access required");
-  return user;
+  const membership = leagueId
+    ? await prisma.leagueMembership.findUnique({
+        where: { leagueId_userId: { leagueId, userId: user.id } },
+        include: { league: true },
+      })
+    : await getPreferredMembership(user.id);
+  if (!membership) throw new Error("League membership required");
+  return { user, membership, league: membership.league };
+}
+
+export async function requireLeagueManager(leagueId?: number) {
+  const access = await requireLeagueMember(leagueId);
+  if (!access.user.siteAdmin && !isManagerRole(access.membership.role)) {
+    throw new Error("Commissioner access required for this league");
+  }
+  return access;
+}
+
+export async function requireLeagueOwner(leagueId: number) {
+  const access = await requireLeagueMember(leagueId);
+  if (!access.user.siteAdmin && access.membership.role !== "OWNER") {
+    throw new Error("League owner access required");
+  }
+  return access;
 }
 
 export const isUnclaimedPassword = (hash: string) => hash === "mock-no-login-yet";

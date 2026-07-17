@@ -8,9 +8,13 @@
 
 import { cookies } from "next/headers";
 import { prisma } from "./db";
-import { getDefaultTournamentId } from "./fantasy";
+import { getCurrentUser } from "./auth";
+import { getPreferredMembership } from "./leagues";
 
 export interface ViewState {
+  leagueId: number;
+  leagueSlug: string;
+  leagueName: string;
   tournamentId: string;
   tournamentName: string;
   /** Completed-through week (0 = preseason). null = Final: everything visible. */
@@ -24,32 +28,31 @@ export interface ViewState {
   isLive: boolean;
 }
 
-export async function getViewState(): Promise<ViewState | null> {
+export async function getViewState(leagueId?: number): Promise<ViewState | null> {
   const jar = await cookies();
-  const tournaments = await prisma.tournament.findMany({
-    where: { hidden: false },
-    select: { id: true, name: true },
-  });
-  let tournamentId = jar.get("viewTournament")?.value ?? null;
-  if (!tournamentId || !tournaments.some((t) => t.id === tournamentId)) {
-    tournamentId = await getDefaultTournamentId();
+  let resolvedLeagueId = leagueId;
+  if (!resolvedLeagueId) {
+    const user = await getCurrentUser();
+    if (!user) return null;
+    resolvedLeagueId = (await getPreferredMembership(user.id))?.leagueId;
   }
-  if (!tournamentId) return null;
+  if (!resolvedLeagueId) return null;
+  const league = await prisma.league.findUnique({ where: { id: resolvedLeagueId } });
+  if (!league) return null;
+  const tournament = await prisma.tournament.findUnique({ where: { id: league.tournamentId } });
+  if (!tournament) return null;
+  const tournamentId = league.tournamentId;
 
   const weeks = await prisma.week.findMany({
     where: { tournamentId },
     orderBy: { number: "asc" },
   });
   const maxWeek = weeks.length ? weeks[weeks.length - 1].number : 0;
-  const liveLeague = await prisma.league.findFirst({
-    where: { tournamentId, isSimulation: false, seasonStatus: { not: "FINAL" } },
-    select: { currentWeek: true },
-  });
-
-  const raw = jar.get("viewWeek")?.value;
+  const isLive = !league.isSimulation && league.seasonStatus !== "FINAL";
+  const raw = jar.get(`viewWeek_${league.id}`)?.value;
   let completedWeek: number | null;
-  if (liveLeague) {
-    completedWeek = liveLeague.currentWeek;
+  if (isLive) {
+    completedWeek = league.currentWeek;
   } else {
     completedWeek = raw != null && raw !== "final" ? parseInt(raw, 10) : null;
     // "after the last week" is the same as Final for archived/simulated splits.
@@ -65,13 +68,16 @@ export async function getViewState(): Promise<ViewState | null> {
     openWeek === null ? null : weeks.find((w) => w.number === openWeek)?.startsAt ?? null;
 
   return {
+    leagueId: league.id,
+    leagueSlug: league.slug,
+    leagueName: league.name,
     tournamentId,
-    tournamentName: tournaments.find((t) => t.id === tournamentId)?.name ?? tournamentId,
+    tournamentName: tournament.name,
     completedWeek,
     openWeek,
     maxWeek,
     cutoff,
-    isLive: liveLeague !== null,
+    isLive,
   };
 }
 

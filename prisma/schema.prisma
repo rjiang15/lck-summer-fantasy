@@ -13,14 +13,15 @@ datasource db {
 // ---------- Esports data (ingested from Leaguepedia) ----------
 
 model Tournament {
-  id         String      @id // Leaguepedia OverviewPage, e.g. "LCK/2026 Season/Rounds 3-5"
-  name       String
-  hidden     Boolean     @default(false) // hide duplicates (e.g. OE copy of an LP split) from the UI
-  dateStart  DateTime?
-  dateEnd    DateTime?
-  matches    Match[]
-  weeks      Week[]
-  proPlayers ProPlayer[]
+  id            String             @id // Leaguepedia OverviewPage, e.g. "LCK/2026 Season/Rounds 3-5"
+  name          String
+  hidden        Boolean            @default(false) // hide duplicates (e.g. OE copy of an LP split) from the UI
+  dateStart     DateTime?
+  dateEnd       DateTime?
+  matches       Match[]
+  weeks         Week[]
+  proPlayers    ProPlayer[]
+  rosterPlayers TournamentPlayer[]
 }
 
 model ProTeam {
@@ -41,17 +42,34 @@ model ProPlayer {
   timeline          PlayerTimelineSnapshot[]
   rosterSlots       RosterSlot[]
   weeklyRosterSlots WeeklyRosterSlot[]
+  tournamentRosters TournamentPlayer[]
+}
+
+model TournamentPlayer {
+  id           Int        @id @default(autoincrement())
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournamentId String
+  player       ProPlayer  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId     String
+  teamId       String?
+  role         String?
+  importedAt   DateTime   @default(now())
+
+  @@unique([tournamentId, playerId])
+  @@index([tournamentId, role])
 }
 
 model Week {
-  id           Int          @id @default(autoincrement())
-  tournament   Tournament   @relation(fields: [tournamentId], references: [id])
-  tournamentId String
-  number       Int
-  startsAt     DateTime
-  endsAt       DateTime
-  matches      Match[]
-  leagueWeeks  LeagueWeek[]
+  id                 Int          @id @default(autoincrement())
+  tournament         Tournament   @relation(fields: [tournamentId], references: [id])
+  tournamentId       String
+  number             Int
+  startsAt           DateTime
+  endsAt             DateTime
+  matches            Match[]
+  leagueWeeks        LeagueWeek[]
+  scheduleImportedAt DateTime?
+  resultsImportedAt  DateTime?
 
   @@unique([tournamentId, number])
 }
@@ -282,12 +300,13 @@ model User {
   id           Int                 @id @default(autoincrement())
   username     String              @unique
   passwordHash String
-  isCommish    Boolean             @default(false)
+  siteAdmin    Boolean             @default(false) @map("isCommish")
   createdAt    DateTime            @default(now())
   fantasyTeams FantasyTeam[]
   pickems      Pickem[]
   cbAnswers    CrystalBallAnswer[]
   sessions     Session[]
+  memberships  LeagueMembership[]
 }
 
 model Session {
@@ -304,6 +323,7 @@ model Session {
 model League {
   id                  Int                   @id @default(autoincrement())
   name                String
+  slug                String                @unique @default("")
   inviteCode          String                @unique
   tournamentId        String // which LCK split this league runs on
   scoringConfig       String // JSON: per-stat point values, pickem winner/exact-score values, etc.
@@ -314,6 +334,21 @@ model League {
   crystalBallLockedAt DateTime?
   isSimulation        Boolean               @default(false)
   leagueWeeks         LeagueWeek[]
+  memberships         LeagueMembership[]
+  pickems             Pickem[]
+}
+
+model LeagueMembership {
+  id       Int      @id @default(autoincrement())
+  league   League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  leagueId Int
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   Int
+  role     String   @default("PARTICIPANT") // OWNER | COMMISSIONER | PARTICIPANT
+  joinedAt DateTime @default(now())
+
+  @@unique([leagueId, userId])
+  @@index([userId, role])
 }
 
 model LeagueWeek {
@@ -340,7 +375,7 @@ model LeagueWeek {
 
 model FantasyTeam {
   id           Int                @id @default(autoincrement())
-  league       League             @relation(fields: [leagueId], references: [id])
+  league       League             @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   leagueId     Int
   user         User               @relation(fields: [userId], references: [id])
   userId       Int
@@ -386,7 +421,7 @@ model WeeklyScore {
 
 model RosterSlot {
   id            Int         @id @default(autoincrement())
-  fantasyTeam   FantasyTeam @relation(fields: [fantasyTeamId], references: [id])
+  fantasyTeam   FantasyTeam @relation(fields: [fantasyTeamId], references: [id], onDelete: Cascade)
   fantasyTeamId Int
   player        ProPlayer   @relation(fields: [playerId], references: [id])
   playerId      String
@@ -399,6 +434,8 @@ model Pickem {
   id              Int      @id @default(autoincrement())
   user            User     @relation(fields: [userId], references: [id])
   userId          Int
+  league          League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  leagueId        Int
   match           Match    @relation(fields: [matchId], references: [id])
   matchId         String
   predictedWinner String
@@ -406,12 +443,13 @@ model Pickem {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  @@unique([userId, matchId])
+  @@unique([leagueId, userId, matchId])
+  @@index([userId, leagueId])
 }
 
 model CrystalBallQuestion {
   id             Int                 @id @default(autoincrement())
-  league         League              @relation(fields: [leagueId], references: [id])
+  league         League              @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   leagueId       Int
   prompt         String
   answerType     String // team | player | champion | yes_no | over_under

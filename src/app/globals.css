@@ -90,6 +90,19 @@ h1 { font-size: 1.4rem; margin: 0.5rem 0 1rem; }
 h2 { font-size: 1.1rem; margin: 2rem 0 0.75rem; }
 .muted { color: var(--muted); }
 .small { font-size: 0.85rem; }
+.section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.section-heading h1, .section-heading h2 { margin-top: 0.5rem; }
+.button-link {
+  display: inline-block;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.button-link:hover { border-color: var(--accent); text-decoration: none; }
+.empty-state { padding: 2rem; text-align: center; }
+.empty-state .inline-form { justify-content: center; }
 
 table {
   width: 100%;
@@ -150,6 +163,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .stack { display: grid; gap: 0.8rem; }
 .stack label { display: grid; gap: 0.25rem; }
+.stack label.inline-form { display: flex; align-items: center; gap: 0.5rem; }
+.stack label.inline-form input[type="checkbox"] { margin: 0; flex: 0 0 auto; }
 input, select, button {
   font: inherit;
   color: var(--text);
@@ -201,4 +216,5 @@ button:disabled { cursor: wait; opacity: 0.65; }
   .nav-sections { grid-template-columns: 1fr; gap: 0.55rem; }
   .nav-group { grid-template-columns: 6rem minmax(0, 1fr); gap: 0.6rem; align-items: baseline; }
   .nav-group-links { gap: 0.45rem 0.9rem; }
+  .section-heading { flex-direction: column; gap: 0.25rem; }
 }
