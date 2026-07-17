@@ -1,8 +1,9 @@
 // Replace legacy/manual Crystal Ball questions only when a league has no
-// participant answers. Existing predictions are never deleted implicitly.
+// participant answers. Current automatic questions can safely receive updated
+// prompts/scoring rules without deleting participant predictions.
 
 import { prisma } from "../lib/db";
-import { DEFAULT_CRYSTAL_BALL } from "../lib/crystal-ball";
+import { DEFAULT_CRYSTAL_BALL, settleCrystalBall } from "../lib/crystal-ball";
 
 async function main() {
   const leagues = await prisma.league.findMany({
@@ -14,7 +15,23 @@ async function main() {
     const currentKeys = new Set(league.cbQuestions.flatMap((question) => question.metricKey ? [question.metricKey] : []));
     const alreadyCurrent = DEFAULT_CRYSTAL_BALL.every((question) => currentKeys.has(question.metricKey));
     if (alreadyCurrent) {
-      results.push({ leagueId: league.id, status: "already current", questions: league.cbQuestions.length });
+      // Capture the new ranking payload before changing a previously settled
+      // league to RANKED grading, so historical winners never temporarily lose points.
+      if (league.seasonStatus === "FINAL") await settleCrystalBall(league.id);
+      const byMetric = new Map(league.cbQuestions.flatMap((question) => question.metricKey ? [[question.metricKey, question] as const] : []));
+      await prisma.$transaction(DEFAULT_CRYSTAL_BALL.map((definition) => prisma.crystalBallQuestion.update({
+        where: { id: byMetric.get(definition.metricKey)!.id },
+        data: {
+          prompt: definition.prompt,
+          answerType: definition.answerType,
+          points: definition.points,
+          gradingMode: definition.gradingMode,
+          resolverConfig: definition.resolverConfig,
+          partialRule: null,
+          partialAnswers: null,
+        },
+      })));
+      results.push({ leagueId: league.id, status: `scoring synchronized (${answers} answers preserved${league.seasonStatus === "FINAL" ? ", final results regraded" : ""})`, questions: league.cbQuestions.length });
       continue;
     }
     if (answers > 0) {

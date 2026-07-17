@@ -415,6 +415,16 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .crystal-participant-pick .entity-label > span:last-child { max-width: 4.8rem; }
 .leaderboard-answer-card .entity-icon.md { --entity-size: 2rem; }
 .leaderboard-answer-card .entity-label { gap: 0.3rem; font-size: 0.75rem; }
+.crystal-podium { display: grid; gap: 0.25rem; margin: 0.1rem 0 0.25rem; }
+.crystal-podium-tier { display: grid; grid-template-columns: 2.7rem minmax(0, 1fr); gap: 0.35rem; align-items: center; min-height: 2rem; padding: 0.25rem 0.35rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.crystal-podium-tier > span { display: grid; line-height: 1.05; }
+.crystal-podium-tier > span b { color: var(--accent); font-size: 0.72rem; }
+.crystal-podium-tier > span small { padding: 0; font-size: 0.57rem; }
+.crystal-podium-tier > div { display: flex; min-width: 0; justify-content: flex-end; gap: 0.3rem; flex-wrap: wrap; }
+.crystal-podium-tier .entity-label { max-width: 100%; }
+.crystal-podium-tier.place-1 { border-color: color-mix(in srgb, #d9ad3d 52%, var(--border)); background: color-mix(in srgb, #d9ad3d 7%, var(--bg)); }
+.crystal-podium-tier.place-2 { border-color: color-mix(in srgb, #a9b1bf 45%, var(--border)); }
+.crystal-podium-tier.place-3 { border-color: color-mix(in srgb, #b8784b 40%, var(--border)); }
 .macro-table td { height: 3rem; }
 .macro-team-cell { display: inline-flex; align-items: center; }
 .macro-champion-cell { display: inline-grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 0.5rem; }
@@ -523,6 +533,10 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .crystal-result > span, .crystal-resolved-values { grid-column: 1; }
 .crystal-result > b { grid-column: 2; grid-row: 1 / span 2; }
 .crystal-resolved-values { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+.crystal-final-podium { display: grid; grid-column: 1; gap: 0.35rem; }
+.crystal-final-podium > div { display: flex; align-items: center; gap: 0.5rem; }
+.crystal-final-podium > div > small { width: 4.2rem; flex: 0 0 4.2rem; color: var(--muted); font-weight: 750; }
+.crystal-final-podium > div > span { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
 .picker-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 1.25rem; background: color-mix(in srgb, #08080c 72%, transparent); backdrop-filter: blur(3px); }
 .picker-dialog { display: grid; grid-template-rows: auto minmax(0, 1fr); width: min(780px, 100%); max-height: min(82vh, 760px); overflow: hidden; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); border-radius: 14px; background: var(--card); box-shadow: 0 24px 80px color-mix(in srgb, #000 42%, transparent); }
 .picker-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem 1.1rem; border-bottom: 1px solid var(--border); }

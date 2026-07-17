@@ -86,7 +86,7 @@ export default function CrystalBallForm({
               <span>{index + 1}</span>
               <div>
                 <h2>{question.prompt}</h2>
-                <p>{question.points} points{question.gradingMode === "CLOSEST" ? " · closest prediction wins" : ""}</p>
+                <p>{questionScoreLabel(question)}</p>
               </div>
             </div>
             <input type="hidden" name={`answer_${question.id}`} value={answer} />
@@ -118,6 +118,12 @@ export default function CrystalBallForm({
       onClose={() => setPicker(null)}
     />}
   </>;
+}
+
+function questionScoreLabel(question: Pick<Question, "gradingMode" | "points">) {
+  if (question.gradingMode === "RANKED") return "50 points for 1st · 30 for 2nd · 10 for any lower ranked result";
+  if (question.gradingMode === "CLOSEST") return `${question.points} points · closest prediction wins`;
+  return `${question.points} points`;
 }
 
 function PredictionControl({

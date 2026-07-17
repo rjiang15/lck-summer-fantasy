@@ -269,17 +269,19 @@ export default async function CommissionerPage({
         <span className="muted small">Locks permanently after the first published week.</span>
       </form>
       <h2>Crystal Ball settlement</h2>
-      <p className="muted small">No manual grading is required. Finishing the season calculates every result from the stored tournament data; tied leaders all receive full credit and closest-number questions compare every submitted answer.</p>
+      <p className="muted small">No manual grading is required. Questions 1–10 use the stored final ranking (50 points for first, 30 for second, 10 for lower eligible ranks). Questions 11–20 are worth 30 points all-or-nothing, with closest-number questions comparing every submitted answer.</p>
       <div className="tablewrap"><table>
         <thead><tr><th>#</th><th>Question</th><th>Mode</th><th>Result</th><th>Audit</th></tr></thead>
         <tbody>{league.cbQuestions.map((question, index) => {
           const resolution = parseResolutionEvidence(question.resolutionData);
           const accepted = question.resolvedAnswers ? JSON.parse(question.resolvedAnswers) as string[] : [];
-          const result = question.gradingMode === "CLOSEST" && question.correctAnswer
+          const result = question.gradingMode === "RANKED" && resolution?.ranking
+            ? resolution.ranking.slice(0, 3).map((tier) => `${tier.rank}: ${tier.answers.join(" / ")}`).join(" · ")
+            : question.gradingMode === "CLOSEST" && question.correctAnswer
             ? `${question.correctAnswer} (closest prediction)`
             : accepted.join(" / ") || "Pending season finish";
           return <tr key={question.id}>
-            <td>{index + 1}</td><td style={{ whiteSpace: "normal" }}>{question.prompt}</td><td>{question.gradingMode === "CLOSEST" ? "Closest" : "Exact"}</td>
+            <td>{index + 1}</td><td style={{ whiteSpace: "normal" }}>{question.prompt}</td><td>{question.gradingMode === "RANKED" ? "Ranked 50/30/10" : question.gradingMode === "CLOSEST" ? "Closest · 30" : "Exact · 30"}</td>
             <td>{question.resolvedAt ? <span className="badge win">{result}</span> : <span className="badge pending">pending</span>}</td>
             <td className="small muted" style={{ whiteSpace: "normal" }}>{resolution?.evidence ?? "Calculated automatically after all weeks are published."}</td>
           </tr>;

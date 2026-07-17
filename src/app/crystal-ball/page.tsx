@@ -1,6 +1,6 @@
 import { requireLeagueMember } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { crystalBallPoints } from "@/lib/crystal-ball";
+import { crystalBallPoints, parseResolutionEvidence } from "@/lib/crystal-ball";
 import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
 import CrystalBallForm from "./CrystalBallForm";
 
@@ -65,12 +65,12 @@ export default async function CrystalBallPage() {
   return (
     <div className="crystal-page">
       <header className="section-heading crystal-heading">
-        <div><h1>Crystal Ball</h1><p className="muted small">Twenty season-long predictions, worth 10 points each.</p></div>
+        <div><h1>Crystal Ball</h1><p className="muted small">Twenty season-long predictions with podium scoring for champion and player questions.</p></div>
         <span className={`badge ${final ? "win" : locked ? "pending" : "win"}`}>{final ? "settled" : locked ? "locked for season" : "open in Week 0"}</span>
       </header>
       <div className="card crystal-rules">
         <b>Automatic grading</b>
-        <span className="muted small">Results come directly from the stored tournament games. Tied statistical leaders all count as correct. Questions 16 and 17 award points to every participant tied for the closest prediction.</span>
+        <span className="muted small">Questions 1–10 award 50 points for a first-place result, 30 for second, and 10 for any lower eligible rank. Ties share a rank. Questions 11–20 are worth 30 points with no partial credit; Questions 16 and 17 award it to every participant tied for closest.</span>
       </div>
       {!locked ? <CrystalBallForm
         key={team.league.id}
@@ -83,18 +83,23 @@ export default async function CrystalBallPage() {
         {team.league.cbQuestions.map((question, index) => {
           const existing = questions[index].existing;
           const earned = final ? crystalBallPoints(question, user.id) : null;
+          const resolution = parseResolutionEvidence(question.resolutionData);
+          const podium = question.gradingMode === "RANKED" ? resolution?.ranking?.slice(0, 3) ?? [] : [];
           const resolved = question.gradingMode === "CLOSEST"
             ? question.correctAnswer ? [question.correctAnswer] : []
             : question.resolvedAnswers ? JSON.parse(question.resolvedAnswers) as string[] : [];
           return <section className="card crystal-question" key={question.id}>
-            <div className="crystal-question-title"><span>{index + 1}</span><div><h2>{question.prompt}</h2><p>{question.points} points{question.gradingMode === "CLOSEST" ? " · closest prediction wins" : ""}</p></div></div>
+            <div className="crystal-question-title"><span>{index + 1}</span><div><h2>{question.prompt}</h2><p>{questionScoreLabel(question)}</p></div></div>
             {locked ? <div className="crystal-answer-block">
               <span>Your prediction</span>
               <AnswerValue value={existing} answerType={question.answerType} playerNames={playerNames} empty="No answer submitted" />
             </div> : null}
             {final && <div className="crystal-result">
-              <span>{question.gradingMode === "CLOSEST" ? "Actual total" : resolved.length > 1 ? "Accepted results" : "Result"}</span>
-              <div className="crystal-resolved-values">{resolved.map((answer) => <AnswerValue key={answer} value={answer} answerType={question.answerType} playerNames={playerNames} />)}</div>
+              <span>{question.gradingMode === "RANKED" ? "Final podium" : question.gradingMode === "CLOSEST" ? "Actual total" : resolved.length > 1 ? "Accepted results" : "Result"}</span>
+              {podium.length > 0 ? <div className="crystal-final-podium">{podium.map((tier) => <div key={tier.rank}>
+                <small>{tier.rank === 1 ? "1st · 50" : tier.rank === 2 ? "2nd · 30" : "3rd · 10"}</small>
+                <span>{tier.answers.map((answer) => <AnswerValue key={answer} value={answer} answerType={question.answerType} playerNames={playerNames} />)}</span>
+              </div>)}</div> : <div className="crystal-resolved-values">{resolved.map((answer) => <AnswerValue key={answer} value={answer} answerType={question.answerType} playerNames={playerNames} />)}</div>}
               <b className={earned && earned > 0 ? "win-text" : "loss-text"}>{earned && earned > 0 ? `+${earned} points` : "0 points"}</b>
             </div>}
           </section>;
@@ -102,6 +107,12 @@ export default async function CrystalBallPage() {
       </div>}
     </div>
   );
+}
+
+function questionScoreLabel(question: { gradingMode: string; points: number }) {
+  if (question.gradingMode === "RANKED") return "50 points for 1st · 30 for 2nd · 10 for lower ranks";
+  if (question.gradingMode === "CLOSEST") return `${question.points} points · closest prediction wins`;
+  return `${question.points} points · all or nothing`;
 }
 
 async function loadChampionOptions(fallback: string[]) {

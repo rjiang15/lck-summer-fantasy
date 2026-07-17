@@ -42,6 +42,16 @@ function snapshot(): CrystalBallSnapshot {
 test("approved Crystal Ball set has twenty unique automatic metrics", () => {
   assert.equal(DEFAULT_CRYSTAL_BALL.length, 20);
   assert.equal(new Set(DEFAULT_CRYSTAL_BALL.map((question) => question.metricKey)).size, 20);
+  assert.ok(DEFAULT_CRYSTAL_BALL.slice(0, 10).every((question) => question.gradingMode === "RANKED" && question.points === 50));
+  assert.ok(DEFAULT_CRYSTAL_BALL.slice(10).every((question) => question.gradingMode !== "RANKED" && question.points === 30));
+});
+
+test("ranked metrics store dense podium tiers, including ties", () => {
+  const result = resolveCrystalBallMetric("CHAMP_MOST_BANNED", snapshot());
+  assert.deepEqual(result.ranking?.slice(0, 2), [
+    { rank: 1, answers: ["Azir"], value: 12 },
+    { rank: 2, answers: ["Ahri"], value: 4 },
+  ]);
 });
 
 test("champion rate metrics enforce more than ten picks", () => {
@@ -76,10 +86,11 @@ test("exact ties and equally close number predictions all receive full credit", 
     resolvedAnswers: JSON.stringify(["Ahri", "Azir"]),
     partialAnswers: null,
     partialRule: null,
-    points: 10,
+    points: 30,
+    resolutionData: null,
     answers: [{ userId: 1, answer: "azir" }, { userId: 2, answer: "Orianna" }],
   };
-  assert.equal(crystalBallPoints(exact, 1), 10);
+  assert.equal(crystalBallPoints(exact, 1), 30);
   assert.equal(crystalBallPoints(exact, 2), 0);
 
   const closest = {
@@ -89,9 +100,40 @@ test("exact ties and equally close number predictions all receive full credit", 
     resolvedAnswers: JSON.stringify([]),
     answers: [{ userId: 1, answer: "28" }, { userId: 2, answer: "32" }, { userId: 3, answer: "40" }],
   };
-  assert.equal(crystalBallPoints(closest, 1), 10);
-  assert.equal(crystalBallPoints(closest, 2), 10);
+  assert.equal(crystalBallPoints(closest, 1), 30);
+  assert.equal(crystalBallPoints(closest, 2), 30);
   assert.equal(crystalBallPoints(closest, 3), 0);
+});
+
+test("ranked questions award 50 for first, 30 for second, and 10 for any lower eligible tier", () => {
+  const question = {
+    gradingMode: "RANKED",
+    correctAnswer: "Ahri",
+    resolvedAnswers: JSON.stringify(["Ahri", "Azir"]),
+    partialAnswers: null,
+    partialRule: null,
+    points: 50,
+    resolutionData: JSON.stringify({
+      acceptedAnswers: ["Ahri", "Azir"],
+      evidence: "test ranking",
+      values: { Ahri: 10, Azir: 10, Orianna: 9, Gnar: 8 },
+      ranking: [
+        { rank: 1, answers: ["Ahri", "Azir"], value: 10 },
+        { rank: 2, answers: ["Orianna"], value: 9 },
+        { rank: 3, answers: ["Gnar"], value: 8 },
+      ],
+    }),
+    answers: [
+      { userId: 1, answer: "azir" },
+      { userId: 2, answer: "Orianna" },
+      { userId: 3, answer: "Gnar" },
+      { userId: 4, answer: "Nocturne" },
+    ],
+  };
+  assert.equal(crystalBallPoints(question, 1), 50);
+  assert.equal(crystalBallPoints(question, 2), 30);
+  assert.equal(crystalBallPoints(question, 3), 10);
+  assert.equal(crystalBallPoints(question, 4), 0);
 });
 
 test("participant Crystal Ball choices stay private until the season lock", () => {

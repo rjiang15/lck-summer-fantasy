@@ -95,6 +95,7 @@ export default async function LeaderboardPage() {
           number={question.number}
           prompt={question.prompt}
           answerType={question.answerType}
+          gradingMode={question.gradingMode}
           resolution={question.resolution}
           answers={question.answers}
           participants={participants}
@@ -110,6 +111,7 @@ function AnswerKeyCard({
   number,
   prompt,
   answerType,
+  gradingMode,
   resolution,
   answers,
   participants,
@@ -119,6 +121,7 @@ function AnswerKeyCard({
   number: number;
   prompt: string;
   answerType: string;
+  gradingMode: string;
   resolution: MetricResolution | null;
   answers: Array<{ userId: number; answer: string }>;
   participants: Participant[];
@@ -130,13 +133,19 @@ function AnswerKeyCard({
     : [];
   const predictions = new Map(answers.map((answer) => [answer.userId, answer.answer]));
   const submitted = participants.filter((participant) => predictions.has(participant.userId)).length;
+  const podium = gradingMode === "RANKED" ? resolution?.ranking?.slice(0, 3) ?? [] : [];
 
   return <article className={`macro-record macro-answer-card leaderboard-answer-card${resolution ? "" : " pending"}`}>
-    <span>Question {number}</span>
+    <span>Question {number} · {gradingMode === "RANKED" ? "50 / 30 / 10" : "30 pts"}</span>
     <h3>{prompt}</h3>
-    <div className="macro-answer-values">
+    {podium.length > 0 ? <div className="crystal-podium">
+      {podium.map((tier) => <div className={`crystal-podium-tier place-${tier.rank}`} key={tier.rank}>
+        <span><b>{ordinal(tier.rank)}</b><small>{tier.rank === 1 ? "50 pts" : tier.rank === 2 ? "30 pts" : "10 pts"}</small></span>
+        <div>{tier.answers.map((answer) => <PredictionValue answer={answer} answerType={answerType} playerNames={playerNames} size="xs" key={answer} />)}</div>
+      </div>)}
+    </div> : <div className="macro-answer-values">
       {currentAnswers.length === 0 ? <strong>Not enough data yet</strong> : currentAnswers.map((answer) => <PredictionValue answer={answer} answerType={answerType} playerNames={playerNames} size="md" key={answer} />)}
-    </div>
+    </div>}
     <small>{resolution?.evidence ?? "This metric cannot be determined from the completed games yet."}</small>
     {revealPredictions ? <div className="crystal-participant-picks">
       <div className="crystal-participant-heading"><b>Participant predictions</b><span>{submitted}/{participants.length} submitted</span></div>
@@ -149,6 +158,12 @@ function AnswerKeyCard({
       })}
     </div> : <div className="crystal-private-progress"><b>{submitted}/{participants.length}</b><span>participants submitted · choices hidden until lock</span></div>}
   </article>;
+}
+
+function ordinal(rank: number) {
+  if (rank === 1) return "1st";
+  if (rank === 2) return "2nd";
+  return `${rank}rd`;
 }
 
 function PredictionValue({

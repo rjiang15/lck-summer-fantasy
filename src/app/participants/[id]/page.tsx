@@ -154,7 +154,7 @@ export default async function ParticipantPage({
                 <tr>
                   <th>Question</th>
                   <th>Answer</th>
-                  <th className="num">Pts</th>
+                  <th className="num">Max pts</th>
                   <th>Status</th>
                 </tr>
               </thead>

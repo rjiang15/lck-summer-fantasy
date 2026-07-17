@@ -1,16 +1,22 @@
 import { prisma } from "./db";
 
+export const RANKED_CRYSTAL_BALL_POINTS = {
+  first: 50,
+  second: 30,
+  other: 10,
+} as const;
+
 export const DEFAULT_CRYSTAL_BALL = [
-  definition("CHAMP_MOST_BANNED", "Most banned champion", "champion"),
-  definition("CHAMP_MOST_PICKED", "Most picked champion", "champion"),
-  definition("CHAMP_HIGHEST_WIN_RATE", "Champion with the highest win rate (over 10 games)", "champion", { minimumPicksExclusive: 10 }),
-  definition("CHAMP_LOWEST_WIN_RATE", "Champion with the lowest win rate (over 10 games)", "champion", { minimumPicksExclusive: 10 }),
-  definition("CHAMP_MOST_KILLS", "Champion with the most kills", "champion"),
-  definition("CHAMP_MOST_DEATHS", "Champion with the most deaths", "champion"),
-  definition("PLAYER_HIGHEST_KDA", "Player with the highest KDA", "player"),
-  definition("PLAYER_WIDEST_POOL", "Player with the most champions played (tiebreak: fewer total games)", "player"),
-  definition("PLAYER_MOST_KILLS_GAME", "Player with the most kills in one game", "player"),
-  definition("PLAYER_MOST_CS_GAME", "Player with the most CS in one game", "player"),
+  rankedDefinition("CHAMP_MOST_BANNED", "Most banned champion", "champion"),
+  rankedDefinition("CHAMP_MOST_PICKED", "Most picked champion", "champion"),
+  rankedDefinition("CHAMP_HIGHEST_WIN_RATE", "Champion with the highest win rate (over 10 games)", "champion", { minimumPicksExclusive: 10 }),
+  rankedDefinition("CHAMP_LOWEST_WIN_RATE", "Champion with the lowest win rate (over 10 games)", "champion", { minimumPicksExclusive: 10 }),
+  rankedDefinition("CHAMP_MOST_KILLS", "Champion with the most kills", "champion"),
+  rankedDefinition("CHAMP_MOST_DEATHS", "Champion with the most deaths", "champion"),
+  rankedDefinition("PLAYER_HIGHEST_KDA", "Player with the highest KDA", "player"),
+  rankedDefinition("PLAYER_WIDEST_POOL", "Player with the most champions played (tiebreak: fewer total games)", "player"),
+  rankedDefinition("PLAYER_MOST_KILLS_GAME", "Player with the most kills in one game", "player"),
+  rankedDefinition("PLAYER_MOST_CS_GAME", "Player with the most CS in one game", "player"),
   definition("TEAM_WIDEST_POOL", "Team with the most unique champions played", "team"),
   definition("TEAM_MOST_ELDERS", "Team with the most Elder Dragons", "team"),
   definition("TEAM_MOST_BARONS", "Team with the most Barons", "team"),
@@ -23,18 +29,28 @@ export const DEFAULT_CRYSTAL_BALL = [
   definition("DN_SOOPERS_OVER_2_5_WINS", "Will DN SOOPers finish with more than 2.5 series wins?", "yes_no", { teamId: "DN SOOPers", threshold: 2.5 }),
 ] as const;
 
+function rankedDefinition(
+  metricKey: string,
+  prompt: string,
+  answerType: string,
+  config?: Record<string, string | number>,
+) {
+  return definition(metricKey, prompt, answerType, config, "RANKED", RANKED_CRYSTAL_BALL_POINTS.first);
+}
+
 function definition(
   metricKey: string,
   prompt: string,
   answerType: string,
   config?: Record<string, string | number>,
   gradingMode = "EXACT",
+  points = 30,
 ) {
   return {
     metricKey,
     prompt,
     answerType,
-    points: 10,
+    points,
     gradingMode,
     resolverConfig: config ? JSON.stringify(config) : null,
   };
@@ -77,6 +93,14 @@ export type MetricResolution = {
   target?: number;
   evidence: string;
   values: Record<string, number>;
+  ranking?: RankingTier[];
+};
+
+export type RankingTier = {
+  rank: number;
+  answers: string[];
+  value: number;
+  secondaryValue?: number;
 };
 
 type ChampionRollup = { picks: number; wins: number; bans: number; kills: number; deaths: number };
@@ -167,11 +191,15 @@ export function resolveCrystalBallMetric(
     case "PLAYER_HIGHEST_KDA":
       return extreme(playerEntries, ([, row]) => (row.kills + row.assists) / Math.max(1, row.deaths), "max", "KDA");
     case "PLAYER_WIDEST_POOL": {
-      const most = Math.max(...playerEntries.map(([, row]) => row.champions.size));
-      const widest = playerEntries.filter(([, row]) => row.champions.size === most);
-      const fewestGames = Math.min(...widest.map(([, row]) => row.games));
-      const winners = widest.filter(([, row]) => row.games === fewestGames);
-      return resolution(winners.map(([id]) => id), `${most} unique champions in ${fewestGames} games`, Object.fromEntries(playerEntries.map(([id, row]) => [id, row.champions.size])));
+      if (playerEntries.length === 0) throw new Error("Cannot resolve unique champion pools: no eligible data");
+      const ranking = playerPoolRanking(playerEntries);
+      const winner = ranking[0];
+      return resolution(
+        winner.answers,
+        `${winner.value} unique champions in ${winner.secondaryValue} games`,
+        Object.fromEntries(playerEntries.map(([id, row]) => [id, row.champions.size])),
+        ranking,
+      );
     }
     case "PLAYER_MOST_KILLS_GAME":
       return extreme(individualLines.map((row) => [row.playerId, row] as const), ([, row]) => row.kills, "max", "kills in one game");
@@ -223,9 +251,47 @@ function extreme<T>(
     const previous = values[row[0]];
     values[row[0]] = previous === undefined ? value : direction === "max" ? Math.max(previous, value) : Math.min(previous, value);
   }
-  const accepted = [...new Set(rows.filter((row) => Math.abs(score(row) - best) < 1e-10).map(([id]) => id))];
+  const ranking = denseRanking(values, direction);
+  const accepted = ranking[0].answers;
   const shown = percentage ? `${(best * 100).toFixed(1)}%` : Number.isInteger(best) ? String(best) : best.toFixed(2);
-  return resolution(accepted, `${shown} ${label}`, values);
+  return resolution(accepted, `${shown} ${label}`, values, ranking);
+}
+
+function denseRanking(values: Record<string, number>, direction: "min" | "max"): RankingTier[] {
+  const entries = Object.entries(values).sort((left, right) => {
+    const difference = direction === "max" ? right[1] - left[1] : left[1] - right[1];
+    return Math.abs(difference) < 1e-10 ? left[0].localeCompare(right[0]) : difference;
+  });
+  const tiers: RankingTier[] = [];
+  for (const [answer, value] of entries) {
+    const previous = tiers.at(-1);
+    if (previous && Math.abs(previous.value - value) < 1e-10) {
+      previous.answers.push(answer);
+    } else {
+      tiers.push({ rank: tiers.length + 1, answers: [answer], value });
+    }
+  }
+  return tiers;
+}
+
+function playerPoolRanking(entries: Array<[string, PlayerRollup]>): RankingTier[] {
+  const sorted = entries.toSorted((left, right) =>
+    right[1].champions.size - left[1].champions.size
+    || left[1].games - right[1].games
+    || left[0].localeCompare(right[0]),
+  );
+  const tiers: RankingTier[] = [];
+  for (const [answer, row] of sorted) {
+    const value = row.champions.size;
+    const secondaryValue = row.games;
+    const previous = tiers.at(-1);
+    if (previous && previous.value === value && previous.secondaryValue === secondaryValue) {
+      previous.answers.push(answer);
+    } else {
+      tiers.push({ rank: tiers.length + 1, answers: [answer], value, secondaryValue });
+    }
+  }
+  return tiers;
 }
 
 function numericTarget(rows: Array<{ gameId: string; kills: number }>, direction: "min" | "max", label: string): MetricResolution {
@@ -235,9 +301,9 @@ function numericTarget(rows: Array<{ gameId: string; kills: number }>, direction
   return { acceptedAnswers: [], target, evidence: `${target} ${label} (${gameIds.join(", ")})`, values: Object.fromEntries(rows.map((row) => [row.gameId, row.kills])) };
 }
 
-function resolution(acceptedAnswers: string[], evidence: string, values: Record<string, number>): MetricResolution {
+function resolution(acceptedAnswers: string[], evidence: string, values: Record<string, number>, ranking?: RankingTier[]): MetricResolution {
   if (acceptedAnswers.length === 0) throw new Error(`Cannot resolve Crystal Ball metric: ${evidence}`);
-  return { acceptedAnswers: [...new Set(acceptedAnswers)], evidence, values };
+  return { acceptedAnswers: [...new Set(acceptedAnswers)], evidence, values, ...(ranking ? { ranking } : {}) };
 }
 
 export async function settleCrystalBall(leagueId: number) {
@@ -318,12 +384,23 @@ type GradableQuestion = {
   partialAnswers: string | null;
   partialRule: string | null;
   points: number;
+  resolutionData?: string | null;
   answers: Array<{ userId: number; answer: string }>;
 };
 
 export function crystalBallPoints(question: GradableQuestion, userId: number) {
   const mine = question.answers.find((answer) => answer.userId === userId);
   if (!mine || !question.correctAnswer) return 0;
+  if (question.gradingMode === "RANKED") {
+    const resolution = parseResolutionEvidence(question.resolutionData ?? null);
+    const tier = resolution?.ranking?.find((entry) =>
+      entry.answers.some((answer) => normalizeAnswer(answer) === normalizeAnswer(mine.answer)),
+    );
+    if (!tier) return 0;
+    if (tier.rank === 1) return RANKED_CRYSTAL_BALL_POINTS.first;
+    if (tier.rank === 2) return RANKED_CRYSTAL_BALL_POINTS.second;
+    return RANKED_CRYSTAL_BALL_POINTS.other;
+  }
   if (question.gradingMode === "CLOSEST") {
     const target = Number(question.correctAnswer);
     const numeric = question.answers.flatMap((answer) => {

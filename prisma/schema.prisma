@@ -484,7 +484,7 @@ model CrystalBallQuestion {
   answerType     String // team | player | champion | yes_no | over_under
   points         Int
   metricKey      String?
-  gradingMode    String               @default("EXACT") // EXACT | CLOSEST
+  gradingMode    String               @default("EXACT") // EXACT | CLOSEST | RANKED
   resolverConfig String? // JSON configuration for the automatic metric resolver
   partialRule    String? // JSON: {condition: "top-3"|"bottom-2"|"reached-finals", fraction: 0.5}
   correctAnswer  String? // set at grading time
