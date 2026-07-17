@@ -60,7 +60,6 @@ export default async function RootLayout({
             </NavGroup>
             <NavGroup label="League">
               <Link href="/leaderboard">Leaderboard</Link>
-              <Link href="/participants">Participants</Link>
               <Link href="/history">Weekly History</Link>
             </NavGroup>
             <NavGroup label="My league">

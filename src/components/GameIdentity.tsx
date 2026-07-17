@@ -29,7 +29,7 @@ const TEAM_LOGOS: Record<string, string> = {
   geng: "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/e/e3/Gen.Glogo_square.png/revision/latest?cb=20260114104755",
   hanjinbrion: "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/3/32/HANJIN_BRIONlogo_profile.png/revision/latest?cb=20260309061908",
   hanwhalifeesports: "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/e/e9/Hanwha_Life_Esportslogo_profile.png/revision/latest?cb=20260119144058",
-  kiwoomdrx: "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/6/62/Kiwoom_DRXlogo_profile.png/revision/latest?cb=20260327112704",
+  kiwoomdrx: "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/1/1c/KRX_Profile_English.png/revision/latest",
   ktrolster: "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/5/5c/KT_Rolsterlogo_profile.png/revision/latest?cb=20260123152940",
   nongshimredforce: "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/b/b8/Nongshim_RedForcelogo_square.png/revision/latest?cb=20260114093156",
   t1: "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/78/T1logo_profile.png/revision/latest?cb=20221015004607",

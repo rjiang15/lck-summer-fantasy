@@ -261,9 +261,10 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .entity-icon.md { --entity-size: 2.4rem; }
 .entity-icon.lg { --entity-size: 3rem; }
 .entity-icon.champion { border-radius: 28%; }
-.entity-icon.team { border-radius: 28%; padding: 0.17rem; }
+.entity-icon.team { border-color: #d8d8df; border-radius: 28%; padding: 0.17rem; background: #fff; }
 .entity-icon img { width: 100%; height: 100%; object-fit: cover; }
 .entity-icon.team img { object-fit: contain; }
+.entity-icon.team .entity-fallback { color: #4b4b55; }
 .entity-fallback { color: var(--muted); font-size: calc(var(--entity-size) * 0.34); font-weight: 800; letter-spacing: -0.04em; }
 .entity-matchup { display: inline-flex; min-width: 0; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
 .entity-matchup > em { color: var(--muted); font-size: 0.75rem; font-style: normal; font-weight: 500; }

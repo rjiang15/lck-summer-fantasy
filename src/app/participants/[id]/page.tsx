@@ -99,7 +99,7 @@ export default async function ParticipantPage({
   return (
     <>
       <p className="small">
-        <Link href="/participants">← all participants</Link>
+        <Link href="/leaderboard">← leaderboard</Link>
       </p>
       <h1>
         {ft.user.username} — {ft.name}

@@ -59,7 +59,7 @@ async function weekSubmissionReadiness(leagueId: number, weekId: number, weekNum
 const SLOT_ROLE: Record<string, string> = { TOP: "Top", JNG: "Jungle", MID: "Mid", BOT: "Bot", SUP: "Support" };
 
 function revalidateDataPages() {
-  for (const path of ["/", "/commissioner", "/picks", "/stats", "/participants", "/leaderboard"]) {
+  for (const path of ["/", "/commissioner", "/picks", "/stats", "/leaderboard"]) {
     revalidatePath(path);
   }
 }
@@ -322,7 +322,6 @@ export async function finishSeason(formData: FormData) {
   revalidatePath("/commissioner");
   revalidatePath("/leaderboard");
   revalidatePath("/crystal-ball");
-  revalidatePath("/participants");
 }
 
 export async function recoverStaleIngestion(formData: FormData) {

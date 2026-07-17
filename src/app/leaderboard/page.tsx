@@ -72,8 +72,8 @@ export default async function LeaderboardPage() {
           <thead><tr><th>#</th><th>Participant</th><th>Team name</th><th className="num">Roster</th><th className="num">Pickems</th><th className="num">Crystal Ball</th><th className="num">Total</th></tr></thead>
           <tbody>{result.standings.map((standing, index) => <tr key={standing.fantasyTeamId}>
             <td>{index + 1}</td>
-            <td><Link href={`/participants/${standing.fantasyTeamId}`}>{standing.username}</Link></td>
-            <td>{standing.teamName}</td>
+            <td>{standing.username}</td>
+            <td><Link href={`/participants/${standing.fantasyTeamId}`}>{standing.teamName}</Link></td>
             <td className="num">{standing.rosterTotal}</td>
             <td className="num">{standing.pickemTotal}</td>
             <td className="num">{standing.crystalBallTotal}</td>
