@@ -55,6 +55,7 @@ export default async function RootLayout({
           {view && <nav className="nav-sections" aria-label="Primary navigation">
             <NavGroup label="Game data">
               <Link href="/">Games</Link>
+              <Link href="/macro">Macro Dashboard</Link>
               <Link href="/stats">Deep Stats</Link>
             </NavGroup>
             <NavGroup label="League">

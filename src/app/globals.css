@@ -283,6 +283,86 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .pickem-save div { display: grid; gap: 0.1rem; }
 .pickem-save button { padding: 0.55rem 0.85rem; white-space: nowrap; }
 
+.macro-dashboard { display: grid; gap: 2.25rem; }
+.macro-dashboard section { min-width: 0; }
+.macro-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+  padding: 1.4rem 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-radius: 12px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--card)), var(--card) 60%);
+}
+.macro-hero h1 { margin: 0.15rem 0 0.35rem; font-size: clamp(1.65rem, 4vw, 2.35rem); letter-spacing: -0.035em; }
+.macro-hero p { margin: 0; color: var(--muted); max-width: 48rem; }
+.macro-eyebrow, .macro-section-title > div > span {
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.macro-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.8rem; }
+.macro-kpi, .macro-record {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.9rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+.macro-kpi > span, .macro-record > span { color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.035em; text-transform: uppercase; }
+.macro-kpi strong { font-size: 1.65rem; line-height: 1.15; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
+.macro-kpi small, .macro-record small { color: var(--muted); }
+.macro-section-title { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 0.7rem; }
+.macro-section-title h2 { margin: 0.1rem 0 0; font-size: 1.2rem; }
+.macro-section-title p { margin: 0; color: var(--muted); font-size: 0.82rem; text-align: right; }
+.macro-record-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.7rem; }
+.macro-record strong { margin-top: 0.15rem; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; }
+.macro-table td { height: 2.55rem; }
+.sortable-table th { padding: 0; }
+.sortable-table th > button {
+  display: flex;
+  width: 100%;
+  min-height: 2.35rem;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.65rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+}
+.sortable-table th.num > button { justify-content: flex-end; }
+.sortable-table th > button:hover, .sortable-table th > button:focus-visible { color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); outline: none; }
+.sortable-table th[aria-sort="ascending"] > button, .sortable-table th[aria-sort="descending"] > button { color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.sort-indicator { width: 0.8rem; color: color-mix(in srgb, var(--muted) 45%, transparent); font-size: 0.7rem; text-align: center; }
+.sort-indicator.active { color: var(--accent); }
+.macro-rank { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; margin-right: 0.45rem; border-radius: 50%; color: var(--muted); background: var(--bg); font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+.macro-rate { display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.45rem; }
+.macro-rate > span { min-width: 3.2rem; }
+.macro-rate > i, .macro-presence { display: inline-block; width: 2.7rem; height: 0.3rem; overflow: hidden; border-radius: 999px; background: var(--bg); vertical-align: middle; }
+.macro-rate > i > b, .macro-presence > i { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+.macro-presence { display: block; width: 5rem; margin-top: 0.28rem; }
+.macro-presence > i { background: color-mix(in srgb, var(--accent) 72%, var(--win)); }
+.macro-record-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.macro-record-table { margin: 0; }
+.macro-record-table h3 { margin: 0 0 0.65rem; font-size: 0.9rem; }
+.macro-record-table ol { list-style: none; padding: 0; margin: 0; counter-reset: record; }
+.macro-record-table li { counter-increment: record; display: grid; grid-template-columns: 1fr auto; gap: 0.8rem; align-items: center; padding: 0.55rem 0; border-top: 1px solid var(--border); }
+.macro-record-table li::before { content: counter(record); grid-row: 1; width: 1.35rem; color: var(--muted); font-size: 0.72rem; }
+.macro-record-table li { grid-template-columns: 1.35rem 1fr auto; }
+.macro-record-table li > span { display: grid; min-width: 0; }
+.macro-record-table li > span small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.macro-record-table li > strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 @media (max-width: 720px) {
   .topnav { padding-top: 0.65rem; padding-bottom: 0.65rem; align-items: flex-start; }
   .topnav-tools { gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; }
@@ -298,4 +378,13 @@ button:disabled { cursor: wait; opacity: 0.65; }
   .pickem-teams { grid-template-columns: 1fr; }
   .pickem-score { width: 100%; margin-left: 0; }
   .pickem-save { align-items: stretch; flex-direction: column; }
+  .macro-hero { align-items: flex-start; flex-direction: column; }
+  .macro-kpis, .macro-record-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .macro-section-title { align-items: flex-start; flex-direction: column; }
+  .macro-section-title p { text-align: left; }
+  .macro-record-tables { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 430px) {
+  .macro-kpis, .macro-record-grid { grid-template-columns: 1fr; }
 }
