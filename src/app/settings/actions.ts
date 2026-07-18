@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { cookies } from "next/headers";
-import { hashPassword, requireLeagueOwner } from "@/lib/auth";
+import { hashPassword, requireLeagueManager, requireLeagueOwner } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { createStoredLeagueBackup, deleteLeagueWithRecovery, deleteStoredLeagueBackup, restoreStoredBackupOverLeague } from "@/lib/backup";
 import { DEFAULT_CRYSTAL_BALL } from "@/lib/crystal-ball";
 import { initialLeagueWeekRows } from "@/lib/league-setup";
+import { ACTIVE_LEAGUE_COOKIE } from "@/lib/leagues";
 
 function back(message: string, error = false): never {
   redirect(`/settings?${error ? "error" : "notice"}=${encodeURIComponent(message)}`);
@@ -93,4 +95,64 @@ export async function updateMembershipRole(formData: FormData) {
 
 export async function resetTestLeague(formData: FormData) {
   await handleSettingsError(() => resetTestLeagueImpl(formData));
+}
+
+async function createCheckpointImpl(formData: FormData) {
+  const leagueId = Number(formData.get("leagueId"));
+  const access = await requireLeagueManager(leagueId);
+  const label = String(formData.get("label") ?? "");
+  await createStoredLeagueBackup(leagueId, access.user.id, label);
+  revalidatePath("/settings");
+}
+
+async function restoreCheckpointImpl(formData: FormData) {
+  const leagueId = Number(formData.get("leagueId"));
+  const access = await requireLeagueOwner(leagueId);
+  if (formData.get("confirmRestore") !== "true") throw new Error("Confirm that you want to replace the league with this checkpoint");
+  await restoreStoredBackupOverLeague(Number(formData.get("backupId")), leagueId, access.user.id);
+  revalidatePath("/", "layout");
+  (await cookies()).delete(`viewWeek_${leagueId}`);
+}
+
+async function deleteCheckpointImpl(formData: FormData) {
+  const leagueId = Number(formData.get("leagueId"));
+  const access = await requireLeagueOwner(leagueId);
+  if (formData.get("confirmDeleteBackup") !== "true") throw new Error("Confirm that you want to permanently delete this checkpoint");
+  await deleteStoredLeagueBackup(Number(formData.get("backupId")), access.user.id);
+  revalidatePath("/settings");
+}
+
+export async function createCheckpoint(formData: FormData) {
+  await handleSettingsError(() => createCheckpointImpl(formData));
+  back("Checkpoint saved");
+}
+
+export async function restoreCheckpoint(formData: FormData) {
+  await handleSettingsError(() => restoreCheckpointImpl(formData));
+  back("League restored to the selected checkpoint; a pre-restore safety checkpoint was also saved");
+}
+
+export async function deleteCheckpoint(formData: FormData) {
+  await handleSettingsError(() => deleteCheckpointImpl(formData));
+  back("Checkpoint permanently deleted");
+}
+
+export async function deleteLeague(formData: FormData) {
+  const leagueId = Number(formData.get("leagueId"));
+  let name = "League";
+  try {
+    const access = await requireLeagueOwner(leagueId);
+    name = access.league.name;
+    if (formData.get("confirmDeleteLeague") !== "true") throw new Error("Confirm that you understand this deletes the active league");
+    if (String(formData.get("leagueName") ?? "").trim() !== access.league.name) throw new Error("Type the exact league name to confirm deletion");
+    await deleteLeagueWithRecovery(leagueId, access.user.id);
+  } catch (error) {
+    unstable_rethrow(error);
+    back(error instanceof Error && error.message ? error.message : "League deletion failed", true);
+  }
+  const jar = await cookies();
+  jar.delete(ACTIVE_LEAGUE_COOKIE);
+  jar.delete(`viewWeek_${leagueId}`);
+  revalidatePath("/", "layout");
+  redirect(`/leagues?notice=${encodeURIComponent(`${name} was deleted. Its recovery checkpoints are available below.`)}`);
 }

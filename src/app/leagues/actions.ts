@@ -1,9 +1,11 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createLeagueForOwner, ACTIVE_LEAGUE_COOKIE } from "@/lib/leagues";
+import { deleteStoredLeagueBackup, restoreStoredBackupAsLeague } from "@/lib/backup";
 import { prisma } from "@/lib/db";
 
 export async function createLeague(formData: FormData) {
@@ -35,4 +37,34 @@ export async function createLeague(formData: FormData) {
   const jar = await cookies();
   jar.set(ACTIVE_LEAGUE_COOKIE, league.slug, { httpOnly: true, sameSite: "lax", path: "/" });
   redirect("/commissioner");
+}
+
+export async function restoreDeletedLeague(formData: FormData) {
+  let league: Awaited<ReturnType<typeof restoreStoredBackupAsLeague>>;
+  try {
+    const user = await requireUser();
+    if (formData.get("confirmRestore") !== "true") throw new Error("Confirm that you want to restore this deleted league");
+    league = await restoreStoredBackupAsLeague(Number(formData.get("backupId")), user.id);
+  } catch (error) {
+    unstable_rethrow(error);
+    const message = error instanceof Error && error.message ? error.message : "League restore failed";
+    redirect(`/leagues?error=${encodeURIComponent(message)}`);
+  }
+  (await cookies()).set(ACTIVE_LEAGUE_COOKIE, league.slug, { httpOnly: true, sameSite: "lax", path: "/" });
+  revalidatePath("/", "layout");
+  redirect(`/settings?notice=${encodeURIComponent("League restored from checkpoint with a new invite code")}`);
+}
+
+export async function deleteRecoveryCheckpoint(formData: FormData) {
+  try {
+    const user = await requireUser();
+    if (formData.get("confirmDeleteBackup") !== "true") throw new Error("Confirm that you want to permanently delete this checkpoint");
+    await deleteStoredLeagueBackup(Number(formData.get("backupId")), user.id);
+  } catch (error) {
+    unstable_rethrow(error);
+    const message = error instanceof Error && error.message ? error.message : "Checkpoint deletion failed";
+    redirect(`/leagues?error=${encodeURIComponent(message)}`);
+  }
+  revalidatePath("/leagues");
+  redirect("/leagues?notice=Recovery+checkpoint+permanently+deleted");
 }

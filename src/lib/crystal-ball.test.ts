@@ -105,7 +105,7 @@ test("exact ties and equally close number predictions all receive full credit", 
   assert.equal(crystalBallPoints(closest, 3), 0);
 });
 
-test("ranked questions award 50 for first, 30 for second, and 10 for any lower eligible tier", () => {
+test("ranked questions award 50/30/10 only to the first three dense-ranking tiers", () => {
   const question = {
     gradingMode: "RANKED",
     correctAnswer: "Ahri",
@@ -116,24 +116,27 @@ test("ranked questions award 50 for first, 30 for second, and 10 for any lower e
     resolutionData: JSON.stringify({
       acceptedAnswers: ["Ahri", "Azir"],
       evidence: "test ranking",
-      values: { Ahri: 10, Azir: 10, Orianna: 9, Gnar: 8 },
+      values: { Ahri: 10, Azir: 10, Orianna: 9, Gnar: 8, Ambessa: 7 },
       ranking: [
         { rank: 1, answers: ["Ahri", "Azir"], value: 10 },
         { rank: 2, answers: ["Orianna"], value: 9 },
         { rank: 3, answers: ["Gnar"], value: 8 },
+        { rank: 4, answers: ["Ambessa"], value: 7 },
       ],
     }),
     answers: [
       { userId: 1, answer: "azir" },
       { userId: 2, answer: "Orianna" },
       { userId: 3, answer: "Gnar" },
-      { userId: 4, answer: "Nocturne" },
+      { userId: 4, answer: "Ambessa" },
+      { userId: 5, answer: "Nocturne" },
     ],
   };
   assert.equal(crystalBallPoints(question, 1), 50);
   assert.equal(crystalBallPoints(question, 2), 30);
   assert.equal(crystalBallPoints(question, 3), 10);
   assert.equal(crystalBallPoints(question, 4), 0);
+  assert.equal(crystalBallPoints(question, 5), 0);
 });
 
 test("participant Crystal Ball choices stay private until the season lock", () => {

@@ -1,49 +1,44 @@
-// League-scoped fantasy backup. Shared esports data is intentionally excluded.
+import { randomBytes } from "node:crypto";
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "./db";
+import {
+  backupOwnerUsername,
+  CURRENT_BACKUP_VERSION,
+  parseBackup,
+  parseBackupJson,
+  type Backup,
+} from "./backup-format";
 
-export interface Backup {
-  version: 3 | 4 | 5 | 6;
-  exportedAt: string;
-  league: {
-    name: string; tournamentId: string; scoringConfig: string; currentWeek: number;
-    seasonStatus: string; crystalBallLockedAt: string | null; rostersLockedAt?: string | null; isSimulation: boolean;
-    draftStatus?: string; draftOrder?: string[]; draftCurrentPick?: number;
-    draftBudget?: number; draftPlayerPrice?: number; draftPlayersPerRole?: number;
-  };
-  users: { username: string; passwordHash: string; role: string }[];
-  fantasyTeams: { username: string; name: string; roster: { playerId: string; slot: string }[] }[];
-  draftPicks?: { username: string; playerId: string; overallPick: number; round: number; role: string; price: number; pickedAt: string }[];
-  pickems: { username: string; matchId: string; predictedWinner: string; predictedScore: string | null }[];
-  cbQuestions: {
-    prompt: string; answerType: string; points: number; partialRule: string | null;
-    correctAnswer: string | null; partialAnswers: string | null;
-    metricKey?: string | null; gradingMode?: string; resolverConfig?: string | null;
-    resolvedAnswers?: string | null; resolutionData?: string | null; resolvedAt?: string | null;
-    answers: { username: string; answer: string }[];
-  }[];
-  leagueWeeks: {
-    weekNumber: number; status: string; picksOpenAt: string | null; picksLockedAt: string | null;
-    rosterLockedAt: string | null; resultsImportedAt: string | null; scoredAt: string | null;
-    publishedAt: string | null; validationJson: string | null; validationError: string | null;
-    rosters: { username: string; playerId: string; slot: string }[];
-    scores: { username: string; rosterPts: number; pickemPts: number; total: number; breakdown: string; publishedAt: string | null }[];
-  }[];
+export type { Backup } from "./backup-format";
+
+type BackupDb = typeof prisma | Prisma.TransactionClient;
+
+const transactionOptions = { maxWait: 5_000, timeout: 30_000 };
+
+const slugify = (value: string) =>
+  value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 48) || "league";
+const newInviteCode = () => randomBytes(5).toString("base64url").toUpperCase();
+
+function checkpointLabel(value: string): string {
+  const label = value.trim();
+  if (label.length < 2 || label.length > 80) throw new Error("Checkpoint label must be 2-80 characters");
+  return label;
 }
 
-export async function exportLeague(leagueId: number): Promise<Backup | null> {
-  const league = await prisma.league.findUnique({
+export async function exportLeague(leagueId: number, database: BackupDb = prisma): Promise<Backup | null> {
+  const league = await database.league.findUnique({
     where: { id: leagueId },
     include: {
-      memberships: { include: { user: true } },
-      fantasyTeams: { include: { user: true, roster: true, draftPicks: true } },
-      cbQuestions: { include: { answers: { include: { user: true } } } },
-      leagueWeeks: { include: { week: true, weeklyRosters: { include: { fantasyTeam: { include: { user: true } } } }, weeklyScores: { include: { fantasyTeam: { include: { user: true } } } } } },
+      memberships: { include: { user: true }, orderBy: { id: "asc" } },
+      fantasyTeams: { include: { user: true, roster: { orderBy: { id: "asc" } }, draftPicks: { orderBy: { overallPick: "asc" } } }, orderBy: { id: "asc" } },
+      cbQuestions: { include: { answers: { include: { user: true }, orderBy: { id: "asc" } } }, orderBy: { id: "asc" } },
+      leagueWeeks: { include: { week: true, weeklyRosters: { include: { fantasyTeam: { include: { user: true } } }, orderBy: { id: "asc" } }, weeklyScores: { include: { fantasyTeam: { include: { user: true } } }, orderBy: { id: "asc" } } }, orderBy: { weekId: "asc" } },
     },
   });
   if (!league) return null;
-  const pickems = await prisma.pickem.findMany({ where: { leagueId }, include: { user: true } });
+  const pickems = await database.pickem.findMany({ where: { leagueId }, include: { user: true }, orderBy: { id: "asc" } });
   return {
-    version: 6,
+    version: CURRENT_BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     league: {
       name: league.name, tournamentId: league.tournamentId, scoringConfig: league.scoringConfig,
@@ -55,104 +50,315 @@ export async function exportLeague(leagueId: number): Promise<Backup | null> {
       draftCurrentPick: league.draftCurrentPick, draftBudget: league.draftBudget,
       draftPlayerPrice: league.draftPlayerPrice, draftPlayersPerRole: league.draftPlayersPerRole,
     },
-    users: league.memberships.map((m) => ({ username: m.user.username, passwordHash: m.user.passwordHash, role: m.role })),
-    fantasyTeams: league.fantasyTeams.map((ft) => ({ username: ft.user.username, name: ft.name, roster: ft.roster.map((r) => ({ playerId: r.playerId, slot: r.slot })) })),
-    draftPicks: league.fantasyTeams.flatMap((ft) => ft.draftPicks.map((pick) => ({ username: ft.user.username, playerId: pick.playerId, overallPick: pick.overallPick, round: pick.round, role: pick.role, price: pick.price, pickedAt: pick.pickedAt.toISOString() }))),
-    pickems: pickems.map((p) => ({ username: p.user.username, matchId: p.matchId, predictedWinner: p.predictedWinner, predictedScore: p.predictedScore })),
-    cbQuestions: league.cbQuestions.map((q) => ({
-      prompt: q.prompt, answerType: q.answerType, points: q.points, partialRule: q.partialRule,
-      correctAnswer: q.correctAnswer, partialAnswers: q.partialAnswers,
-      metricKey: q.metricKey, gradingMode: q.gradingMode, resolverConfig: q.resolverConfig,
-      resolvedAnswers: q.resolvedAnswers, resolutionData: q.resolutionData,
-      resolvedAt: q.resolvedAt?.toISOString() ?? null,
-      answers: q.answers.map((a) => ({ username: a.user.username, answer: a.answer })),
+    // Password hashes are deliberately excluded from v7 exports. Restores
+    // reconnect memberships to the accounts already present in this database.
+    users: league.memberships.map((membership) => ({ username: membership.user.username, role: membership.role, joinedAt: membership.joinedAt.toISOString() })),
+    fantasyTeams: league.fantasyTeams.map((team) => ({ username: team.user.username, name: team.name, roster: team.roster.map((slot) => ({ playerId: slot.playerId, slot: slot.slot })) })),
+    draftPicks: league.fantasyTeams.flatMap((team) => team.draftPicks.map((pick) => ({ username: team.user.username, playerId: pick.playerId, overallPick: pick.overallPick, round: pick.round, role: pick.role, price: pick.price, pickedAt: pick.pickedAt.toISOString() }))),
+    pickems: pickems.map((pick) => ({ username: pick.user.username, matchId: pick.matchId, predictedWinner: pick.predictedWinner, predictedScore: pick.predictedScore, createdAt: pick.createdAt.toISOString(), updatedAt: pick.updatedAt.toISOString() })),
+    cbQuestions: league.cbQuestions.map((question) => ({
+      prompt: question.prompt, answerType: question.answerType, points: question.points, partialRule: question.partialRule,
+      correctAnswer: question.correctAnswer, partialAnswers: question.partialAnswers,
+      metricKey: question.metricKey, gradingMode: question.gradingMode, resolverConfig: question.resolverConfig,
+      resolvedAnswers: question.resolvedAnswers, resolutionData: question.resolutionData,
+      resolvedAt: question.resolvedAt?.toISOString() ?? null,
+      answers: question.answers.map((answer) => ({ username: answer.user.username, answer: answer.answer, createdAt: answer.createdAt.toISOString(), updatedAt: answer.updatedAt.toISOString() })),
     })),
-    leagueWeeks: league.leagueWeeks.map((lw) => ({
-      weekNumber: lw.week.number, status: lw.status,
-      picksOpenAt: lw.picksOpenAt?.toISOString() ?? null, picksLockedAt: lw.picksLockedAt?.toISOString() ?? null,
-      rosterLockedAt: lw.rosterLockedAt?.toISOString() ?? null, resultsImportedAt: lw.resultsImportedAt?.toISOString() ?? null,
-      scoredAt: lw.scoredAt?.toISOString() ?? null, publishedAt: lw.publishedAt?.toISOString() ?? null,
-      validationJson: lw.validationJson, validationError: lw.validationError,
-      rosters: lw.weeklyRosters.map((s) => ({ username: s.fantasyTeam.user.username, playerId: s.playerId, slot: s.slot })),
-      scores: lw.weeklyScores.map((s) => ({ username: s.fantasyTeam.user.username, rosterPts: s.rosterPts, pickemPts: s.pickemPts, total: s.total, breakdown: s.breakdown, publishedAt: s.publishedAt?.toISOString() ?? null })),
+    leagueWeeks: league.leagueWeeks.map((leagueWeek) => ({
+      weekNumber: leagueWeek.week.number, status: leagueWeek.status,
+      picksOpenAt: leagueWeek.picksOpenAt?.toISOString() ?? null, picksLockedAt: leagueWeek.picksLockedAt?.toISOString() ?? null,
+      rosterLockedAt: leagueWeek.rosterLockedAt?.toISOString() ?? null, resultsImportedAt: leagueWeek.resultsImportedAt?.toISOString() ?? null,
+      scoredAt: leagueWeek.scoredAt?.toISOString() ?? null, publishedAt: leagueWeek.publishedAt?.toISOString() ?? null,
+      validationJson: leagueWeek.validationJson, validationError: leagueWeek.validationError,
+      rosters: leagueWeek.weeklyRosters.map((slot) => ({ username: slot.fantasyTeam.user.username, playerId: slot.playerId, slot: slot.slot, lockedAt: slot.lockedAt.toISOString() })),
+      scores: leagueWeek.weeklyScores.map((score) => ({ username: score.fantasyTeam.user.username, rosterPts: score.rosterPts, pickemPts: score.pickemPts, total: score.total, breakdown: score.breakdown, calculatedAt: score.calculatedAt.toISOString(), publishedAt: score.publishedAt?.toISOString() ?? null })),
     })),
   };
 }
 
-export async function importLeague(leagueId: number, backup: Backup): Promise<{ ok: boolean; error?: string }> {
-  if (![3, 4, 5, 6].includes(backup.version) || !backup.league || !Array.isArray(backup.users)) return { ok: false, error: "Only version 3, 4, 5, or 6 league backups can be imported." };
-  const target = await prisma.league.findUnique({ where: { id: leagueId } });
-  if (!target) return { ok: false, error: "Target league does not exist." };
-  if (target.tournamentId !== backup.league.tournamentId) return { ok: false, error: "Backup tournament does not match this league." };
-  const rosterIds = [...new Set(backup.fantasyTeams.flatMap((ft) => ft.roster.map((r) => r.playerId)))];
-  const found = await prisma.proPlayer.findMany({ where: { id: { in: rosterIds } }, select: { id: true } });
-  const foundIds = new Set(found.map((p) => p.id));
-  const missing = rosterIds.filter((id) => !foundIds.has(id));
-  if (missing.length) return { ok: false, error: `Ingest the referenced player data first: ${missing.slice(0, 5).join(", ")}` };
+async function ownerMembership(database: BackupDb, leagueId: number) {
+  return database.leagueMembership.findFirst({
+    where: { leagueId, role: "OWNER" },
+    include: { user: true, league: true },
+  });
+}
 
-  await prisma.$transaction(async (tx) => {
-    await tx.weeklyScore.deleteMany({ where: { leagueWeek: { leagueId } } });
-    await tx.weeklyRosterSlot.deleteMany({ where: { leagueWeek: { leagueId } } });
-    await tx.leagueWeek.deleteMany({ where: { leagueId } });
-    await tx.crystalBallAnswer.deleteMany({ where: { question: { leagueId } } });
-    await tx.crystalBallQuestion.deleteMany({ where: { leagueId } });
-    await tx.pickem.deleteMany({ where: { leagueId } });
-    await tx.draftPick.deleteMany({ where: { leagueId } });
-    await tx.rosterSlot.deleteMany({ where: { fantasyTeam: { leagueId } } });
-    await tx.fantasyTeam.deleteMany({ where: { leagueId } });
-    await tx.leagueMembership.deleteMany({ where: { leagueId } });
-    await tx.league.update({ where: { id: leagueId }, data: {
-      scoringConfig: backup.league.scoringConfig, currentWeek: backup.league.currentWeek,
-      seasonStatus: backup.league.seasonStatus, crystalBallLockedAt: backup.league.crystalBallLockedAt ? new Date(backup.league.crystalBallLockedAt) : null,
-      rostersLockedAt: backup.league.rostersLockedAt ? new Date(backup.league.rostersLockedAt) : null,
-    } });
-    const userIds = new Map<string, number>();
-    for (const saved of backup.users) {
-      const user = await tx.user.upsert({ where: { username: saved.username }, create: { username: saved.username, passwordHash: saved.passwordHash }, update: {} });
-      userIds.set(saved.username, user.id);
-      await tx.leagueMembership.create({ data: { leagueId, userId: user.id, role: saved.role } });
+async function assertManager(database: BackupDb, leagueId: number, actorUserId: number) {
+  const actor = await database.user.findUnique({ where: { id: actorUserId }, select: { siteAdmin: true } });
+  if (actor?.siteAdmin) return;
+  const membership = await database.leagueMembership.findUnique({ where: { leagueId_userId: { leagueId, userId: actorUserId } } });
+  if (!membership || !["OWNER", "COMMISSIONER"].includes(membership.role)) throw new Error("Commissioner access required for this league");
+}
+
+async function assertOwner(database: BackupDb, leagueId: number, actorUserId: number) {
+  const actor = await database.user.findUnique({ where: { id: actorUserId }, select: { siteAdmin: true } });
+  if (actor?.siteAdmin) return;
+  const membership = await database.leagueMembership.findUnique({ where: { leagueId_userId: { leagueId, userId: actorUserId } } });
+  if (membership?.role !== "OWNER") throw new Error("League owner access required");
+}
+
+async function storeSnapshot(
+  database: Prisma.TransactionClient,
+  leagueId: number,
+  actorUserId: number,
+  label: string,
+) {
+  const owner = await ownerMembership(database, leagueId);
+  if (!owner) throw new Error("League owner is missing; a recovery checkpoint cannot be created");
+  const snapshot = await exportLeague(leagueId, database);
+  if (!snapshot) throw new Error("League does not exist");
+  return database.leagueBackup.create({
+    data: {
+      originalLeagueId: owner.league.id,
+      originalLeagueName: owner.league.name,
+      originalLeagueSlug: owner.league.slug,
+      tournamentId: owner.league.tournamentId,
+      label: checkpointLabel(label),
+      snapshotVersion: snapshot.version,
+      snapshotJson: JSON.stringify(snapshot),
+      ownerUserId: owner.userId,
+      createdByUserId: actorUserId,
+    },
+  });
+}
+
+export async function createStoredLeagueBackup(leagueId: number, actorUserId: number, label: string, database = prisma) {
+  return database.$transaction(async (tx) => {
+    await assertManager(tx, leagueId, actorUserId);
+    return storeSnapshot(tx, leagueId, actorUserId, label);
+  }, transactionOptions);
+}
+
+async function validateReferences(database: BackupDb, tournamentId: string, backup: Backup) {
+  const playerIds = [...new Set([
+    ...backup.fantasyTeams.flatMap((team) => team.roster.map((slot) => slot.playerId)),
+    ...(backup.draftPicks ?? []).map((pick) => pick.playerId),
+    ...backup.leagueWeeks.flatMap((week) => week.rosters.map((slot) => slot.playerId)),
+  ])];
+  const eligiblePlayers = await database.tournamentPlayer.findMany({
+    where: { tournamentId, playerId: { in: playerIds } },
+    select: { playerId: true },
+  });
+  const eligibleIds = new Set(eligiblePlayers.map((row) => row.playerId));
+  const missingPlayers = playerIds.filter((id) => !eligibleIds.has(id));
+  if (missingPlayers.length > 0) throw new Error(`Tournament player data is missing: ${missingPlayers.slice(0, 5).join(", ")}`);
+
+  const matchIds = [...new Set(backup.pickems.map((pick) => pick.matchId))];
+  const matches = await database.match.findMany({ where: { tournamentId, id: { in: matchIds } }, select: { id: true } });
+  const foundMatches = new Set(matches.map((match) => match.id));
+  const missingMatches = matchIds.filter((id) => !foundMatches.has(id));
+  if (missingMatches.length > 0) throw new Error(`Tournament match data is missing: ${missingMatches.slice(0, 5).join(", ")}`);
+
+  const weekNumbers = backup.leagueWeeks.map((week) => week.weekNumber);
+  const weeks = await database.week.findMany({ where: { tournamentId, number: { in: weekNumbers } }, select: { number: true } });
+  const foundWeeks = new Set(weeks.map((week) => week.number));
+  const missingWeeks = weekNumbers.filter((number) => !foundWeeks.has(number));
+  if (missingWeeks.length > 0) throw new Error(`Tournament weeks are missing: ${missingWeeks.join(", ")}`);
+}
+
+async function resolveUsers(database: Prisma.TransactionClient, backup: Backup) {
+  const userIds = new Map<string, number>();
+  const missingAccounts: string[] = [];
+  for (const saved of backup.users) {
+    let user = await database.user.findUnique({ where: { username: saved.username } });
+    if (!user && saved.passwordHash && backup.version <= 6) {
+      user = await database.user.create({ data: { username: saved.username, passwordHash: saved.passwordHash } });
     }
-    const teamIds = new Map<string, number>();
-    for (const saved of backup.fantasyTeams) {
-      const userId = userIds.get(saved.username); if (!userId) throw new Error(`Unknown user: ${saved.username}`);
-      const team = await tx.fantasyTeam.create({ data: { leagueId, userId, name: saved.name, roster: { create: saved.roster } } });
-      teamIds.set(saved.username, team.id);
-    }
-    const restoredOrder = (backup.league.draftOrder ?? []).map((username) => teamIds.get(username)).filter((id): id is number => id !== undefined);
-    await tx.league.update({ where: { id: leagueId }, data: {
-      draftStatus: backup.league.draftStatus ?? (backup.fantasyTeams.some((team) => team.roster.length > 0) ? "COMPLETE" : "NOT_STARTED"),
-      draftOrder: restoredOrder.length ? JSON.stringify(restoredOrder) : null,
-      draftCurrentPick: backup.league.draftCurrentPick ?? 0,
-      draftBudget: backup.league.draftBudget ?? 10000,
-      draftPlayerPrice: backup.league.draftPlayerPrice ?? 1000,
-      draftPlayersPerRole: backup.league.draftPlayersPerRole ?? 2,
-    } });
-    for (const saved of backup.draftPicks ?? []) {
-      const fantasyTeamId = teamIds.get(saved.username); if (!fantasyTeamId) continue;
-      await tx.draftPick.create({ data: { leagueId, fantasyTeamId, playerId: saved.playerId, overallPick: saved.overallPick, round: saved.round, role: saved.role, price: saved.price, pickedAt: new Date(saved.pickedAt) } });
-    }
-    for (const saved of backup.pickems) {
-      const userId = userIds.get(saved.username); if (!userId) continue;
-      await tx.pickem.create({ data: { leagueId, userId, matchId: saved.matchId, predictedWinner: saved.predictedWinner, predictedScore: saved.predictedScore } });
-    }
-    for (const saved of backup.cbQuestions) await tx.crystalBallQuestion.create({ data: {
+    if (!user) missingAccounts.push(saved.username);
+    else userIds.set(saved.username, user.id);
+  }
+  if (missingAccounts.length > 0) {
+    throw new Error(`These accounts must sign up before this backup can be restored: ${missingAccounts.slice(0, 8).join(", ")}`);
+  }
+  return userIds;
+}
+
+async function applyBackup(
+  tx: Prisma.TransactionClient,
+  leagueId: number,
+  tournamentId: string,
+  backup: Backup,
+) {
+  await validateReferences(tx, tournamentId, backup);
+  const userIds = await resolveUsers(tx, backup);
+
+  await tx.weeklyScore.deleteMany({ where: { leagueWeek: { leagueId } } });
+  await tx.weeklyRosterSlot.deleteMany({ where: { leagueWeek: { leagueId } } });
+  await tx.leagueWeek.deleteMany({ where: { leagueId } });
+  await tx.crystalBallAnswer.deleteMany({ where: { question: { leagueId } } });
+  await tx.crystalBallQuestion.deleteMany({ where: { leagueId } });
+  await tx.pickem.deleteMany({ where: { leagueId } });
+  await tx.draftPick.deleteMany({ where: { leagueId } });
+  await tx.rosterSlot.deleteMany({ where: { fantasyTeam: { leagueId } } });
+  await tx.fantasyTeam.deleteMany({ where: { leagueId } });
+  await tx.leagueMembership.deleteMany({ where: { leagueId } });
+  await tx.league.update({ where: { id: leagueId }, data: {
+    scoringConfig: backup.league.scoringConfig, currentWeek: backup.league.currentWeek,
+    seasonStatus: backup.league.seasonStatus, isSimulation: backup.league.isSimulation,
+    crystalBallLockedAt: backup.league.crystalBallLockedAt ? new Date(backup.league.crystalBallLockedAt) : null,
+    rostersLockedAt: backup.league.rostersLockedAt ? new Date(backup.league.rostersLockedAt) : null,
+  } });
+
+  for (const saved of backup.users) {
+    await tx.leagueMembership.create({ data: { leagueId, userId: userIds.get(saved.username)!, role: saved.role, joinedAt: saved.joinedAt ? new Date(saved.joinedAt) : undefined } });
+  }
+  const teamIds = new Map<string, number>();
+  for (const saved of backup.fantasyTeams) {
+    const team = await tx.fantasyTeam.create({ data: { leagueId, userId: userIds.get(saved.username)!, name: saved.name, roster: { create: saved.roster } } });
+    teamIds.set(saved.username, team.id);
+  }
+  const restoredOrder = (backup.league.draftOrder ?? []).map((username) => teamIds.get(username)).filter((id): id is number => id !== undefined);
+  await tx.league.update({ where: { id: leagueId }, data: {
+    draftStatus: backup.league.draftStatus ?? (backup.fantasyTeams.some((team) => team.roster.length > 0) ? "COMPLETE" : "NOT_STARTED"),
+    draftOrder: restoredOrder.length > 0 ? JSON.stringify(restoredOrder) : null,
+    draftCurrentPick: backup.league.draftCurrentPick ?? 0,
+    draftBudget: backup.league.draftBudget ?? 10_000,
+    draftPlayerPrice: backup.league.draftPlayerPrice ?? 1_000,
+    draftPlayersPerRole: backup.league.draftPlayersPerRole ?? 2,
+  } });
+  for (const saved of backup.draftPicks ?? []) {
+    await tx.draftPick.create({ data: { leagueId, fantasyTeamId: teamIds.get(saved.username)!, playerId: saved.playerId, overallPick: saved.overallPick, round: saved.round, role: saved.role, price: saved.price, pickedAt: new Date(saved.pickedAt) } });
+  }
+  for (const saved of backup.pickems) {
+    await tx.pickem.create({ data: { leagueId, userId: userIds.get(saved.username)!, matchId: saved.matchId, predictedWinner: saved.predictedWinner, predictedScore: saved.predictedScore, createdAt: saved.createdAt ? new Date(saved.createdAt) : undefined, updatedAt: saved.updatedAt ? new Date(saved.updatedAt) : undefined } });
+  }
+  for (const saved of backup.cbQuestions) {
+    await tx.crystalBallQuestion.create({ data: {
       leagueId, prompt: saved.prompt, answerType: saved.answerType, points: saved.points, partialRule: saved.partialRule,
       correctAnswer: saved.correctAnswer, partialAnswers: saved.partialAnswers,
       metricKey: saved.metricKey ?? null, gradingMode: saved.gradingMode ?? "EXACT", resolverConfig: saved.resolverConfig ?? null,
       resolvedAnswers: saved.resolvedAnswers ?? null, resolutionData: saved.resolutionData ?? null,
       resolvedAt: saved.resolvedAt ? new Date(saved.resolvedAt) : null,
-      answers: { create: saved.answers.filter((a) => userIds.has(a.username)).map((a) => ({ userId: userIds.get(a.username)!, answer: a.answer })) },
+      answers: { create: saved.answers.map((answer) => ({ userId: userIds.get(answer.username)!, answer: answer.answer, createdAt: answer.createdAt ? new Date(answer.createdAt) : undefined, updatedAt: answer.updatedAt ? new Date(answer.updatedAt) : undefined })) },
     } });
-    for (const saved of backup.leagueWeeks) {
-      const week = await tx.week.findUniqueOrThrow({ where: { tournamentId_number: { tournamentId: target.tournamentId, number: saved.weekNumber } } });
-      const lw = await tx.leagueWeek.create({ data: { leagueId, weekId: week.id, status: saved.status,
-        picksOpenAt: saved.picksOpenAt ? new Date(saved.picksOpenAt) : null, picksLockedAt: saved.picksLockedAt ? new Date(saved.picksLockedAt) : null,
-        rosterLockedAt: saved.rosterLockedAt ? new Date(saved.rosterLockedAt) : null, resultsImportedAt: saved.resultsImportedAt ? new Date(saved.resultsImportedAt) : null,
-        scoredAt: saved.scoredAt ? new Date(saved.scoredAt) : null, publishedAt: saved.publishedAt ? new Date(saved.publishedAt) : null,
-        validationJson: saved.validationJson, validationError: saved.validationError } });
-      for (const row of saved.rosters) await tx.weeklyRosterSlot.create({ data: { leagueWeekId: lw.id, fantasyTeamId: teamIds.get(row.username)!, playerId: row.playerId, slot: row.slot } });
-      for (const row of saved.scores) await tx.weeklyScore.create({ data: { leagueWeekId: lw.id, fantasyTeamId: teamIds.get(row.username)!, rosterPts: row.rosterPts, pickemPts: row.pickemPts, total: row.total, breakdown: row.breakdown, publishedAt: row.publishedAt ? new Date(row.publishedAt) : null } });
+  }
+  for (const saved of backup.leagueWeeks) {
+    const week = await tx.week.findUniqueOrThrow({ where: { tournamentId_number: { tournamentId, number: saved.weekNumber } } });
+    const leagueWeek = await tx.leagueWeek.create({ data: {
+      leagueId, weekId: week.id, status: saved.status,
+      picksOpenAt: saved.picksOpenAt ? new Date(saved.picksOpenAt) : null,
+      picksLockedAt: saved.picksLockedAt ? new Date(saved.picksLockedAt) : null,
+      rosterLockedAt: saved.rosterLockedAt ? new Date(saved.rosterLockedAt) : null,
+      resultsImportedAt: saved.resultsImportedAt ? new Date(saved.resultsImportedAt) : null,
+      scoredAt: saved.scoredAt ? new Date(saved.scoredAt) : null,
+      publishedAt: saved.publishedAt ? new Date(saved.publishedAt) : null,
+      validationJson: saved.validationJson, validationError: saved.validationError,
+    } });
+    for (const row of saved.rosters) {
+      await tx.weeklyRosterSlot.create({ data: { leagueWeekId: leagueWeek.id, fantasyTeamId: teamIds.get(row.username)!, playerId: row.playerId, slot: row.slot, lockedAt: row.lockedAt ? new Date(row.lockedAt) : undefined } });
     }
-  });
-  return { ok: true };
+    for (const row of saved.scores) {
+      await tx.weeklyScore.create({ data: { leagueWeekId: leagueWeek.id, fantasyTeamId: teamIds.get(row.username)!, rosterPts: row.rosterPts, pickemPts: row.pickemPts, total: row.total, breakdown: row.breakdown, calculatedAt: row.calculatedAt ? new Date(row.calculatedAt) : undefined, publishedAt: row.publishedAt ? new Date(row.publishedAt) : null } });
+    }
+  }
+}
+
+export async function importLeague(
+  leagueId: number,
+  input: unknown,
+  actorUserId: number,
+  database = prisma,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const backup = parseBackup(input);
+    await database.$transaction(async (tx) => {
+      await assertOwner(tx, leagueId, actorUserId);
+      const target = await tx.league.findUniqueOrThrow({ where: { id: leagueId } });
+      if (target.tournamentId !== backup.league.tournamentId) throw new Error("Backup tournament does not match this league");
+      const actor = await tx.user.findUniqueOrThrow({ where: { id: actorUserId } });
+      if (backupOwnerUsername(backup) !== actor.username && !actor.siteAdmin) {
+        throw new Error("The signed-in owner must also be the owner recorded in the backup");
+      }
+      await storeSnapshot(tx, leagueId, actorUserId, "Automatic safety checkpoint before file import");
+      await applyBackup(tx, leagueId, target.tournamentId, backup);
+    }, transactionOptions);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Backup import failed" };
+  }
+}
+
+export async function restoreStoredBackupOverLeague(backupId: number, leagueId: number, actorUserId: number, database = prisma) {
+  return database.$transaction(async (tx) => {
+    await assertOwner(tx, leagueId, actorUserId);
+    const [row, target, actor] = await Promise.all([
+      tx.leagueBackup.findUniqueOrThrow({ where: { id: backupId } }),
+      tx.league.findUniqueOrThrow({ where: { id: leagueId } }),
+      tx.user.findUniqueOrThrow({ where: { id: actorUserId } }),
+    ]);
+    if (!actor.siteAdmin && row.ownerUserId !== actorUserId) throw new Error("You do not own this checkpoint");
+    if (row.originalLeagueId !== leagueId) throw new Error("This checkpoint belongs to a different league");
+    if (row.tournamentId !== target.tournamentId) throw new Error("Checkpoint tournament does not match this league");
+    const backup = parseBackupJson(row.snapshotJson);
+    if (!actor.siteAdmin && backupOwnerUsername(backup) !== actor.username) throw new Error("Checkpoint owner does not match your account");
+    await storeSnapshot(tx, leagueId, actorUserId, "Automatic safety checkpoint before rollback");
+    await applyBackup(tx, leagueId, target.tournamentId, backup);
+    await tx.leagueBackup.update({ where: { id: row.id }, data: { restoredAt: new Date(), restoredLeagueId: leagueId } });
+    return target;
+  }, transactionOptions);
+}
+
+async function uniqueRestoredSlug(tx: Prisma.TransactionClient, preferred: string) {
+  const base = slugify(preferred);
+  let slug = base;
+  let suffix = 2;
+  while (await tx.league.findUnique({ where: { slug }, select: { id: true } })) slug = `${base}-${suffix++}`;
+  return slug;
+}
+
+async function uniqueInviteCode(tx: Prisma.TransactionClient) {
+  let inviteCode = newInviteCode();
+  while (await tx.league.findUnique({ where: { inviteCode }, select: { id: true } })) inviteCode = newInviteCode();
+  return inviteCode;
+}
+
+export async function restoreStoredBackupAsLeague(backupId: number, actorUserId: number, database = prisma) {
+  return database.$transaction(async (tx) => {
+    const [row, actor] = await Promise.all([
+      tx.leagueBackup.findUniqueOrThrow({ where: { id: backupId } }),
+      tx.user.findUniqueOrThrow({ where: { id: actorUserId } }),
+    ]);
+    if (!actor.siteAdmin && row.ownerUserId !== actorUserId) throw new Error("You do not own this checkpoint");
+    if (row.restoredLeagueId) {
+      const existing = await tx.league.findUnique({ where: { id: row.restoredLeagueId }, select: { id: true } });
+      if (existing) throw new Error("This checkpoint has already been restored; open the restored league instead");
+    }
+    const backup = parseBackupJson(row.snapshotJson);
+    if (!actor.siteAdmin && backupOwnerUsername(backup) !== actor.username) throw new Error("Checkpoint owner does not match your account");
+    if (!await tx.tournament.findUnique({ where: { id: backup.league.tournamentId }, select: { id: true } })) {
+      throw new Error("The checkpoint's LCK tournament data is not available");
+    }
+    const slug = await uniqueRestoredSlug(tx, row.originalLeagueSlug || backup.league.name);
+    const inviteCode = await uniqueInviteCode(tx);
+    const league = await tx.league.create({ data: {
+      name: backup.league.name,
+      slug,
+      inviteCode,
+      tournamentId: backup.league.tournamentId,
+      scoringConfig: backup.league.scoringConfig,
+      isSimulation: backup.league.isSimulation,
+    } });
+    await applyBackup(tx, league.id, league.tournamentId, backup);
+    await tx.leagueBackup.update({ where: { id: row.id }, data: { restoredAt: new Date(), restoredLeagueId: league.id } });
+    return league;
+  }, transactionOptions);
+}
+
+export async function deleteLeagueWithRecovery(leagueId: number, actorUserId: number, database = prisma) {
+  return database.$transaction(async (tx) => {
+    await assertOwner(tx, leagueId, actorUserId);
+    const league = await tx.league.findUniqueOrThrow({ where: { id: leagueId } });
+    const recovery = await storeSnapshot(tx, leagueId, actorUserId, "Automatic recovery checkpoint before deletion");
+    const deletedAt = new Date();
+    await tx.leagueBackup.updateMany({ where: { originalLeagueId: leagueId }, data: { sourceDeletedAt: deletedAt } });
+    await tx.league.delete({ where: { id: leagueId } });
+    return { league, recoveryBackupId: recovery.id };
+  }, transactionOptions);
+}
+
+export async function deleteStoredLeagueBackup(backupId: number, actorUserId: number, database = prisma) {
+  const actor = await database.user.findUniqueOrThrow({ where: { id: actorUserId } });
+  const backup = await database.leagueBackup.findUniqueOrThrow({ where: { id: backupId } });
+  if (!actor.siteAdmin && backup.ownerUserId !== actorUserId) throw new Error("You do not own this checkpoint");
+  await database.leagueBackup.delete({ where: { id: backup.id } });
 }

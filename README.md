@@ -82,6 +82,23 @@ added. Scoring settings can change only before the first published week.
 Authentication uses hashed passwords, opaque database-backed sessions, and
 HTTP-only cookies. Every server mutation checks both identity and league role.
 
+## League checkpoints and recovery
+
+Commissioners can save named checkpoints from `/settings`; league owners can
+also download the current state as JSON, import a compatible JSON backup, roll
+the active league back to a checkpoint, or delete the league. Every file import
+and rollback first creates an automatic safety checkpoint. League deletion is
+atomic: the database saves a final recovery point before it removes the live
+league, so a failed snapshot prevents the deletion.
+
+Deleted-league checkpoints appear on `/leagues`. The owner can restore one as a
+new league with a new invite code, download it for offline storage, or
+permanently purge it. Checkpoints include memberships, teams, rosters, draft
+history, pickems, Crystal Ball state, weekly lifecycle records, frozen roster
+history, scores, and their audit timestamps. Shared LCK catalog/game data and
+user accounts are referenced rather than duplicated, and new exports never
+contain password hashes.
+
 For full event and per-minute timelines, provide a Riot-style timeline with an explicit participant mapping:
 
 ```bash

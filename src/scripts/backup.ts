@@ -4,7 +4,8 @@
 //   npx tsx src/scripts/backup.ts import <leagueId> <file.json>
 
 import fs from "node:fs";
-import { exportLeague, importLeague, type Backup } from "../lib/backup";
+import { exportLeague, importLeague } from "../lib/backup";
+import { parseBackupJson } from "../lib/backup-format";
 import { prisma } from "../lib/db";
 
 async function main() {
@@ -19,8 +20,10 @@ async function main() {
     console.log(`Exported to ${out}`);
   } else if (mode === "import") {
     if (!file) throw new Error("Usage: backup.ts import <file.json>");
-    const backup = JSON.parse(fs.readFileSync(file, "utf8")) as Backup;
-    const result = await importLeague(leagueId, backup);
+    const backup = parseBackupJson(fs.readFileSync(file, "utf8"));
+    const owner = await prisma.leagueMembership.findFirst({ where: { leagueId, role: "OWNER" } });
+    if (!owner) throw new Error("Target league has no owner");
+    const result = await importLeague(leagueId, backup, owner.userId);
     if (!result.ok) throw new Error(result.error);
     console.log("Import successful.");
   } else {

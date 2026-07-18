@@ -2,7 +2,7 @@
 import { getDemoLeague, parseScoring } from "@/lib/fantasy";
 import { prisma } from "@/lib/db";
 import ImportForm from "@/components/ImportForm";
-import { addCommissioner, resetTestLeague, updateMembershipRole } from "./actions";
+import { addCommissioner, createCheckpoint, deleteCheckpoint, deleteLeague, resetTestLeague, restoreCheckpoint, updateMembershipRole } from "./actions";
 import { requireLeagueManager } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +14,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const cfg = parseScoring(league?.scoringConfig);
   const tournaments = await prisma.tournament.findMany({ orderBy: { id: "asc" } });
   const memberships = await prisma.leagueMembership.findMany({ where: { leagueId: access.league.id }, include: { user: true }, orderBy: [{ role: "asc" }, { joinedAt: "asc" }] });
+  const backups = await prisma.leagueBackup.findMany({
+    where: { originalLeagueId: access.league.id },
+    include: { createdBy: { select: { username: true } } },
+    orderBy: { createdAt: "desc" },
+  });
 
   return (
     <>
@@ -47,17 +52,38 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <form action={resetTestLeague} className="safety-confirm"><input type="hidden" name="leagueId" value={league.id} /><label><input type="checkbox" name="confirmReset" value="true" required /><span>Clear the draft, rosters, picks, Crystal Ball answers, and weekly scores for this test league.</span></label><button type="submit">Reset this test league</button></form>
       </div>}
 
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Backup</h2>
+      <div className="card stack">
+        <h2 style={{ marginTop: 0 }}>Checkpoints and file backup</h2>
         <p className="small muted">
-          The backup contains the fantasy side only: league config, users, rosters,
-          pickems, crystal ball, weekly roster snapshots, and published scores. Game data
-          always re-ingests from the sources, so it isn&apos;t included. Importing replaces
-          everything in the backup&apos;s scope.
+          Checkpoints preserve league config, memberships, rosters, draft history, pickems,
+          Crystal Ball, immutable weekly roster snapshots, lifecycle state, and scores. Shared
+          LCK game data remains in the catalog. New backups never contain password hashes.
         </p>
-        <p>
-          <a href={`/api/export?leagueId=${league?.id}`}>⬇ Export this league (JSON)</a>
-        </p>
+        {league && <form action={createCheckpoint} className="inline-form">
+          <input type="hidden" name="leagueId" value={league.id} />
+          <label>Checkpoint label <input name="label" required minLength={2} maxLength={80} placeholder={`Before Week ${league.currentWeek + 1}`} /></label>
+          <button type="submit">Save checkpoint</button>
+        </form>}
+        <p><a href={`/api/export?leagueId=${league?.id}`}>⬇ Download current state as JSON</a></p>
+        {backups.length === 0 ? <p className="small muted">No saved checkpoints yet.</p> : <div className="tablewrap"><table><thead><tr><th>Saved</th><th>Label</th><th>Created by</th><th>Size</th><th>Actions</th></tr></thead><tbody>{backups.map((backup) => <tr key={backup.id}>
+          <td>{backup.createdAt.toLocaleString("en-US")}</td>
+          <td>{backup.label}{backup.restoredAt && <><br /><span className="small muted">restored {backup.restoredAt.toLocaleString("en-US")}</span></>}</td>
+          <td>{backup.createdBy?.username ?? "Deleted account"}</td>
+          <td>{Math.max(1, Math.ceil(Buffer.byteLength(backup.snapshotJson, "utf8") / 1024)).toLocaleString("en-US")} KB</td>
+          <td><div className="stack compact-actions">
+            <a href={`/api/backups/${backup.id}`}>Download</a>
+            {league && access.membership.role === "OWNER" && <form action={restoreCheckpoint} className="safety-confirm">
+              <input type="hidden" name="leagueId" value={league.id} /><input type="hidden" name="backupId" value={backup.id} />
+              <label><input type="checkbox" name="confirmRestore" value="true" required /><span>Replace the current league state with this checkpoint.</span></label>
+              <button type="submit">Restore this point</button>
+            </form>}
+            {league && access.membership.role === "OWNER" && <form action={deleteCheckpoint} className="safety-confirm">
+              <input type="hidden" name="leagueId" value={league.id} /><input type="hidden" name="backupId" value={backup.id} />
+              <label><input type="checkbox" name="confirmDeleteBackup" value="true" required /><span>Permanently remove this checkpoint.</span></label>
+              <button type="submit">Delete checkpoint</button>
+            </form>}
+          </div></td>
+        </tr>)}</tbody></table></div>}
         {league && access.membership.role === "OWNER" && <ImportForm leagueId={league.id} />}
       </div>
 
@@ -99,6 +125,17 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           {JSON.stringify(cfg, null, 2)}
         </pre>
       </div>
+
+      {league && access.membership.role === "OWNER" && <div className="card danger-zone">
+        <h2 style={{ marginTop: 0 }}>Delete league</h2>
+        <p className="small muted">Deleting removes this league&apos;s memberships, teams, draft, picks, Crystal Ball answers, weekly snapshots, and scores. Shared LCK data and user accounts are untouched. A recovery checkpoint is created atomically before deletion and appears on My leagues.</p>
+        <form action={deleteLeague} className="safety-confirm">
+          <input type="hidden" name="leagueId" value={league.id} />
+          <label className="stack">Type <b>{league.name}</b> to confirm<input name="leagueName" required autoComplete="off" /></label>
+          <label><input type="checkbox" name="confirmDeleteLeague" value="true" required /><span>I understand this removes the active league for every participant.</span></label>
+          <button type="submit">Create recovery point and delete league</button>
+        </form>
+      </div>}
     </>
   );
 }

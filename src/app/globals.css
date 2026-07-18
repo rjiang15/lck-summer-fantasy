@@ -213,6 +213,9 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .safety-confirm label { display: flex; align-items: flex-start; gap: 0.45rem; font-size: 0.8rem; color: var(--loss); }
 .safety-confirm input[type="checkbox"] { width: auto; margin-top: 0.15rem; flex: 0 0 auto; }
 .safety-confirm button { justify-self: start; }
+.compact-actions { min-width: 12rem; }
+.danger-zone { border-color: color-mix(in srgb, var(--loss) 55%, var(--border)); }
+.danger-zone h2, .danger-zone .safety-confirm button { color: var(--loss); }
 .submission-status {
   display: inline-flex;
   align-items: center;
