@@ -64,6 +64,8 @@ main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
 .topnav-tools { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
 .view-controls { display: inline-flex; gap: 0.5rem; align-items: center; }
 .view-controls select { max-width: 220px; }
+.season-picker { display: inline-flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.75rem; color: var(--muted); }
+.season-picker select { min-width: 12rem; }
 .view-label { min-width: 7.5rem; text-align: center; font-size: 0.9rem; white-space: nowrap; }
 .nav-signin { color: var(--accent); font-weight: 600; white-space: nowrap; }
 .nav-sections {

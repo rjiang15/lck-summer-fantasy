@@ -20,7 +20,7 @@ export default async function PicksPage() {
   const scoring = parseScoring(league.scoringConfig);
 
   return <>
-    <h1>Picks for Week {leagueWeek.week.number}</h1>
+    <h1>Picks for Week {leagueWeek.week.number}{leagueWeek.week.sourceLabel && leagueWeek.week.sourceLabel !== `Week ${leagueWeek.week.number}` ? ` · LCK ${leagueWeek.week.sourceLabel}` : ""}</h1>
     <p className="muted small">{picksLocked ? "The commissioner has locked this week's picks. Your saved predictions are shown below." : `Choose each series winner, then set how many games the losing team takes. Picks lock when the commissioner locks the picks${league.isSimulation ? "." : " or when each series begins, whichever comes first."}`}</p>
     <p className="card small"><b>Scoring:</b> +{scoring.pickem.correctWinner} for the correct series winner, plus +{scoring.pickem.exactScoreBonus} for the exact series score.</p>
     <PicksForm leagueId={league.id} leagueWeekId={leagueWeek.id} weekLocked={picksLocked} matches={leagueWeek.week.matches.map((match) => {

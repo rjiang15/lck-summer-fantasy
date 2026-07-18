@@ -14,6 +14,7 @@
     "season:init": "tsx src/scripts/init-season.ts",
     "season:reset": "tsx src/scripts/reset-live-season.ts",
     "season:rescore": "tsx src/scripts/rescore-published.ts",
+    "tournament:current": "tsx src/scripts/set-current-tournament.ts",
     "crystal-ball:sync": "tsx src/scripts/sync-crystal-ball.ts",
     "crystal-ball:verify": "tsx src/scripts/verify-crystal-ball.ts",
     "test": "node --import tsx --test src/**/*.test.ts",

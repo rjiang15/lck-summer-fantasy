@@ -13,7 +13,7 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
   const league = await prisma.league.findUniqueOrThrow({
     where: { id: access.league.id },
     include: {
-      fantasyTeams: { orderBy: { id: "asc" }, include: { user: true, draftPicks: { orderBy: { overallPick: "asc" }, include: { player: true } } } },
+      fantasyTeams: { orderBy: { id: "asc" }, include: { user: true, draftPicks: { orderBy: { overallPick: "asc" }, include: { player: { include: { tournamentRosters: { where: { tournamentId: access.league.tournamentId } } } } } } } },
     },
   });
   if (league.currentWeek !== 0 || league.seasonStatus !== "PRESEASON") return <><p><Link href="/commissioner">← Commissioner</Link></p><h1>Initial roster draft</h1><p className="card">The initial draft is available only during Week 0, before Week 1 is locked.</p></>;
@@ -25,7 +25,7 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
   });
   const teams = league.fantasyTeams.map((team) => ({
     id: team.id, name: team.name, username: team.user.username,
-    picks: team.draftPicks.map((pick) => ({ id: pick.id, playerId: pick.playerId, playerName: pick.player.name, proTeam: pick.player.teamId, role: pick.role, price: pick.price, overallPick: pick.overallPick })),
+    picks: team.draftPicks.map((pick) => ({ id: pick.id, playerId: pick.playerId, playerName: pick.player.name, proTeam: pick.player.tournamentRosters[0]?.teamId ?? null, role: pick.role, price: pick.price, overallPick: pick.overallPick })),
   }));
   const totalPicks = totalDraftPicks(teams.length, league.draftPlayersPerRole);
   const currentTeamId = league.draftStatus === "ACTIVE" ? snakeTeamId(order, league.draftCurrentPick) : null;

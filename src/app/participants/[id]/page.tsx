@@ -36,7 +36,7 @@ export default async function ParticipantPage({
           leagueWeeks: { include: { week: true, weeklyRosters: true } },
         },
       },
-      roster: { include: { player: true } },
+      roster: { include: { player: { include: { tournamentRosters: { where: { tournamentId: access.league.tournamentId } } } } } },
     },
   });
   if (!ft || ft.leagueId !== access.league.id) notFound();
@@ -134,7 +134,7 @@ export default async function ParticipantPage({
                   <tr key={slot.id}>
                     <td className="muted">{slot.slot}</td>
                     <td>{slot.player.name}</td>
-                    <td>{slot.player.teamId ? <TeamLabel name={slot.player.teamId} size="xs" /> : "?"}</td>
+                    <td>{slot.player.tournamentRosters[0]?.teamId ? <TeamLabel name={slot.player.tournamentRosters[0].teamId!} size="xs" /> : "?"}</td>
                     <td className="num">
                       <b>{round1(slotTotals.get(slot.id) ?? 0)}</b>
                     </td>

@@ -13,7 +13,7 @@ export async function createLeague(formData: FormData) {
   const teamName = String(formData.get("teamName") ?? "").trim();
   if (name.length < 3 || name.length > 60) redirect("/leagues/new?error=League+name+must+be+3-60+characters");
   if (teamName && (teamName.length < 2 || teamName.length > 40)) redirect("/leagues/new?error=Fantasy+team+name+must+be+2-40+characters");
-  if (!await prisma.tournament.findUnique({ where: { id: tournamentId } })) redirect("/leagues/new?error=Choose+a+valid+tournament");
+  if (!await prisma.tournament.findFirst({ where: { id: tournamentId, hidden: false } })) redirect("/leagues/new?error=Choose+a+valid+tournament");
   let league: Awaited<ReturnType<typeof createLeagueForOwner>>;
   try {
     league = await createLeagueForOwner({

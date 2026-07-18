@@ -7,6 +7,7 @@ import { parseScoring, fmtDate, fmtLength, ROLE_ORDER, round1 } from "@/lib/fant
 import { playerGamePoints } from "@/lib/scoring";
 import { requireLeagueMember } from "@/lib/auth";
 import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
+import { getDataViewState, isFinished } from "@/lib/view";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function GamePage({
 }) {
   const { id } = await params;
   const access = await requireLeagueMember();
+  const view = await getDataViewState(access.league.id);
   const gameId = decodeURIComponent(id);
   const game = await prisma.game.findUnique({
     where: { id: gameId },
@@ -29,7 +31,7 @@ export default async function GamePage({
       events: { orderBy: { timestampMs: "asc" } },
     },
   });
-  if (!game || game.match.tournamentId !== access.league.tournamentId) notFound();
+  if (!game || !view || game.match.tournamentId !== view.tournamentId || !isFinished(game.match, view.cutoff)) notFound();
 
   const cfg = parseScoring(access.league.scoringConfig);
 

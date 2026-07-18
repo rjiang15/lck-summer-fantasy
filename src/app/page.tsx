@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { fmtDate, fmtLength } from "@/lib/fantasy";
-import { getViewState, isFinished } from "@/lib/view";
+import { getDataViewState, isFinished } from "@/lib/view";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { TeamLabel } from "@/components/GameIdentity";
@@ -11,7 +11,7 @@ import { TeamLabel } from "@/components/GameIdentity";
 export const dynamic = "force-dynamic";
 
 export default async function GamesPage() {
-  const view = await getViewState();
+  const view = await getDataViewState();
   if (!view) {
     if (await getCurrentUser()) redirect("/leagues");
     return <section className="card empty-state"><h1>LCK Fantasy</h1><p>Run one account across multiple live or test leagues, with weekly pick&apos;ems, rosters, Crystal Ball predictions, and granular LCK stats.</p><div className="inline-form"><Link href="/signup">Create account</Link><Link href="/login">Sign in</Link><Link href="/join">Join with invite</Link></div></section>;
@@ -27,13 +27,14 @@ export default async function GamesPage() {
     },
   });
   const visibleWeeks =
-    view.openWeek === null ? weeks : weeks.filter((w) => w.number <= view.openWeek!);
+    view.isCurrentSeason || view.openWeek === null ? weeks : weeks.filter((w) => w.number <= view.openWeek!);
 
   return (
     <>
       <h1>{view.tournamentName}</h1>
       <p className="muted small">
         Every series and game in the split. Click a game to see the full scoreboard.
+        {view.isResearch && <> This is read-only historical research for your current fantasy season.</>}
         {view.completedWeek !== null && (
           <>
             {" "}
@@ -45,7 +46,7 @@ export default async function GamesPage() {
       {visibleWeeks.map((week) => (
         <section key={week.id}>
           <h2>
-            Week {week.number}{" "}
+            Week {week.number}{week.sourceLabel && week.sourceLabel !== `Week ${week.number}` ? ` · LCK ${week.sourceLabel}` : ""}{" "}
             <span className="muted small">
               {fmtDate(week.startsAt)} – {fmtDate(week.endsAt)}
             </span>

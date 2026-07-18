@@ -210,7 +210,7 @@ export default async function CommissionerPage({
           <tbody>
             {weeks.map((lw) => (
               <tr key={lw.id}>
-                <td>{lw.week.number}</td>
+                <td>{lw.week.number}{lw.week.sourceLabel && lw.week.sourceLabel !== `Week ${lw.week.number}` ? <><br /><span className="muted small">LCK {lw.week.sourceLabel}</span></> : null}</td>
                 <td><span className="badge pending">{lw.status}</span></td>
                 <td>
                   <LockControl

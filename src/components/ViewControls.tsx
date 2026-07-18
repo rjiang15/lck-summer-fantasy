@@ -9,11 +9,19 @@ export default function ViewControls({
   completedWeek,
   maxWeek,
   isLive,
+  isResearch,
+  selectedTournamentId,
+  leagueTournamentId,
+  tournaments,
 }: {
   leagueId: number;
   completedWeek: number | null; // null = Final
   maxWeek: number;
   isLive: boolean;
+  isResearch: boolean;
+  selectedTournamentId: string;
+  leagueTournamentId: string;
+  tournaments: { id: string; name: string; status: string }[];
 }) {
   const pathname = usePathname();
   const go = (params: string) => {
@@ -34,17 +42,37 @@ export default function ViewControls({
         ? "Week 0 · preseason"
         : `After Week ${completedWeek}`;
 
+  const dataPath = pathname === "/" || pathname === "/macro" || pathname === "/stats" || pathname.startsWith("/games/")
+    ? pathname
+    : "/";
+
   return (
     <span className="view-controls">
-      {!isLive && <button
+      <label className="season-picker">
+        <span>Stats season</span>
+        <select
+          aria-label="Stats season"
+          value={selectedTournamentId}
+          onChange={(event) => {
+            window.location.href = `/api/view?leagueId=${leagueId}&tournament=${encodeURIComponent(event.target.value)}&back=${encodeURIComponent(dataPath)}`;
+          }}
+        >
+          {tournaments.map((tournament) => (
+            <option value={tournament.id} key={tournament.id}>
+              {tournament.id === leagueTournamentId ? "Current league · " : "Past data · "}{tournament.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {!isLive && !isResearch && <button
           onClick={() => go(`week=${prev}`)}
           disabled={completedWeek === 0}
           title="back one week"
         >
           ◀
         </button>}
-      <b className="view-label">{label}</b>
-      {!isLive && <button
+      <b className="view-label">{isResearch ? "Past season · final" : label}</b>
+      {!isLive && !isResearch && <button
           onClick={() => next !== null && go(`week=${next}`)}
           disabled={completedWeek === null}
           title="forward one week"

@@ -16,6 +16,8 @@ model Tournament {
   id            String             @id // Leaguepedia OverviewPage, e.g. "LCK/2026 Season/Rounds 3-5"
   name          String
   hidden        Boolean            @default(false) // hide duplicates (e.g. OE copy of an LP split) from the UI
+  seasonOrder   Int                @default(0) // chronological catalog order; later seasons can research earlier ones only
+  catalogStatus String             @default("PAST") // CURRENT | PAST (independent of a fantasy league's lifecycle)
   dateStart     DateTime?
   dateEnd       DateTime?
   matches       Match[]
@@ -65,6 +67,7 @@ model Week {
   tournament         Tournament   @relation(fields: [tournamentId], references: [id])
   tournamentId       String
   number             Int
+  sourceLabel        String? // Leaguepedia tab, e.g. "Week 10" while fantasy week number is 1
   startsAt           DateTime
   endsAt             DateTime
   matches            Match[]

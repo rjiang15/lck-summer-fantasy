@@ -6,6 +6,7 @@ import { prisma } from "../lib/db";
 import { validateWeekData } from "../lib/season";
 import { assertSequentialIngest } from "../lib/ingest-order";
 import { encodeIngestionProgress } from "../lib/ingestion-progress";
+import { setCurrentTournament } from "../lib/tournaments";
 
 const int = (s: string | undefined) => {
   const n = parseInt(s ?? "", 10);
@@ -21,6 +22,20 @@ const sideName = (s: string | undefined) =>
     : s === "2" || s?.toLowerCase() === "red"
       ? "Red"
       : null;
+
+type CanonicalRole = "Top" | "Jungle" | "Mid" | "Bot" | "Support";
+
+function normalizeRole(value: string | undefined) {
+  if (!value) return null;
+  const aliases: Record<string, CanonicalRole> = {
+    top: "Top", jungle: "Jungle", jungler: "Jungle", mid: "Mid",
+    middle: "Mid", bot: "Bot", adc: "Bot", support: "Support", sup: "Support",
+  };
+  for (const part of value.split(/[;,/]/).map((item) => item.trim().toLowerCase())) {
+    if (aliases[part]) return aliases[part];
+  }
+  return null;
+}
 
 export interface LeaguepediaIngestCounts {
   mode?: "SCHEDULE_ONLY";
@@ -86,10 +101,6 @@ async function ingestTournament(
 ): Promise<LeaguepediaIngestCounts> {
   const esc = overviewPage.replace(/"/g, '\\"');
 
-  if (scheduleOnly) {
-    if (weekNumber === null) throw new Error("--schedule-only requires --week=N");
-  }
-
   console.log(`Ingesting: ${overviewPage}`);
   await reportIngestionProgress(runId, 3, "Connecting to Leaguepedia…");
 
@@ -110,20 +121,67 @@ async function ingestTournament(
       dateStart: parseUtc(t.DateStart ? `${t.DateStart} 00:00:00` : null),
       dateEnd: parseUtc(t.Date ? `${t.Date} 23:59:59` : null),
     },
-    update: { name: t.Name },
+    update: {
+      name: t.Name,
+      dateStart: parseUtc(t.DateStart ? `${t.DateStart} 00:00:00` : null),
+      dateEnd: parseUtc(t.Date ? `${t.Date} 23:59:59` : null),
+    },
   });
   await reportIngestionProgress(runId, 10, "Tournament metadata saved");
+
+  // Fetch the full slate before the player pool. Upcoming tournament pages can
+  // publish their schedule before Leaguepedia fills TournamentPlayers; the
+  // teams in this slate let us build a safe current-roster fallback.
+  await reportIngestionProgress(runId, 11, "Fetching the match schedule…");
+  const scheduleRows = await cargoQuery({
+    tables: "MatchSchedule",
+    fields:
+      "MatchId,Team1,Team2,Winner,Team1Score,Team2Score,DateTime_UTC,BestOf,Tab",
+    where: `OverviewPage="${esc}"`,
+    orderBy: "DateTime_UTC",
+    onProgress: cargoHeartbeat(runId, 11, "Fetching the match schedule"),
+  });
+  if (scheduleRows.length === 0) throw new Error(`No schedule is published for ${overviewPage}`);
 
   // Tournament rosters exist before Week 1 is played, so ingest them
   // independently of scoreboard rows. This makes Week 0 drafting possible.
   await reportIngestionProgress(runId, 12, "Fetching tournament player pool…");
-  const rosterPlayers = await cargoQuery({
+  const tournamentRosterRows = await cargoQuery({
     tables: "TournamentPlayers",
     fields: "OverviewPage,Player,Team,Role,N_PlayerInTeam",
     where: `OverviewPage="${esc}"`,
     orderBy: "Team,N_PlayerInTeam",
     onProgress: cargoHeartbeat(runId, 12, "Fetching tournament player pool"),
   });
+  let rosterPlayers = tournamentRosterRows.map((player) => ({
+    Player: player.Player,
+    Name: player.Player,
+    Team: player.Team,
+    Role: normalizeRole(player.Role),
+  }));
+
+  if (rosterPlayers.length === 0) {
+    const scheduleTeams = [...new Set(
+      scheduleRows.flatMap((match) => [match.Team1, match.Team2]).filter(Boolean),
+    )];
+    const teamFilter = scheduleTeams
+      .map((team) => `Team="${team.replace(/"/g, '\\"')}"`)
+      .join(" OR ");
+    await reportIngestionProgress(runId, 14, "Tournament roster pending; fetching current team rosters…");
+    const currentPlayers = await cargoQuery({
+      tables: "Players",
+      fields: "OverviewPage,Player,Name,Team,RoleLast",
+      where: `(${teamFilter})`,
+      orderBy: "Team,RoleLast,Player",
+      onProgress: cargoHeartbeat(runId, 14, "Fetching current team rosters"),
+    });
+    rosterPlayers = currentPlayers.map((player) => ({
+      Player: player.OverviewPage || player.Player,
+      Name: player.Player || player.Name || player.OverviewPage,
+      Team: player.Team,
+      Role: normalizeRole(player.RoleLast),
+    })).filter((player) => player.Player && player.Team && player.Role);
+  }
   console.log(`  tournament roster players: ${rosterPlayers.length}`);
   for (const [index, player] of rosterPlayers.entries()) {
     await reportLoopProgress(runId, index, rosterPlayers.length, 15, 28, "Saving eligible players");
@@ -139,13 +197,13 @@ async function ingestTournament(
       where: { id: player.Player },
       create: {
         id: player.Player,
-        name: player.Player,
+        name: player.Name || player.Player,
         role: player.Role || null,
         teamId: player.Team || null,
         tournamentId: overviewPage,
       },
       update: {
-        name: player.Player,
+        name: player.Name || player.Player,
         role: player.Role || null,
         teamId: player.Team || null,
         tournamentId: overviewPage,
@@ -158,16 +216,8 @@ async function ingestTournament(
     });
   }
 
-  // 2. Match schedule (also defines weeks via the Tab field, e.g. "Week 1")
-  await reportIngestionProgress(runId, 30, "Fetching the match schedule…");
-  const scheduleRows = await cargoQuery({
-    tables: "MatchSchedule",
-    fields:
-      "MatchId,Team1,Team2,Winner,Team1Score,Team2Score,DateTime_UTC,BestOf,Tab",
-    where: `OverviewPage="${esc}"`,
-    orderBy: "DateTime_UTC",
-    onProgress: cargoHeartbeat(runId, 30, "Fetching the match schedule"),
-  });
+  // 2. Match schedule (also defines weeks via the Tab field, e.g. "Week 10")
+  await reportIngestionProgress(runId, 30, "Saving the match schedule…");
   const allTabs = [...new Set(scheduleRows.map((m) => m.Tab).filter(Boolean))];
   const selectedTab = weekNumber === null ? null : allTabs[weekNumber - 1];
   if (weekNumber !== null && !selectedTab) throw new Error(`Week ${weekNumber} does not exist`);
@@ -190,8 +240,8 @@ async function ingestTournament(
       where: {
         tournamentId_number: { tournamentId: overviewPage, number: selectedTab ? weekNumber! : i + 1 },
       },
-      create: { tournamentId: overviewPage, number: selectedTab ? weekNumber! : i + 1, startsAt, endsAt },
-      update: { startsAt, endsAt },
+      create: { tournamentId: overviewPage, number: selectedTab ? weekNumber! : i + 1, sourceLabel: tab, startsAt, endsAt },
+      update: { sourceLabel: tab, startsAt, endsAt },
     });
     weekIdByTab.set(tab, week.id);
   }
@@ -518,7 +568,6 @@ async function validateIngestRequest(
   scheduleOnly: boolean,
 ) {
   if (!overviewPage.trim()) throw new Error("A Leaguepedia tournament page is required");
-  if (scheduleOnly && weekNumber === null) throw new Error("Schedule ingestion requires a week number");
   if (weekNumber !== null && (!Number.isInteger(weekNumber) || weekNumber < 1)) {
     throw new Error("The ingest week must be a positive whole number");
   }
@@ -535,10 +584,12 @@ export async function runLeaguepediaIngest({
   overviewPage,
   weekNumber,
   scheduleOnly = false,
+  markCurrent = false,
 }: {
   overviewPage: string;
   weekNumber: number | null;
   scheduleOnly?: boolean;
+  markCurrent?: boolean;
 }): Promise<LeaguepediaIngestCounts> {
   await validateIngestRequest(overviewPage, weekNumber, scheduleOnly);
 
@@ -563,6 +614,11 @@ export async function runLeaguepediaIngest({
 
   try {
     const counts = await ingestTournament(overviewPage, weekNumber, run.id, scheduleOnly);
+
+    if (markCurrent) {
+      await reportIngestionProgress(run.id, 97, "Updating the current/past season catalog…");
+      await setCurrentTournament(overviewPage);
+    }
 
     if (!scheduleOnly && weekNumber !== null) {
       await reportIngestionProgress(run.id, 98, "Validating game, player, team, and draft data…");
@@ -617,10 +673,11 @@ async function runCli() {
   const weekArg = process.argv.find((arg) => arg.startsWith("--week="));
   const weekNumber = weekArg ? Number(weekArg.split("=")[1]) : null;
   const scheduleOnly = process.argv.includes("--schedule-only");
+  const markCurrent = process.argv.includes("--current-season");
   if (!overviewPage) {
-    throw new Error('Usage: npm run ingest -- "<Leaguepedia OverviewPage>" [--week=N] [--schedule-only]');
+    throw new Error('Usage: npm run ingest -- "<Leaguepedia OverviewPage>" [--week=N] [--schedule-only] [--current-season]');
   }
-  await runLeaguepediaIngest({ overviewPage, weekNumber, scheduleOnly });
+  await runLeaguepediaIngest({ overviewPage, weekNumber, scheduleOnly, markCurrent });
 }
 
 const isCliEntry = /[/\\]src[/\\]scripts[/\\]ingest\.ts$/.test(process.argv[1] ?? "");

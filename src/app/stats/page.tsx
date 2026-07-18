@@ -1,6 +1,6 @@
 // Deep statistical explorer: player performance, champion meta, and team macro.
 import { prisma } from "@/lib/db";
-import { getViewState } from "@/lib/view";
+import { getDataViewState } from "@/lib/view";
 import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
 import { parseScoring, round1 } from "@/lib/fantasy";
 import { playerGameScore } from "@/lib/scoring";
@@ -58,7 +58,7 @@ const averageMetric = (row: PlayerAggregate, key: string) => row.samples[key] ? 
 const totalMetric = (row: PlayerAggregate, key: string) => row.samples[key] ? row.sums[key] : null;
 
 export default async function StatsPage() {
-  const view = await getViewState();
+  const view = await getDataViewState();
   if (!view) return <p>No data ingested yet.</p>;
   const [games, league] = await Promise.all([
     prisma.game.findMany({

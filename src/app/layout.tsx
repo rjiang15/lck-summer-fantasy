@@ -3,7 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 import ViewControls from "@/components/ViewControls";
 import LeagueSwitcher from "@/components/LeagueSwitcher";
-import { getViewState } from "@/lib/view";
+import { getDataViewState, listResearchTournaments } from "@/lib/view";
 import { getCurrentUser } from "@/lib/auth";
 import { logout } from "@/app/login/actions";
 import { prisma } from "@/lib/db";
@@ -21,12 +21,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const view = await getViewState();
+  const view = await getDataViewState();
   const user = await getCurrentUser();
   const memberships = user ? await prisma.leagueMembership.findMany({
     where: { userId: user.id }, include: { league: true }, orderBy: { joinedAt: "asc" },
   }) : [];
   const activeMembership = view ? memberships.find((row) => row.leagueId === view.leagueId) : undefined;
+  const researchTournaments = view ? await listResearchTournaments(view.leagueTournamentId) : [];
   return (
     <html lang="en">
       <body>
@@ -41,6 +42,14 @@ export default async function RootLayout({
                   completedWeek={view.completedWeek}
                   maxWeek={view.maxWeek}
                   isLive={view.isLive}
+                  isResearch={view.isResearch}
+                  selectedTournamentId={view.tournamentId}
+                  leagueTournamentId={view.leagueTournamentId}
+                  tournaments={researchTournaments.map((tournament) => ({
+                    id: tournament.id,
+                    name: tournament.name,
+                    status: tournament.catalogStatus,
+                  }))}
                 />
               )}
               {user ? (<>

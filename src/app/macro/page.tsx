@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { getViewState } from "@/lib/view";
+import { getDataViewState } from "@/lib/view";
 import { ChampionMetaTable, TeamMacroTable } from "./MacroTables";
 import { TeamLabel } from "@/components/GameIdentity";
 
@@ -55,7 +55,7 @@ const duration = (seconds: number | null) => {
 };
 
 export default async function MacroDashboardPage() {
-  const view = await getViewState();
+  const view = await getDataViewState();
   if (!view) return <p>No data ingested yet.</p>;
 
   const games = await prisma.game.findMany({
