@@ -1,7 +1,7 @@
 import { proLeaderboard } from "./fantasy";
 import { prisma } from "./db";
 import type { ScoringConfig } from "./scoring";
-import { draftFormatForTournament, isDraftRole } from "./draft";
+import { draftFormatForTournament, draftGroupForTeam, isDraftRole } from "./draft";
 
 export const DYNAMIC_PRICE_AVERAGE = 1_000;
 export const DYNAMIC_PRICE_STANDARD_DEVIATION = 200;
@@ -13,6 +13,7 @@ export type HistoricalPlayerValue = {
   playerId: string;
   ppg: number | null;
   games: number;
+  peerGroup?: string | null;
 };
 
 export type DraftPriceSheetPlayer = HistoricalPlayerValue & {
@@ -52,24 +53,44 @@ export function calculateDynamicPrices(values: readonly HistoricalPlayerValue[])
   ]));
 
   const prices = new Map<string, number>();
-  for (const row of values) {
-    const raw = row.ppg === null ? DYNAMIC_PRICE_AVERAGE : rawById.get(row.playerId)!;
+  for (const row of observed) {
+    const raw = rawById.get(row.playerId)!;
     prices.set(row.playerId, Math.max(
       DYNAMIC_PRICE_MIN,
       Math.min(DYNAMIC_PRICE_MAX, Math.round(raw / DYNAMIC_PRICE_STEP) * DYNAMIC_PRICE_STEP),
     ));
   }
 
-  // Rounding can move the mean by a few dollars. Correct it in $25 steps,
-  // leaving no-history players fixed at the neutral $1,000 baseline.
+  const missing = values.filter((row) => row.ppg === null);
+  const setPeerAveragePrices = (target: Map<string, number>) => {
+    for (const row of missing) {
+      const peers = observed.filter((peer) => row.peerGroup && peer.peerGroup === row.peerGroup);
+      const pricedPeers = (peers.length > 0 ? peers : observed).map((peer) => target.get(peer.playerId)!);
+      const peerAverage = mean(pricedPeers);
+      target.set(row.playerId, Math.max(
+        DYNAMIC_PRICE_MIN,
+        Math.min(DYNAMIC_PRICE_MAX, Math.round(peerAverage / DYNAMIC_PRICE_STEP) * DYNAMIC_PRICE_STEP),
+      ));
+    }
+  };
+  setPeerAveragePrices(prices);
+
+  // Rounding and peer-group imputations can move the pool mean. Correct it in
+  // $25 steps while recomputing missing-player peer averages after each step.
   const targetTotal = values.length * DYNAMIC_PRICE_AVERAGE;
   let difference = targetTotal - [...prices.values()].reduce((sum, price) => sum + price, 0);
   const adjustable = observed.map((row) => row.playerId);
   while (difference !== 0) {
     const step = Math.sign(difference) * DYNAMIC_PRICE_STEP;
-    const candidates = adjustable.filter((id) => {
+    const candidates = adjustable.flatMap((id) => {
       const next = prices.get(id)! + step;
-      return next >= DYNAMIC_PRICE_MIN && next <= DYNAMIC_PRICE_MAX;
+      if (next < DYNAMIC_PRICE_MIN || next > DYNAMIC_PRICE_MAX) return [];
+      const simulated = new Map(prices);
+      simulated.set(id, next);
+      setPeerAveragePrices(simulated);
+      const nextDifference = targetTotal - [...simulated.values()].reduce((sum, price) => sum + price, 0);
+      if (Math.abs(nextDifference) >= Math.abs(difference)) return [];
+      return [{ id, simulated, nextDifference }];
     });
     if (candidates.length === 0) throw new Error("Could not center the dynamic price sheet");
     candidates.sort((left, right) => {
@@ -78,10 +99,11 @@ export function calculateDynamicPrices(values: readonly HistoricalPlayerValue[])
         const raw = rawById.get(id)!;
         return Math.abs(current + step - raw) - Math.abs(current - raw);
       };
-      return penalty(left) - penalty(right) || left.localeCompare(right);
+      return Math.abs(left.nextDifference) - Math.abs(right.nextDifference) || penalty(left.id) - penalty(right.id) || left.id.localeCompare(right.id);
     });
-    prices.set(candidates[0], prices.get(candidates[0])! + step);
-    difference -= step;
+    prices.clear();
+    for (const [id, price] of candidates[0].simulated) prices.set(id, price);
+    difference = candidates[0].nextDifference;
   }
 
   return {
@@ -109,12 +131,18 @@ export async function buildDraftPriceSheet(
     proLeaderboard(format.pricingSourceTournamentId, scoring),
   ]);
   const history = new Map(leaderboard.map((row) => [row.id, row]));
-  const draftEligible = eligible.filter((row) => isDraftRole(row.role ?? row.player.role));
-  const calculated = calculateDynamicPrices(draftEligible.map(({ playerId }) => ({
-    playerId,
-    ppg: history.get(playerId)?.pts ?? null,
-    games: history.get(playerId)?.games ?? 0,
-  })));
+  const draftEligible = eligible.flatMap((row) => {
+    const role = row.role ?? row.player.role;
+    const group = draftGroupForTeam(format, row.teamId);
+    if (!isDraftRole(role) || !group) return [];
+    return [{
+      playerId: row.playerId,
+      ppg: history.get(row.playerId)?.pts ?? null,
+      games: history.get(row.playerId)?.games ?? 0,
+      peerGroup: `${group}:${role}`,
+    }];
+  });
+  const calculated = calculateDynamicPrices(draftEligible);
   return {
     version: 1,
     targetTournamentId,

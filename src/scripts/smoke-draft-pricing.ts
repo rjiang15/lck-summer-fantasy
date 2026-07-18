@@ -60,6 +60,14 @@ async function main() {
 
   const average = candidates.reduce((sum, player) => sum + player.price, 0) / candidates.length;
   assert(average === 1_000, `Eligible-pool average was $${average}, expected exactly $1,000`);
+  const peerImputations = candidates.filter((player) => player.ppg === null).map((player) => {
+    const peers = candidates.filter((peer) => peer.ppg !== null && peer.group === player.group && peer.role === player.role);
+    assert(peers.length > 0, `${player.name} has no experienced ${player.group} ${player.role} peers`);
+    const peerAverage = peers.reduce((sum, peer) => sum + peer.price, 0) / peers.length;
+    const expected = Math.round(peerAverage / 25) * 25;
+    assert(player.price === expected, `${player.name} cost $${player.price}, expected peer average $${expected}`);
+    return { player, peerAverage, expected };
+  });
 
   const teams: SimulatedTeam[] = Array.from({ length: TEAM_COUNT }, (_, index) => ({
     id: index + 1, spent: 0, picks: [], lastPickFundsBefore: null,
@@ -124,6 +132,10 @@ async function main() {
     const rows = groupSummary(group);
     const groupAverage = rows.reduce((sum, player) => sum + player.price, 0) / rows.length;
     console.log(`${format.groups.find((row) => row.key === group)!.label}: ${rows.length} players, $${groupAverage.toFixed(0)} average, $${Math.min(...rows.map((row) => row.price))}–$${Math.max(...rows.map((row) => row.price))}`);
+  }
+  console.log("\nNo-history group-role imputations");
+  for (const { player, peerAverage, expected } of peerImputations) {
+    console.log(`${player.name}: ${player.group} ${player.role} peer average $${peerAverage.toFixed(0)} → $${expected}`);
   }
   console.log("\nGreedy three-team snake result");
   for (const team of teams) {

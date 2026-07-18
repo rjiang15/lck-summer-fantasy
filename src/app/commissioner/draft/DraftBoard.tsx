@@ -114,7 +114,7 @@ export default function DraftBoard({
         return <form action={submitPick} className={`draft-player-card ${player.group ? `draft-group-${player.group.toLowerCase()}` : ""}`} key={player.id}>
           <input type="hidden" name="leagueId" value={leagueId} /><input type="hidden" name="playerId" value={player.id} />
           <div className="draft-player-card-title"><div><b>{player.name}</b>{player.teamId ? <TeamLabel name={player.teamId} size="xs" /> : <span>Free agent</span>}</div>{groupLabel && <span className={`draft-group-badge draft-group-${player.group?.toLowerCase()}`}>{groupLabel}</span>}</div>
-          <div className="draft-player-value"><b>{money(player.price)}</b><span>{player.ppg === null ? "No R1–2 data · baseline" : `${player.ppg.toFixed(1)} Pts/G · ${player.games} games`}</span></div>
+          <div className="draft-player-value"><b>{money(player.price)}</b><span>{player.ppg === null ? "No R1–2 data · peer average" : `${player.ppg.toFixed(1)} Pts/G · ${player.games} games`}</span></div>
           <button type="submit" disabled={busy || !slotAvailable || !preservesLeaguePool || !affordable}>{busy ? "Updating…" : !slotAvailable ? `${groupLabel ? `${groupLabel} ` : ""}${player.role} full` : !preservesLeaguePool ? "Needed by another roster" : !affordable ? "Would break budget reserve" : `Draft · ${money(player.price)}`}</button>
         </form>;
       })}</div>

@@ -69,7 +69,7 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
       <form action={startDraft} className="stack" style={{ maxWidth: 720 }}><input type="hidden" name="leagueId" value={league.id} />
         <fieldset className="draft-pricing-choices"><legend>Player pricing</legend>
           <label><input type="radio" name="draftPricingMode" value="UNIFORM" defaultChecked /><span><b>Uniform pricing</b><small>Every player costs {money(league.draftPlayerPrice)}.</small></span></label>
-          <label><input type="radio" name="draftPricingMode" value="DYNAMIC" disabled={!format || !previewSheet} /><span><b>Dynamic R1–2 pricing</b><small>R1–2 fantasy Pts/G standardized to a {money(1_000)} average; no-history players start at average.</small></span></label>
+          <label><input type="radio" name="draftPricingMode" value="DYNAMIC" disabled={!format || !previewSheet} /><span><b>Dynamic R1–2 pricing</b><small>R1–2 fantasy Pts/G standardized to a {money(1_000)} average; no-history players use their group-and-role average.</small></span></label>
         </fieldset>
         {previewError && <p className="error small">Dynamic pricing unavailable: {previewError}</p>}
         {teams.map((_, index) => <label key={index}>Pick position {index + 1}<select name="teamId" defaultValue={teams[index]?.id}>{teams.map((team) => <option value={team.id} key={team.id}>{team.username} — {team.name}</option>)}</select></label>)}

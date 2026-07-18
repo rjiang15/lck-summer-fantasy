@@ -93,7 +93,7 @@ Before the first pick, the commissioner chooses uniform $1,000 pricing or
 dynamic pricing derived from Rounds 1-2 fantasy points per game. Dynamic prices
 average exactly $1,000 across the eligible R3-4 pool, use a $200 standard
 deviation with $25 increments, are bounded to $600-$1,400, and assign new or
-no-history players the neutral $1,000 price. The calculated sheet is frozen
+no-history players the rounded average price for their group and role. The calculated sheet is frozen
 when the draft starts and is included in league checkpoints and exports.
 
 Every pick is checked for the required group/role slot, the $10,000 budget, and
