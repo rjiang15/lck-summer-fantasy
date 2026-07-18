@@ -341,15 +341,18 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .draft-player-team i { font-style: normal; white-space: nowrap; }
 .drafted-player.empty { align-items: center; color: var(--muted); border-style: dashed; }
 .draft-player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 0.55rem; margin-bottom: 1.25rem; }
-.draft-player-card { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.65rem; background: var(--card); border: 1px solid var(--border); border-radius: 7px; }
+.draft-player-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.7rem; align-content: start; min-height: 11.5rem; padding: 0.8rem; background: var(--card); border: 1px solid var(--border); border-radius: 7px; }
 .draft-player-card div { display: grid; min-width: 0; }
 .draft-player-card div > span { color: var(--muted); font-size: 0.78rem; }
-.draft-player-card-title { gap: 0.35rem; flex: 1 1 auto; }
+.draft-player-card .draft-player-card-title { grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem; align-items: start; }
 .draft-player-card-title > div { gap: 0.15rem; }
-.draft-player-value { flex: 0 0 auto; gap: 0.1rem; text-align: right; }
+.draft-player-card-title b { overflow-wrap: anywhere; font-size: 1rem; line-height: 1.2; }
+.draft-player-card .draft-group-badge { color: var(--draft-group-color); }
+.draft-player-card .draft-player-value { display: flex; justify-content: space-between; gap: 0.65rem; align-items: baseline; text-align: left; }
 .draft-player-value > b { color: var(--draft-group-color, var(--text)); }
+.draft-player-value > span { text-align: right; }
 .draft-player-card .entity-label { display: inline-flex; justify-self: start; margin-top: 0.15rem; }
-.draft-player-card button { white-space: nowrap; }
+.draft-player-card button { width: 100%; margin-top: auto; white-space: normal; }
 .draft-order { display: flex; gap: 1.75rem; flex-wrap: wrap; padding-left: 1.5rem; }
 .draft-order li { padding-left: 0.2rem; }
 .draft-order li span { display: block; }
