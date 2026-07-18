@@ -201,3 +201,49 @@ export function conservativeDraftCompletionCost(
   }
   return total;
 }
+
+export function minimumSafeOpeningBudget(
+  teamCount: number,
+  available: readonly DraftCompositionPlayer[],
+  playersPerRole: number,
+  groupKeys: readonly DraftGroup[],
+): number | null {
+  if (!Number.isInteger(teamCount) || teamCount < 1) return null;
+  const emptyRosters: DraftCompositionPlayer[][] = Array.from({ length: teamCount }, () => []);
+  if (!draftPoolSupportsAllTeams(emptyRosters, available, playersPerRole, groupKeys)) return null;
+  let minimum = Number.POSITIVE_INFINITY;
+  for (const candidate of available) {
+    if (!draftSlotAvailable([], candidate, playersPerRole, groupKeys)) continue;
+    const afterPick = emptyRosters.map((picks, index) => index === 0 ? [candidate] : picks);
+    const remaining = available.filter((player) => player.playerId !== candidate.playerId);
+    if (!draftPoolSupportsAllTeams(afterPick, remaining, playersPerRole, groupKeys)) continue;
+    const reserve = conservativeDraftCompletionCost(0, afterPick, remaining, playersPerRole, groupKeys);
+    if (reserve !== null) minimum = Math.min(minimum, candidate.price + reserve);
+  }
+  return Number.isFinite(minimum) ? minimum : null;
+}
+
+export function roundDraftBudget(rawBudget: number, denomination = 1_000) {
+  if (!Number.isFinite(rawBudget) || rawBudget < 0 || !Number.isInteger(denomination) || denomination < 1) {
+    throw new Error("Draft budget inputs are invalid");
+  }
+  return Math.ceil(rawBudget / denomination) * denomination;
+}
+
+export function maximumDraftRosterCost(
+  available: readonly DraftCompositionPlayer[],
+  playersPerRole: number,
+  groupKeys: readonly DraftGroup[],
+): number | null {
+  const required = requiredDraftSlots(playersPerRole, groupKeys);
+  let total = 0;
+  for (const [key, count] of required) {
+    const prices = available
+      .filter((player) => draftRequirementKey(player, groupKeys) === key)
+      .map((player) => player.price)
+      .sort((left, right) => right - left);
+    if (prices.length < count) return null;
+    total += prices.slice(0, count).reduce((sum, price) => sum + price, 0);
+  }
+  return total;
+}

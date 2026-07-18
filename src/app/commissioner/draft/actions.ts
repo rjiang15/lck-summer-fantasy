@@ -14,7 +14,9 @@ import {
   draftSlotAvailable,
   isDraftPricingMode,
   isDraftRole,
+  minimumSafeOpeningBudget,
   minimumDraftCompletionCost,
+  roundDraftBudget,
   ROLE_SLOT,
   snakeTeamId,
   totalDraftPicks,
@@ -52,6 +54,7 @@ export async function startDraft(formData: FormData) {
       where: { tournamentId: league.tournamentId },
       include: { player: { select: { role: true } } },
     });
+    let calculatedBudget = DRAFT_ROLES.length * league.draftPlayersPerRole * league.draftPlayerPrice;
     if (format) {
       if (league.draftPlayersPerRole !== format.groups.length) {
         throw new Error(`This split requires exactly ${format.groups.length} players per role`);
@@ -91,15 +94,9 @@ export async function startDraft(formData: FormData) {
       if (!draftPoolSupportsAllTeams(emptyRosters, pool, league.draftPlayersPerRole, groupKeys)) {
         throw new Error("The eligible player pool cannot complete every Legends and Rise roster");
       }
-      const hasSafeOpeningPick = pool.some((candidate) => {
-        const afterPick = emptyRosters.map((picks, index) => index === 0 ? [candidate] : picks);
-        const remaining = pool.filter((player) => player.playerId !== candidate.playerId);
-        const reserve = conservativeDraftCompletionCost(0, afterPick, remaining, league.draftPlayersPerRole, groupKeys);
-        return reserve !== null && draftPoolSupportsAllTeams(afterPick, remaining, league.draftPlayersPerRole, groupKeys) && candidate.price + reserve <= league.draftBudget;
-      });
-      if (!hasSafeOpeningPick) {
-        throw new Error("The selected prices and budget do not provide a safe opening pick for this draft");
-      }
+      const minimumBudget = minimumSafeOpeningBudget(teamIds.length, pool, league.draftPlayersPerRole, groupKeys);
+      if (minimumBudget === null) throw new Error("The eligible player pool cannot provide a safe draft path for this many participants");
+      calculatedBudget = pricingMode === "DYNAMIC" ? roundDraftBudget(minimumBudget) : calculatedBudget;
     }
     await prisma.$transaction(async (tx) => {
       await tx.draftPick.deleteMany({ where: { leagueId } });
@@ -108,6 +105,7 @@ export async function startDraft(formData: FormData) {
         draftStatus: "ACTIVE",
         draftOrder: JSON.stringify(order),
         draftCurrentPick: 0,
+        draftBudget: calculatedBudget,
         draftPricingMode: pricingMode,
         draftPriceSourceTournamentId: priceSheet?.sourceTournamentId ?? null,
         draftPriceSheet: priceSheet ? JSON.stringify(priceSheet) : null,

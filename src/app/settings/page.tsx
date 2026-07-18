@@ -2,7 +2,7 @@
 import { getDemoLeague, parseScoring } from "@/lib/fantasy";
 import { prisma } from "@/lib/db";
 import ImportForm from "@/components/ImportForm";
-import { addCommissioner, createCheckpoint, deleteCheckpoint, deleteLeague, resetTestLeague, restoreCheckpoint, updateMembershipRole } from "./actions";
+import { addCommissioner, createCheckpoint, deleteCheckpoint, deleteLeague, removeMembership, resetTestLeague, restoreCheckpoint, updateMembershipRole } from "./actions";
 import { requireLeagueManager } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -34,10 +34,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       <div className="card">
         <h2 style={{ marginTop: 0 }}>People and permissions</h2>
-        <p className="small muted">Owners control roles. Commissioners can run the weekly pipeline, manage rosters, scoring, and grading. A commissioner account is still a normal account and can commission multiple leagues.</p>
-        <div className="tablewrap"><table><thead><tr><th>User</th><th>Role</th><th>Fantasy team</th><th>Change</th></tr></thead><tbody>{memberships.map((membership) => {
+        <p className="small muted">Owners control roles and can remove people before the initial draft. Commissioners can run the weekly pipeline, manage rosters, scoring, and grading. Removing someone from this league does not delete their account.</p>
+        <div className="tablewrap"><table><thead><tr><th>User</th><th>Role</th><th>Fantasy team</th><th>Change</th><th>Remove</th></tr></thead><tbody>{memberships.map((membership) => {
           const team = league?.fantasyTeams.find((row) => row.userId === membership.userId);
-          return <tr key={membership.id}><td>{membership.user.username}</td><td>{membership.role}</td><td>{team?.name ?? "—"}</td><td>{access.membership.role === "OWNER" && membership.role !== "OWNER" ? <form action={updateMembershipRole} className="inline-form"><input type="hidden" name="leagueId" value={access.league.id} /><input type="hidden" name="membershipId" value={membership.id} /><select name="role" defaultValue={membership.role}><option value="PARTICIPANT">Participant</option><option value="COMMISSIONER">Commissioner</option></select><button type="submit">Save</button></form> : <span className="muted small">Owner only</span>}</td></tr>;
+          return <tr key={membership.id}><td>{membership.user.username}</td><td>{membership.role}</td><td>{team?.name ?? "—"}</td><td>{access.membership.role === "OWNER" && membership.role !== "OWNER" ? <form action={updateMembershipRole} className="inline-form"><input type="hidden" name="leagueId" value={access.league.id} /><input type="hidden" name="membershipId" value={membership.id} /><select name="role" defaultValue={membership.role}><option value="PARTICIPANT">Participant</option><option value="COMMISSIONER">Commissioner</option></select><button type="submit">Save</button></form> : <span className="muted small">Owner only</span>}</td><td>{access.membership.role === "OWNER" && membership.role !== "OWNER" ? <details><summary>Remove</summary><form action={removeMembership} className="safety-confirm" style={{ minWidth: 250 }}><input type="hidden" name="leagueId" value={access.league.id} /><input type="hidden" name="membershipId" value={membership.id} /><label><input type="checkbox" name="confirmRemoveMembership" value="true" required /><span>Remove membership, fantasy team, and unscored preseason entries.</span></label><button type="submit">Remove {membership.user.username}</button></form></details> : <span className="muted small">—</span>}</td></tr>;
         })}</tbody></table></div>
         {access.membership.role === "OWNER" && <form action={addCommissioner} className="stack" style={{ maxWidth: 520, marginTop: "1rem" }}>
           <h3>Add a commissioner</h3><input type="hidden" name="leagueId" value={access.league.id} />

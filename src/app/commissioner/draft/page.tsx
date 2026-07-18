@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireLeagueManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { DRAFT_ROLES, draftFormatForTournament, draftGroupForTeam, snakeTeamId, totalDraftPicks } from "@/lib/draft";
+import { DRAFT_ROLES, draftFormatForTournament, draftGroupForTeam, maximumDraftRosterCost, minimumSafeOpeningBudget, roundDraftBudget, snakeTeamId, totalDraftPicks, type DraftCompositionPlayer } from "@/lib/draft";
 import { buildDraftPriceSheet, DYNAMIC_PRICE_MAX, DYNAMIC_PRICE_MIN, parseDraftPriceSheet, playerDraftPrice } from "@/lib/draft-pricing";
 import { parseScoring } from "@/lib/fantasy";
 import { TeamLabel } from "@/components/GameIdentity";
@@ -50,6 +50,20 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
   const totalPicks = totalDraftPicks(teams.length, league.draftPlayersPerRole);
   const currentTeamId = league.draftStatus === "ACTIVE" ? snakeTeamId(order, league.draftCurrentPick) : null;
   const groupKeys = format?.groups.map((group) => group.key) ?? [];
+  const previewPool = format && previewSheet ? eligible.flatMap((row): DraftCompositionPlayer[] => {
+    const role = row.role ?? row.player.role;
+    const group = draftGroupForTeam(format, row.teamId ?? row.player.teamId);
+    const value = previewSheet.players[row.playerId];
+    if (!role || !DRAFT_ROLES.includes(role as (typeof DRAFT_ROLES)[number]) || !group || !value) return [];
+    return [{ playerId: row.playerId, role: role as (typeof DRAFT_ROLES)[number], group, price: value.price }];
+  }) : [];
+  const rawPreviewBudget = format && previewSheet
+    ? minimumSafeOpeningBudget(teams.length, previewPool, league.draftPlayersPerRole, groupKeys)
+    : null;
+  const dynamicPreviewBudget = rawPreviewBudget === null ? null : roundDraftBudget(rawPreviewBudget);
+  const maximumPreviewRoster = format && previewSheet
+    ? maximumDraftRosterCost(previewPool, league.draftPlayersPerRole, groupKeys)
+    : null;
 
   return <>
     <p className="small"><Link href="/commissioner">← Commissioner</Link></p>
@@ -71,6 +85,8 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
           <label><input type="radio" name="draftPricingMode" value="UNIFORM" defaultChecked /><span><b>Uniform pricing</b><small>Every player costs {money(league.draftPlayerPrice)}.</small></span></label>
           <label><input type="radio" name="draftPricingMode" value="DYNAMIC" disabled={!format || !previewSheet} /><span><b>Dynamic R1–2 pricing</b><small>R1–2 fantasy Pts/G standardized to a {money(1_000)} average; no-history players use their group-and-role average.</small></span></label>
         </fieldset>
+        {format && previewSheet && dynamicPreviewBudget !== null && <p className="notice small">For {teams.length} participant{teams.length === 1 ? "" : "s"}, dynamic pricing will set the minimum safe rounded budget at <b>{money(dynamicPreviewBudget)}</b>. The most expensive possible one-player-per-slot roster costs {money(maximumPreviewRoster ?? 0)}, so premium choices still compete for limited budget.</p>}
+        {format && previewSheet && dynamicPreviewBudget === null && <p className="error small">This split does not have enough eligible players to complete {teams.length} fantasy rosters. Remove participants before starting the draft.</p>}
         {previewError && <p className="error small">Dynamic pricing unavailable: {previewError}</p>}
         {teams.map((_, index) => <label key={index}>Pick position {index + 1}<select name="teamId" defaultValue={teams[index]?.id}>{teams.map((team) => <option value={team.id} key={team.id}>{team.username} — {team.name}</option>)}</select></label>)}
         <button type="submit">Lock setup and start draft</button>

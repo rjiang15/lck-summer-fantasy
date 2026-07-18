@@ -9,6 +9,9 @@ import {
   draftPoolSupportsAllTeams,
   draftSlotAvailable,
   minimumDraftCompletionCost,
+  minimumSafeOpeningBudget,
+  maximumDraftRosterCost,
+  roundDraftBudget,
   snakeTeamId,
   totalDraftPicks,
   type DraftCompositionPlayer,
@@ -90,4 +93,22 @@ test("conservative reserve does not assume every team receives the same cheapest
   const teams = [completeExceptRiseSupport("one"), completeExceptRiseSupport("two"), completeExceptRiseSupport("three")];
   assert.equal(conservativeDraftCompletionCost(0, teams, pool, 2, groups), 1_050);
   assert.equal(conservativeDraftCompletionCost(1, teams, pool, 2, groups), 1_050);
+});
+
+test("dynamic budget is the smallest safe opening amount rounded up to $1,000", () => {
+  const groups = ["LEGENDS", "RISE"] as const;
+  const pool: DraftCompositionPlayer[] = groups.flatMap((group) => DRAFT_ROLES.flatMap((role) => [900, 1_000, 1_100].map((price, index) => ({
+    playerId: `${group}-${role}-${index}`, group, role, price,
+  }))));
+  const raw = minimumSafeOpeningBudget(3, pool, 2, groups);
+  assert.equal(raw, 10_800);
+  assert.equal(roundDraftBudget(raw!), 11_000);
+  assert.equal(maximumDraftRosterCost(pool, 2, groups), 11_000);
+  assert.equal(minimumSafeOpeningBudget(4, pool, 2, groups), null);
+});
+
+test("budget rounding always rounds upward so it cannot invalidate the safe amount", () => {
+  assert.equal(roundDraftBudget(10_001), 11_000);
+  assert.equal(roundDraftBudget(11_000), 11_000);
+  assert.throws(() => roundDraftBudget(Number.NaN), /invalid/);
 });
