@@ -4,6 +4,7 @@ import {
   DRAFT_ROLES,
   LCK_2026_R3_4_DRAFT_FORMAT,
   conservativeDraftCompletionCost,
+  draftBudgetBlockReason,
   draftFormatForTournament,
   draftGroupForTeam,
   draftPoolSupportsAllTeams,
@@ -111,4 +112,11 @@ test("budget rounding always rounds upward so it cannot invalidate the safe amou
   assert.equal(roundDraftBudget(10_001), 11_000);
   assert.equal(roundDraftBudget(11_000), 11_000);
   assert.throws(() => roundDraftBudget(Number.NaN), /invalid/);
+});
+
+test("budget safeguard is optional while the hard budget cap is always enforced", () => {
+  assert.equal(draftBudgetBlockReason(8_500, 1_000, 10_000, true, 750), "BREAKS_RESERVE");
+  assert.equal(draftBudgetBlockReason(8_500, 1_000, 10_000, false, 750), null);
+  assert.equal(draftBudgetBlockReason(9_500, 750, 10_000, false, 0), "OVER_BUDGET");
+  assert.equal(draftBudgetBlockReason(8_500, 1_000, 10_000, true, null), "BREAKS_RESERVE");
 });

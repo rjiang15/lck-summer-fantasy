@@ -9,7 +9,8 @@ export interface Backup {
     seasonStatus: string; crystalBallLockedAt: string | null; rostersLockedAt?: string | null; isSimulation: boolean;
     draftStatus?: string; draftOrder?: string[]; draftCurrentPick?: number;
     draftBudget?: number; draftPlayerPrice?: number; draftPlayersPerRole?: number;
-    draftPricingMode?: string; draftPriceSourceTournamentId?: string | null; draftPriceSheet?: string | null;
+    draftPricingMode?: string; draftBudgetGuardEnabled?: boolean;
+    draftPriceSourceTournamentId?: string | null; draftPriceSheet?: string | null;
   };
   // New backups intentionally omit passwordHash. It remains optional only so
   // older v3-v6 files can still be restored.
@@ -119,6 +120,9 @@ export function parseBackup(value: unknown): Backup {
   optionalInteger(league.draftPlayersPerRole, "Draft players per role");
   if (league.draftPricingMode !== undefined && !["UNIFORM", "DYNAMIC"].includes(string(league.draftPricingMode, "Draft pricing mode", 32))) {
     throw new Error("Draft pricing mode is invalid");
+  }
+  if (league.draftBudgetGuardEnabled !== undefined && typeof league.draftBudgetGuardEnabled !== "boolean") {
+    throw new Error("Draft budget safeguard must be boolean");
   }
   nullableString(league.draftPriceSourceTournamentId, "Draft price source tournament", 200);
   optionalJson(league.draftPriceSheet, "Draft price sheet");

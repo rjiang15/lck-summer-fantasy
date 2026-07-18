@@ -96,10 +96,13 @@ deviation with $25 increments, are bounded to $600-$1,400, and assign new or
 no-history players the rounded average price for their group and role. The calculated sheet is frozen
 when the draft starts and is included in league checkpoints and exports.
 
-Every pick is checked for the required group/role slot, the locked draft budget, and
-a league-wide completion reserve. This prevents a participant from drafting a
-player if doing so would consume another roster's final eligible option or
-leave any participant dependent on the same cheapest remaining player. Re-run
+Every pick is checked for the required group/role slot, the hard draft budget,
+and the league-wide player pool. Before starting, the commissioner can also
+enable the budget-reserve safeguard, which blocks a purchase that would leave
+the current team unable to afford a safe completion of its remaining slots.
+The hard budget and structural safeguards cannot be disabled. The live board
+supports card and group-colored table views with shared group, role, and
+"draftable only" filters. Re-run
 the real-data three-participant greedy snake check with:
 
 ```bash

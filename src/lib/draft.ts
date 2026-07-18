@@ -72,6 +72,20 @@ export type DraftCompositionPlayer = {
   price: number;
 };
 
+export type DraftBudgetBlockReason = "OVER_BUDGET" | "BREAKS_RESERVE";
+
+export function draftBudgetBlockReason(
+  spent: number,
+  price: number,
+  budget: number,
+  guardEnabled: boolean,
+  conservativeReserve: number | null,
+): DraftBudgetBlockReason | null {
+  if (spent + price > budget) return "OVER_BUDGET";
+  if (guardEnabled && (conservativeReserve === null || spent + price + conservativeReserve > budget)) return "BREAKS_RESERVE";
+  return null;
+}
+
 export function draftRequirementKey(
   player: Pick<DraftCompositionPlayer, "role" | "group">,
   groupKeys: readonly DraftGroup[],

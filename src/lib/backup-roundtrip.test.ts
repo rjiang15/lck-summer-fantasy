@@ -51,7 +51,7 @@ test("checkpoint survives league deletion and restores the complete fantasy stat
       name: "Round Trip League", slug: "round-trip", inviteCode: "INVITE", tournamentId: "LCK/Test",
       scoringConfig: "{}", currentWeek: 1, seasonStatus: "ACTIVE", isSimulation: true,
       draftStatus: "COMPLETE", draftCurrentPick: 2,
-      draftPricingMode: "DYNAMIC", draftPriceSourceTournamentId: "LCK/2026 Season/Rounds 1-2",
+      draftPricingMode: "DYNAMIC", draftBudgetGuardEnabled: false, draftPriceSourceTournamentId: "LCK/2026 Season/Rounds 1-2",
       draftPriceSheet: JSON.stringify({ version: 1, players: { "player-one": { price: 1_100 } } }),
       memberships: { create: [{ userId: owner.id, role: "OWNER" }, { userId: participant.id, role: "PARTICIPANT" }] },
     } });
@@ -81,6 +81,7 @@ test("checkpoint survives league deletion and restores the complete fantasy stat
     assert.ok(exported.leagueWeeks[0].rosters.every((slot) => slot.lockedAt));
     assert.ok(exported.leagueWeeks[0].scores.every((score) => score.calculatedAt));
     assert.equal(exported.league.draftPricingMode, "DYNAMIC");
+    assert.equal(exported.league.draftBudgetGuardEnabled, false);
     assert.equal(exported.league.draftPriceSourceTournamentId, "LCK/2026 Season/Rounds 1-2");
     const checkpoint = await createStoredLeagueBackup(league.id, owner.id, "After Week 1", client);
     await assert.rejects(() => deleteLeagueWithRecovery(league.id, participant.id, client), /owner access/i);
@@ -103,6 +104,7 @@ test("checkpoint survives league deletion and restores the complete fantasy stat
     assert.equal(await client.weeklyScore.count({ where: { leagueWeek: { leagueId: restored.id } } }), 1);
     const restoredLeague = await client.league.findUniqueOrThrow({ where: { id: restored.id } });
     assert.equal(restoredLeague.draftPricingMode, "DYNAMIC");
+    assert.equal(restoredLeague.draftBudgetGuardEnabled, false);
     assert.equal(restoredLeague.draftPriceSourceTournamentId, "LCK/2026 Season/Rounds 1-2");
     assert.equal(restoredLeague.draftPriceSheet, league.draftPriceSheet);
 

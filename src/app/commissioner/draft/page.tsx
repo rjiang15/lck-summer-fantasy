@@ -85,6 +85,7 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
           <label><input type="radio" name="draftPricingMode" value="UNIFORM" defaultChecked /><span><b>Uniform pricing</b><small>Every player costs {money(league.draftPlayerPrice)}.</small></span></label>
           <label><input type="radio" name="draftPricingMode" value="DYNAMIC" disabled={!format || !previewSheet} /><span><b>Dynamic R1–2 pricing</b><small>R1–2 fantasy Pts/G standardized to a {money(1_000)} average; no-history players use their group-and-role average.</small></span></label>
         </fieldset>
+        <label className="draft-guard-choice"><input type="checkbox" name="draftBudgetGuardEnabled" value="true" defaultChecked /><span><b>Protect every team&apos;s remaining budget</b><small>Blocks a pick when its price would leave that team unable to afford the cheapest safe completion of its remaining slots. The hard budget cap, role rules, and player-pool protections always remain active.</small></span></label>
         {format && previewSheet && dynamicPreviewBudget !== null && <p className="notice small">For {teams.length} participant{teams.length === 1 ? "" : "s"}, dynamic pricing will set the minimum safe rounded budget at <b>{money(dynamicPreviewBudget)}</b>. The most expensive possible one-player-per-slot roster costs {money(maximumPreviewRoster ?? 0)}, so premium choices still compete for limited budget.</p>}
         {format && previewSheet && dynamicPreviewBudget === null && <p className="error small">This split does not have enough eligible players to complete {teams.length} fantasy rosters. Remove participants before starting the draft.</p>}
         {previewError && <p className="error small">Dynamic pricing unavailable: {previewError}</p>}
@@ -108,6 +109,7 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
         budget={league.draftBudget}
         uniformPrice={league.draftPlayerPrice}
         pricingMode={league.draftPricingMode}
+        budgetGuardEnabled={league.draftBudgetGuardEnabled}
         priceSource={league.draftPriceSourceTournamentId}
         playersPerRole={league.draftPlayersPerRole}
         groupKeys={groupKeys}
