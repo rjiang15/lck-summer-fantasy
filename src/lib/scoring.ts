@@ -29,9 +29,28 @@ export interface ScoringConfig {
     efficiencyBaseBonus: number;
     efficiencyMidBonus: number;
     efficiencyHighBonus: number;
-    supportVisionLowThreshold: number;
-    supportVisionMidThreshold: number;
-    supportVisionHighThreshold: number;
+    midEfficiencyMultiplier: number;
+    supportDenialLowThreshold: number;
+    supportDenialMidThreshold: number;
+    supportDenialHighThreshold: number;
+    supportDenialLowBonus: number;
+    supportDenialMidBonus: number;
+    supportDenialHighBonus: number;
+    laneCsWeight: number;
+    laneGoldWeight: number;
+    laneXpWeight: number;
+    laneImpactLowThreshold: number;
+    laneImpactHighThreshold: number;
+    laneImpactLowBonus: number;
+    laneImpactHighBonus: number;
+    towerPressureMedianBonus: number;
+    towerPressureHighBonus: number;
+    towerPressureEliteBonus: number;
+    durabilityHighBonus: number;
+    durabilityEliteBonus: number;
+    tripleKillBonus: number;
+    quadraKillBonus: number;
+    pentaKillBonus: number;
     jungleDragon: number;
     jungleElder: number;
     jungleBaron: number;
@@ -46,15 +65,14 @@ export interface ScoringConfig {
 }
 
 /**
- * Scoring v4 emphasizes repeatable impact over raw series length and uses the
- * league's 10-point winner / 5-point exact-score Pick'em rules.
- * KP has broad, meaningful buckets; efficiency can outweigh the raw K/D/A
- * component; farming and vision are normalized to a 30-minute game. The
- * position-specific thresholds reflect genuinely different role duties and
- * were calibrated against the current LCK split without flat role multipliers.
+ * Scoring v5 adds early-lane impact, tower pressure, durability, multikills,
+ * and support vision denial. Role-specific scale and threshold constants were
+ * backtested against all 2,040 player-games from LCK 2026 Rounds 1-2. They
+ * measure performance relative to the normal workload for each position rather
+ * than simply giving a role a flat point multiplier.
  */
 export const DEFAULT_SCORING: ScoringConfig = {
-  version: 4,
+  version: 5,
   player: {
     kill: 1.25,
     death: -1.75,
@@ -81,9 +99,28 @@ export const DEFAULT_SCORING: ScoringConfig = {
     efficiencyBaseBonus: 5,
     efficiencyMidBonus: 10,
     efficiencyHighBonus: 15,
-    supportVisionLowThreshold: 100,
-    supportVisionMidThreshold: 120,
-    supportVisionHighThreshold: 140,
+    midEfficiencyMultiplier: 0.75,
+    supportDenialLowThreshold: 16,
+    supportDenialMidThreshold: 20,
+    supportDenialHighThreshold: 24,
+    supportDenialLowBonus: 3,
+    supportDenialMidBonus: 6,
+    supportDenialHighBonus: 9,
+    laneCsWeight: 0.2,
+    laneGoldWeight: 0.5,
+    laneXpWeight: 0.3,
+    laneImpactLowThreshold: 0.75,
+    laneImpactHighThreshold: 1.5,
+    laneImpactLowBonus: 1,
+    laneImpactHighBonus: 3,
+    towerPressureMedianBonus: 1,
+    towerPressureHighBonus: 2,
+    towerPressureEliteBonus: 3,
+    durabilityHighBonus: 0.5,
+    durabilityEliteBonus: 1,
+    tripleKillBonus: 1,
+    quadraKillBonus: 2,
+    pentaKillBonus: 4,
     jungleDragon: 0.5,
     jungleElder: 2.5,
     jungleBaron: 1.5,
@@ -109,6 +146,13 @@ export interface PlayerGameLine {
   killParticipation?: number | null;
   damageShare?: number | null;
   goldShare?: number | null;
+  damageToTowers?: number | null;
+  damageMitigated?: number | null;
+  wardsKilled?: number | null;
+  controlWardsBought?: number | null;
+  tripleKills?: number | null;
+  quadraKills?: number | null;
+  pentakills?: number | null;
 }
 
 export interface TeamObjectiveLine {
@@ -123,6 +167,11 @@ export interface TeamObjectiveLine {
 export interface PlayerGameContext {
   lengthSec?: number | null;
   teamObjectives?: TeamObjectiveLine | null;
+  laneAt15?: {
+    csDiff?: number | null;
+    goldDiff?: number | null;
+    xpDiff?: number | null;
+  } | null;
 }
 
 export interface PlayerGameScoreBreakdown {
@@ -133,10 +182,43 @@ export interface PlayerGameScoreBreakdown {
   killParticipation: number;
   efficiency: number;
   jungleObjectives: number;
+  laneImpact: number;
+  towerPressure: number;
+  durability: number;
+  multikill: number;
   total: number;
   killParticipationRate: number | null;
   efficiencyRate: number | null;
 }
+
+type CanonicalRole = "Top" | "Jungle" | "Mid" | "Bot" | "Support";
+
+// Standard deviations and upper workload percentiles measured from R1-2.
+// Using role baselines prevents the extra categories from inherently favoring
+// lanes that naturally farm, hit towers, or absorb more damage.
+const ROLE_CALIBRATION: Record<CanonicalRole, {
+  csDiff15Scale: number;
+  goldDiff15Scale: number;
+  xpDiff15Scale: number;
+  tower: [number, number, number];
+  mitigation: [number, number];
+}> = {
+  Top: { csDiff15Scale: 18.7, goldDiff15Scale: 826.1, xpDiff15Scale: 890.7, tower: [6531.5, 10213.3, 14345.5], mitigation: [43536.4, 67218.3] },
+  Jungle: { csDiff15Scale: 14.6, goldDiff15Scale: 768.4, xpDiff15Scale: 836.7, tower: [1318.5, 3646.3, 5754.1], mitigation: [34973.8, 43532.1] },
+  Mid: { csDiff15Scale: 16.7, goldDiff15Scale: 878.6, xpDiff15Scale: 752.7, tower: [5811.1, 8818.6, 11641.4], mitigation: [17032.5, 21812.6] },
+  Bot: { csDiff15Scale: 20, goldDiff15Scale: 1122.5, xpDiff15Scale: 724.5, tower: [6948.8, 11134.3, 14804.1], mitigation: [14681.3, 18010.1] },
+  Support: { csDiff15Scale: 7.6, goldDiff15Scale: 484.8, xpDiff15Scale: 577.5, tower: [469.5, 1205, 2011.8], mitigation: [12945.3, 22691.8] },
+};
+
+const canonicalRole = (role: string | null | undefined): CanonicalRole | null => {
+  const normalized = role?.trim().toLowerCase();
+  if (normalized === "top") return "Top";
+  if (normalized === "jungle" || normalized === "jng") return "Jungle";
+  if (normalized === "mid" || normalized === "middle") return "Mid";
+  if (normalized === "bot" || normalized === "bottom" || normalized === "adc") return "Bot";
+  if (normalized === "support" || normalized === "sup") return "Support";
+  return null;
+};
 
 const normalizedTo30 = (value: number | null | undefined, lengthSec: number | null | undefined) => {
   if (value == null) return 0;
@@ -164,6 +246,7 @@ export function playerGameScore(
   context: PlayerGameContext = {},
 ): PlayerGameScoreBreakdown {
   const p = cfg.player;
+  const role = canonicalRole(s.role);
   const cs30 = normalizedTo30(s.cs, context.lengthSec);
   const vision30 = normalizedTo30(s.visionScore, context.lengthSec);
   const kp = s.killParticipation ??
@@ -172,7 +255,7 @@ export function playerGameScore(
   const farm = cs30 * p.csPer30;
   const vision = vision30 * p.visionScorePer30;
   const win = s.won ? p.gameWin : 0;
-  const isTop = s.role?.toLowerCase() === "top";
+  const isTop = role === "Top";
   const kpLow = isTop ? p.topKpLowThreshold : p.kpLowThreshold;
   const kpMid = isTop ? p.topKpMidThreshold : p.kpMidThreshold;
   const kpHigh = isTop ? p.topKpHighThreshold : p.kpHighThreshold;
@@ -186,27 +269,37 @@ export function playerGameScore(
     p.kpHighBonus,
   );
 
-  const isSupport = s.role?.toLowerCase() === "support";
-  const isJungle = s.role?.toLowerCase() === "jungle";
+  const isSupport = role === "Support";
+  const isJungle = role === "Jungle";
   const damageGoldRatio = s.damageShare != null && s.goldShare != null && s.goldShare > 0
     ? s.damageShare / s.goldShare
     : null;
-  const efficiencyRate = isSupport ? (s.visionScore == null ? null : vision30) : damageGoldRatio;
+  const supportDenial30 = s.wardsKilled == null || s.controlWardsBought == null
+    ? null
+    : normalizedTo30(s.wardsKilled + s.controlWardsBought * 0.5, context.lengthSec);
+  const efficiencyRate = isSupport ? supportDenial30 : damageGoldRatio;
   let efficiency = 0;
   if (efficiencyRate != null) {
-    const low = isSupport
-      ? p.supportVisionLowThreshold
-      : isJungle ? p.jungleEfficiencyLowThreshold : p.efficiencyLowThreshold;
-    const mid = isSupport
-      ? p.supportVisionMidThreshold
-      : isJungle ? p.jungleEfficiencyMidThreshold : p.efficiencyMidThreshold;
-    const high = isSupport
-      ? p.supportVisionHighThreshold
-      : isJungle ? p.jungleEfficiencyHighThreshold : p.efficiencyHighThreshold;
-    if (efficiencyRate >= high) efficiency = p.efficiencyHighBonus;
-    else if (efficiencyRate >= mid) efficiency = p.efficiencyMidBonus;
-    else if (efficiencyRate >= low) efficiency = p.efficiencyBaseBonus;
-    else efficiency = p.efficiencyLowPenalty;
+    if (isSupport) {
+      efficiency = thresholdBonus(
+        efficiencyRate,
+        p.supportDenialLowThreshold,
+        p.supportDenialMidThreshold,
+        p.supportDenialHighThreshold,
+        p.supportDenialLowBonus,
+        p.supportDenialMidBonus,
+        p.supportDenialHighBonus,
+      );
+    } else {
+      const low = isJungle ? p.jungleEfficiencyLowThreshold : p.efficiencyLowThreshold;
+      const mid = isJungle ? p.jungleEfficiencyMidThreshold : p.efficiencyMidThreshold;
+      const high = isJungle ? p.jungleEfficiencyHighThreshold : p.efficiencyHighThreshold;
+      if (efficiencyRate >= high) efficiency = p.efficiencyHighBonus;
+      else if (efficiencyRate >= mid) efficiency = p.efficiencyMidBonus;
+      else if (efficiencyRate >= low) efficiency = p.efficiencyBaseBonus;
+      else efficiency = p.efficiencyLowPenalty;
+      if (role === "Mid") efficiency *= p.midEfficiencyMultiplier;
+    }
   }
 
   let jungleObjectives = 0;
@@ -224,6 +317,51 @@ export function playerGameScore(
       (objectives.atakhans ?? 0) * p.jungleAtakhan;
   }
 
+  let laneImpact = 0;
+  const lane = context.laneAt15;
+  const calibration = role ? ROLE_CALIBRATION[role] : null;
+  if (calibration && lane?.csDiff != null && lane.goldDiff != null && lane.xpDiff != null) {
+    const laneRate =
+      (lane.csDiff / calibration.csDiff15Scale) * p.laneCsWeight +
+      (lane.goldDiff / calibration.goldDiff15Scale) * p.laneGoldWeight +
+      (lane.xpDiff / calibration.xpDiff15Scale) * p.laneXpWeight;
+    if (laneRate >= p.laneImpactHighThreshold) laneImpact = p.laneImpactHighBonus;
+    else if (laneRate >= p.laneImpactLowThreshold) laneImpact = p.laneImpactLowBonus;
+    else if (laneRate <= -p.laneImpactHighThreshold) laneImpact = -p.laneImpactHighBonus;
+    else if (laneRate <= -p.laneImpactLowThreshold) laneImpact = -p.laneImpactLowBonus;
+  }
+
+  const tower30 = s.damageToTowers == null ? null : normalizedTo30(s.damageToTowers, context.lengthSec);
+  const towerPressure = calibration && tower30 != null
+    ? thresholdBonus(
+      tower30,
+      calibration.tower[0],
+      calibration.tower[1],
+      calibration.tower[2],
+      p.towerPressureMedianBonus,
+      p.towerPressureHighBonus,
+      p.towerPressureEliteBonus,
+    )
+    : 0;
+
+  const mitigation30 = s.damageMitigated == null ? null : normalizedTo30(s.damageMitigated, context.lengthSec);
+  let durability = 0;
+  if (calibration && mitigation30 != null) {
+    if (mitigation30 >= calibration.mitigation[1]) durability = p.durabilityEliteBonus;
+    else if (mitigation30 >= calibration.mitigation[0]) durability = p.durabilityHighBonus;
+  }
+
+  // Oracle's Elixir records a penta in the triple and quadra columns too.
+  // Score only the highest achieved tier for each streak rather than stacking
+  // 3K + 4K + 5K bonuses for the same five kills.
+  const pentas = s.pentakills ?? 0;
+  const quadrasOnly = Math.max(0, (s.quadraKills ?? 0) - pentas);
+  const triplesOnly = Math.max(0, (s.tripleKills ?? 0) - (s.quadraKills ?? 0));
+  const multikill =
+    triplesOnly * p.tripleKillBonus +
+    quadrasOnly * p.quadraKillBonus +
+    pentas * p.pentaKillBonus;
+
   const rounded = {
     combat: round2(combat),
     farm: round2(farm),
@@ -232,6 +370,10 @@ export function playerGameScore(
     killParticipation: round2(killParticipation),
     efficiency: round2(efficiency),
     jungleObjectives: round2(jungleObjectives),
+    laneImpact: round2(laneImpact),
+    towerPressure: round2(towerPressure),
+    durability: round2(durability),
+    multikill: round2(multikill),
   };
   return {
     ...rounded,

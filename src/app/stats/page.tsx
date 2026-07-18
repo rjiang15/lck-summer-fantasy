@@ -38,6 +38,10 @@ type PlayerAggregate = {
   killParticipationPoints: number;
   efficiencyPoints: number;
   jungleObjectivePoints: number;
+  laneImpactPoints: number;
+  towerPressurePoints: number;
+  durabilityPoints: number;
+  multikillPoints: number;
   kills: number;
   deaths: number;
   assists: number;
@@ -105,6 +109,10 @@ export default async function StatsPage() {
         killParticipationPoints: 0,
         efficiencyPoints: 0,
         jungleObjectivePoints: 0,
+        laneImpactPoints: 0,
+        towerPressurePoints: 0,
+        durabilityPoints: 0,
+        multikillPoints: 0,
         kills: 0,
         deaths: 0,
         assists: 0,
@@ -120,6 +128,7 @@ export default async function StatsPage() {
       const score = playerGameScore(stat, scoring, {
         lengthSec: game.lengthSec,
         teamObjectives: game.teamStats.find((team) => team.teamId === stat.teamId),
+        laneAt15: game.playerTimeline.find((row) => row.playerId === stat.playerId),
       });
       row.fantasyPoints += score.total;
       row.combatPoints += score.combat;
@@ -129,6 +138,10 @@ export default async function StatsPage() {
       row.killParticipationPoints += score.killParticipation;
       row.efficiencyPoints += score.efficiency;
       row.jungleObjectivePoints += score.jungleObjectives;
+      row.laneImpactPoints += score.laneImpact;
+      row.towerPressurePoints += score.towerPressure;
+      row.durabilityPoints += score.durability;
+      row.multikillPoints += score.multikill;
       row.kills += stat.kills;
       row.deaths += stat.deaths;
       row.assists += stat.assists;
@@ -202,6 +215,10 @@ export default async function StatsPage() {
       killParticipationPointsPerGame: row.killParticipationPoints / row.games,
       efficiencyPointsPerGame: row.efficiencyPoints / row.games,
       jungleObjectivePointsPerGame: row.jungleObjectivePoints / row.games,
+      laneImpactPointsPerGame: row.laneImpactPoints / row.games,
+      towerPressurePointsPerGame: row.towerPressurePoints / row.games,
+      durabilityPointsPerGame: row.durabilityPoints / row.games,
+      multikillPointsPerGame: row.multikillPoints / row.games,
       games: row.games,
       wins: row.wins,
       winRate: row.wins / row.games,
@@ -266,7 +283,7 @@ export default async function StatsPage() {
     <div className="card">
       <b>Fantasy scoring v{scoring.version}</b>
       <p className="small muted" style={{ marginBottom: 0 }}>
-        Pts/G is the official player value: total game scores divided by games played. Standard KP awards {scoring.player.kpLowBonus}/{scoring.player.kpMidBonus}/{scoring.player.kpHighBonus} points at {scoring.player.kpLowThreshold * 100}%/{scoring.player.kpMidThreshold * 100}%/{scoring.player.kpHighThreshold * 100}%; Top uses role-calibrated {scoring.player.topKpLowThreshold * 100}%/{scoring.player.topKpMidThreshold * 100}%/{scoring.player.topKpHighThreshold * 100}% tiers. Efficiency awards up to {scoring.player.efficiencyHighBonus} points from damage share versus gold share, with Jungle thresholds adjusted for its lower gold/damage profile; supports use vision per 30 minutes instead. Jungle objective points use the team&apos;s dragons, elders, barons, heralds, grubs, and Atakhans.
+        Pts/G is the official player value: total game scores divided by games played. Standard KP awards {scoring.player.kpLowBonus}/{scoring.player.kpMidBonus}/{scoring.player.kpHighBonus} points at {scoring.player.kpLowThreshold * 100}%/{scoring.player.kpMidThreshold * 100}%/{scoring.player.kpHighThreshold * 100}%; Top uses role-calibrated {scoring.player.topKpLowThreshold * 100}%/{scoring.player.topKpMidThreshold * 100}%/{scoring.player.topKpHighThreshold * 100}% tiers. Carry efficiency compares damage share with gold share; support efficiency rewards normalized vision denial. The formula also scores a combined CSD/GD/XPD lane-impact result, role-relative tower pressure and damage mitigation, multikills, and Jungle team objectives. All rate stats normalize to a 30-minute game.
       </p>
     </div>
 

@@ -172,7 +172,11 @@ export default async function GamePage({
                       <td className="num">{p.wardsPlaced != null || p.wardsKilled != null ? `${p.wardsPlaced ?? 0}/${p.wardsKilled ?? 0}` : "—"}</td>
                       <td className="num">{multi || "—"}</td>
                       <td className="num">
-                        <b>{round1(playerGamePoints(p, cfg, { lengthSec: game.lengthSec, teamObjectives: team }))}</b>
+                        <b>{round1(playerGamePoints(p, cfg, {
+                          lengthSec: game.lengthSec,
+                          teamObjectives: team,
+                          laneAt15: game.playerTimeline.find((row) => row.playerId === p.playerId && row.minute === 15),
+                        }))}</b>
                       </td>
                     </tr>;
                   })}

@@ -107,7 +107,11 @@ export async function loadWeeks(tournamentId: string) {
         include: {
           games: {
             orderBy: { gameNumber: "asc" },
-            include: { playerStats: true, teamStats: true },
+            include: {
+              playerStats: true,
+              teamStats: true,
+              playerTimeline: { where: { minute: 15 } },
+            },
           },
         },
       },
@@ -202,6 +206,7 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
             gamePoints.push(playerGamePoints(ps, cfg, {
               lengthSec: game.lengthSec,
               teamObjectives: game.teamStats.find((row) => row.teamId === ps.teamId),
+              laneAt15: game.playerTimeline.find((row) => row.playerId === ps.playerId),
             }));
           }
         }
@@ -264,7 +269,10 @@ export async function proLeaderboard(
         },
       },
     },
-    include: { player: true, game: { include: { teamStats: true } } },
+    include: {
+      player: true,
+      game: { include: { teamStats: true, playerTimeline: { where: { minute: 15 } } } },
+    },
   });
   const rows = new Map<
     string,
@@ -278,6 +286,7 @@ export async function proLeaderboard(
     row.pts += playerGamePoints(s, cfg, {
       lengthSec: s.game.lengthSec,
       teamObjectives: s.game.teamStats.find((team) => team.teamId === s.teamId),
+      laneAt15: s.game.playerTimeline.find((row) => row.playerId === s.playerId),
     });
     row.k += s.kills;
     row.d += s.deaths;

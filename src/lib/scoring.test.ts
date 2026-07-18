@@ -25,8 +25,8 @@ test("KP and carry efficiency are primary scoring components", () => {
 
   assert.equal(score.combat, 8);
   assert.equal(score.killParticipation, 10);
-  assert.equal(score.efficiency, 15);
-  assert.equal(score.total, 38.2);
+  assert.equal(score.efficiency, 11.25);
+  assert.equal(score.total, 34.45);
 });
 
 test("KP uses broad 50, 65, and 80 percent buckets", () => {
@@ -40,7 +40,7 @@ test("KP uses broad 50, 65, and 80 percent buckets", () => {
   assert.equal(playerGameScore({ ...base, killParticipation: 0.8 }, DEFAULT_SCORING).killParticipation, 10);
 });
 
-test("support efficiency uses LCK-calibrated normalized vision instead of damage share", () => {
+test("support efficiency uses normalized vision denial instead of damage share", () => {
   const score = playerGameScore({
     kills: 0,
     deaths: 2,
@@ -52,10 +52,47 @@ test("support efficiency uses LCK-calibrated normalized vision instead of damage
     killParticipation: 0.8,
     damageShare: 0.04,
     goldShare: 0.13,
+    wardsKilled: 20,
+    controlWardsBought: 10,
   }, DEFAULT_SCORING, { lengthSec: 1800 });
 
-  assert.equal(score.efficiency, 15);
-  assert.equal(score.total, 37.38);
+  assert.equal(score.efficiency, 9);
+  assert.equal(score.total, 31.38);
+});
+
+test("lane impact combines CSD, GD, and XPD with symmetric role-normalized buckets", () => {
+  const base = {
+    kills: 0, deaths: 0, assists: 0, cs: null, visionScore: null, won: false,
+    role: "Top", damageShare: null, goldShare: null,
+  };
+  const ahead = playerGameScore(base, DEFAULT_SCORING, {
+    laneAt15: { csDiff: 18.7, goldDiff: 826.1, xpDiff: 890.7 },
+  });
+  const behind = playerGameScore(base, DEFAULT_SCORING, {
+    laneAt15: { csDiff: -18.7, goldDiff: -826.1, xpDiff: -890.7 },
+  });
+  assert.equal(ahead.laneImpact, 1);
+  assert.equal(behind.laneImpact, -1);
+});
+
+test("tower pressure and durability use role-relative 30-minute thresholds", () => {
+  const score = playerGameScore({
+    kills: 0, deaths: 0, assists: 0, cs: null, visionScore: null, won: false,
+    role: "Support", damageShare: null, goldShare: null,
+    damageToTowers: 2012,
+    damageMitigated: 22692,
+  }, DEFAULT_SCORING, { lengthSec: 1800 });
+  assert.equal(score.towerPressure, 3);
+  assert.equal(score.durability, 1);
+});
+
+test("multikill bonuses ignore doubles and do not stack cumulative streak tiers", () => {
+  const score = playerGameScore({
+    kills: 5, deaths: 0, assists: 0, cs: null, visionScore: null, won: false,
+    role: "Bot", damageShare: null, goldShare: null,
+    tripleKills: 1, quadraKills: 1, pentakills: 1,
+  }, DEFAULT_SCORING);
+  assert.equal(score.multikill, 4);
 });
 
 test("top lane receives role-appropriate broad KP buckets", () => {

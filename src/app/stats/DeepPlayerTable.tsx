@@ -17,6 +17,10 @@ export type DeepPlayerRow = {
   killParticipationPointsPerGame: number;
   efficiencyPointsPerGame: number;
   jungleObjectivePointsPerGame: number;
+  laneImpactPointsPerGame: number;
+  towerPressurePointsPerGame: number;
+  durabilityPointsPerGame: number;
+  multikillPointsPerGame: number;
   games: number;
   wins: number;
   winRate: number;
@@ -92,6 +96,10 @@ const columns: Column[] = [
   { key: "farmPointsPerGame", label: "Farm/G", group: "Fantasy score", numeric: true, render: (row) => number(row.farmPointsPerGame) },
   { key: "visionPointsPerGame", label: "Vision pts/G", group: "Fantasy score", numeric: true, render: (row) => number(row.visionPointsPerGame) },
   { key: "jungleObjectivePointsPerGame", label: "Obj pts/G", group: "Fantasy score", numeric: true, render: (row) => number(row.jungleObjectivePointsPerGame) },
+  { key: "laneImpactPointsPerGame", label: "Lane pts/G", group: "Fantasy score", numeric: true, render: (row) => number(row.laneImpactPointsPerGame) },
+  { key: "towerPressurePointsPerGame", label: "Tower pts/G", group: "Fantasy score", numeric: true, render: (row) => number(row.towerPressurePointsPerGame) },
+  { key: "durabilityPointsPerGame", label: "Durable/G", group: "Fantasy score", numeric: true, render: (row) => number(row.durabilityPointsPerGame) },
+  { key: "multikillPointsPerGame", label: "Multi pts/G", group: "Fantasy score", numeric: true, render: (row) => number(row.multikillPointsPerGame) },
   { key: "winPointsPerGame", label: "Win pts/G", group: "Fantasy score", numeric: true, render: (row) => number(row.winPointsPerGame) },
   { key: "games", label: "GP", group: "Record", numeric: true, render: (row) => row.games },
   { key: "wins", label: "W-L", group: "Record", numeric: true, render: (row) => `${row.wins}-${row.games - row.wins}` },

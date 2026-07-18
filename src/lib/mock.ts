@@ -108,7 +108,9 @@ export async function seedMockSeason(tournamentId: string, opts: MockOptions = {
   // ---- Snake draft: rank players per role by fantasy points ----
   const stats = await prisma.playerGameStat.findMany({
     where: { game: { match: { tournamentId } } },
-    include: { game: { include: { teamStats: true } } },
+    include: {
+      game: { include: { teamStats: true, playerTimeline: { where: { minute: 15 } } } },
+    },
   });
   const totals = new Map<string, { pts: number; role: string; games: number }>();
   for (const s of stats) {
@@ -116,6 +118,7 @@ export async function seedMockSeason(tournamentId: string, opts: MockOptions = {
     row.pts += playerGamePoints(s, DEFAULT_SCORING, {
       lengthSec: s.game.lengthSec,
       teamObjectives: s.game.teamStats.find((team) => team.teamId === s.teamId),
+      laneAt15: s.game.playerTimeline.find((row) => row.playerId === s.playerId),
     });
     row.games++;
     if (s.role) row.role = s.role;

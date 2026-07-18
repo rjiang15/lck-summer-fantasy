@@ -81,6 +81,7 @@ export default async function ParticipantPage({
             gamePoints.push(playerGamePoints(ps, cfg, {
               lengthSec: game.lengthSec,
               teamObjectives: game.teamStats.find((team) => team.teamId === ps.teamId),
+              laneAt15: game.playerTimeline.find((row) => row.playerId === ps.playerId),
             }));
           }
         }

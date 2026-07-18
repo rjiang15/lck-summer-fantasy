@@ -142,7 +142,15 @@ export async function calculateWeeklyScores(
       week: {
         include: {
           matches: {
-            include: { games: { include: { playerStats: true, teamStats: true } } },
+            include: {
+              games: {
+                include: {
+                  playerStats: true,
+                  teamStats: true,
+                  playerTimeline: { where: { minute: 15 } },
+                },
+              },
+            },
           },
         },
       },
@@ -176,6 +184,7 @@ export async function calculateWeeklyScores(
             gamePoints.push(playerGamePoints(stat, config, {
               lengthSec: game.lengthSec,
               teamObjectives,
+              laneAt15: game.playerTimeline.find((row) => row.playerId === stat.playerId),
             }));
           }
         }
