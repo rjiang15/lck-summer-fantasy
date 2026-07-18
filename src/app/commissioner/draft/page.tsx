@@ -44,7 +44,7 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
       </form>
     </section> : <>
       <DraftBoard leagueId={league.id} status={league.draftStatus} currentPick={league.draftCurrentPick} totalPicks={totalPicks} currentTeamId={currentTeamId} budget={league.draftBudget} price={league.draftPlayerPrice} playersPerRole={league.draftPlayersPerRole} order={order} teams={teams} availablePlayers={eligible.map((row) => ({ id: row.playerId, name: row.player.name, teamId: row.teamId ?? row.player.teamId, role: row.role! }))} />
-      <form action={resetDraft} className="card"><input type="hidden" name="leagueId" value={league.id} /><button type="submit">Reset draft and choose a new order</button><span className="muted small" style={{ marginLeft: "0.75rem" }}>Clears every pick and initial roster in this league.</span></form>
+      <form action={resetDraft} className="card safety-confirm"><input type="hidden" name="leagueId" value={league.id} /><label><input type="checkbox" name="confirmReset" value="true" required /><span>Clear every draft pick and initial roster in this league.</span></label><button type="submit">Reset draft and choose a new order</button></form>
     </>}
   </>;
 }

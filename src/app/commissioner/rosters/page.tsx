@@ -8,8 +8,9 @@ export const dynamic = "force-dynamic";
 const slotRole: Record<string, string | undefined> = { TOP: "Top", JNG: "Jungle", MID: "Mid", BOT: "Bot", SUP: "Support" };
 const requiredSlots = ["TOP", "JNG", "MID", "BOT", "SUP"];
 
-export default async function RostersPage() {
+export default async function RostersPage({ searchParams }: { searchParams: Promise<{ error?: string; notice?: string }> }) {
   const access = await requireLeagueManager();
+  const feedback = await searchParams;
   const league = await prisma.league.findUnique({ where: { id: access.league.id },
     include: { fantasyTeams: { orderBy: { id: "asc" }, include: { user: true, roster: { include: { player: true } } } } },
   });
@@ -22,6 +23,8 @@ export default async function RostersPage() {
   return (
     <>
       <h1>Future rosters</h1>
+      {feedback.notice && <p className="notice card">{feedback.notice}</p>}
+      {feedback.error && <p className="error card" role="alert">Couldn&apos;t update that roster: {feedback.error}</p>}
       <p className="muted small">
         Roster editing is <b>{league.rostersLockedAt ? "locked" : "open"}</b>. Changes affect future weekly snapshots only; frozen weeks and published scores never change.
       </p>

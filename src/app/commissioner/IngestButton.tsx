@@ -30,7 +30,10 @@ export function IngestButton({
   const { pending } = useFormStatus();
   const [requestStartedAt, setRequestStartedAt] = useState<number | null>(null);
   const [progress, setProgress] = useState<ProgressStatus | null>(null);
-  const [clock, setClock] = useState(() => Date.now());
+  // Keep the server render and the client's first render identical. The clock
+  // starts only after polling begins; calling Date.now() here can otherwise
+  // produce different elapsed-time text during hydration.
+  const [clock, setClock] = useState<number | null>(null);
   const active = pending || running;
 
   useEffect(() => {
@@ -81,8 +84,12 @@ export function IngestButton({
     updatedAt: null,
     startedAt: requestStartedAt ? new Date(requestStartedAt).toISOString() : null,
   };
-  const elapsed = shown.startedAt ? Math.max(0, Math.floor((clock - new Date(shown.startedAt).getTime()) / 1_000)) : 0;
-  const heartbeatAge = shown.updatedAt ? Math.max(0, Math.floor((clock - new Date(shown.updatedAt).getTime()) / 1_000)) : null;
+  const elapsed = shown.startedAt && clock !== null
+    ? Math.max(0, Math.floor((clock - new Date(shown.startedAt).getTime()) / 1_000))
+    : 0;
+  const heartbeatAge = shown.updatedAt && clock !== null
+    ? Math.max(0, Math.floor((clock - new Date(shown.updatedAt).getTime()) / 1_000))
+    : null;
 
   return (
     <div className="ingest-control">

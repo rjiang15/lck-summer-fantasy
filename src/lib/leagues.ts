@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { prisma } from "./db";
 import { DEFAULT_SCORING } from "./scoring";
 import { DEFAULT_CRYSTAL_BALL } from "./crystal-ball";
+import { initialLeagueWeekRows } from "./league-setup";
 
 export const ACTIVE_LEAGUE_COOKIE = "activeLeague";
 export const MANAGER_ROLES = ["OWNER", "COMMISSIONER"] as const;
@@ -35,6 +36,25 @@ export async function createLeagueForOwner(input: {
   const slug = await uniqueLeagueSlug(input.name);
   const inviteCode = newInviteCode();
   return prisma.$transaction(async (tx) => {
+    const [weeks, rosterPlayers] = await Promise.all([
+      tx.week.findMany({
+        where: { tournamentId: input.tournamentId },
+        orderBy: { number: "asc" },
+      }),
+      tx.tournamentPlayer.count({ where: { tournamentId: input.tournamentId } }),
+    ]);
+    const scheduledWeeks = weeks.filter((week) => week.scheduleImportedAt !== null);
+    if (input.isSimulation) {
+      if (weeks.length === 0 || scheduledWeeks.length !== weeks.length) {
+        throw new Error("Simulation leagues require the complete stored season schedule");
+      }
+      if (weeks.some((week) => week.resultsImportedAt === null)) {
+        throw new Error("Simulation leagues require stored results for every week");
+      }
+      if (rosterPlayers === 0) {
+        throw new Error("Simulation leagues require an imported tournament player roster");
+      }
+    }
     const league = await tx.league.create({
       data: {
         name: input.name,
@@ -48,13 +68,10 @@ export async function createLeagueForOwner(input: {
         ...(input.teamName ? { fantasyTeams: { create: { userId: input.ownerId, name: input.teamName } } } : {}),
       },
     });
-    const firstWeek = await tx.week.findFirst({
-      where: { tournamentId: input.tournamentId, scheduleImportedAt: { not: null } },
-      orderBy: { number: "asc" },
-    });
-    if (firstWeek) {
-      await tx.leagueWeek.create({
-        data: { leagueId: league.id, weekId: firstWeek.id, status: "OPEN", picksOpenAt: new Date() },
+    if (scheduledWeeks.length > 0) {
+      const now = new Date();
+      await tx.leagueWeek.createMany({
+        data: initialLeagueWeekRows(league.id, scheduledWeeks, now),
       });
     }
     return league;

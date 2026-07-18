@@ -19,7 +19,9 @@ export async function GET(req: NextRequest) {
   const back = url.searchParams.get("back") ?? "/";
   const safeBack = back.startsWith("/") && !back.startsWith("//") ? back : "/";
   const res = NextResponse.redirect(new URL(safeBack, req.url));
-  if (week) res.cookies.set(`viewWeek_${leagueId}`, week, { path: "/", httpOnly: true, sameSite: "lax" });
+  if (week && membership.league.seasonStatus === "FINAL") {
+    res.cookies.set(`viewWeek_${leagueId}`, week, { path: "/", httpOnly: true, sameSite: "lax" });
+  }
   if (tournamentId) {
     if (!await canViewTournament(membership.league.tournamentId, tournamentId)) {
       return NextResponse.json({ error: "This season is newer than the league and cannot be viewed" }, { status: 403 });

@@ -23,7 +23,8 @@ export default async function NewLeaguePage({ searchParams }: { searchParams: Pr
       </select></label>
       <p className="muted small" style={{ margin: 0 }}>Season visibility only runs backward: this league can study older data, but a league created for an older season can never reveal a newer season.</p>
       <label>Your fantasy team name <input name="teamName" minLength={2} maxLength={40} placeholder="Optional if you only commission" /></label>
-      <label className="inline-form"><input name="isSimulation" type="checkbox" /> Test / simulation league</label>
+      <label className="inline-form"><input name="isSimulation" type="checkbox" /> Test / historical simulation league</label>
+      <p className="muted small" style={{ margin: 0 }}>A simulation requires a fully stored season. Its complete schedule and draft pool load immediately, while results remain hidden and are revealed one locked week at a time without contacting the API.</p>
       <button type="submit">Create league</button>
     </form>
   </>;

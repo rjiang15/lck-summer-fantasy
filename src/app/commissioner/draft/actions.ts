@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { requireLeagueManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { DRAFT_ROLES, isDraftRole, ROLE_SLOT, snakeTeamId, totalDraftPicks } from "@/lib/draft";
@@ -42,6 +42,7 @@ export async function startDraft(formData: FormData) {
     });
     revalidatePath("/commissioner/draft");
   } catch (error) {
+    unstable_rethrow(error);
     draftRedirect("error", error instanceof Error ? error.message : String(error));
   }
   draftRedirect("notice", "Draft order locked. Pick 1 is ready.");
@@ -101,6 +102,7 @@ export async function makeDraftPick(formData: FormData) {
     revalidatePath("/commissioner/draft");
     revalidatePath("/commissioner/rosters");
   } catch (error) {
+    unstable_rethrow(error);
     return { ok: false, message: error instanceof Error ? error.message : String(error) };
   }
   return { ok: true, message: `${pickedName} drafted. ${nextMessage}.` };
@@ -134,6 +136,7 @@ export async function undoDraftPick(formData: FormData) {
     revalidatePath("/commissioner/rosters");
     return { ok: true, message };
   } catch (error) {
+    unstable_rethrow(error);
     return { ok: false, message: error instanceof Error ? error.message : String(error) };
   }
 }
@@ -144,6 +147,7 @@ export async function resetDraft(formData: FormData) {
     await requireLeagueManager(leagueId);
     const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
     assertWeekZero(league);
+    if (formData.get("confirmReset") !== "true") throw new Error("Confirm that you want to clear the entire draft");
     await prisma.$transaction(async (tx) => {
       await tx.draftPick.deleteMany({ where: { leagueId } });
       await tx.rosterSlot.deleteMany({ where: { fantasyTeam: { leagueId } } });
@@ -151,6 +155,7 @@ export async function resetDraft(formData: FormData) {
     });
     revalidatePath("/commissioner/draft");
   } catch (error) {
+    unstable_rethrow(error);
     draftRedirect("error", error instanceof Error ? error.message : String(error));
   }
   draftRedirect("notice", "Draft reset. Choose a new order before the first pick.");

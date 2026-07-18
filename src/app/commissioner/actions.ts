@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { requireLeagueManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isIngestionRunStale } from "@/lib/ingestion-progress";
@@ -9,6 +9,7 @@ import { calculateWeeklyScores, ensureLeagueWeeks, snapshotWeeklyRosters, valida
 import { DEFAULT_SCORING } from "@/lib/scoring";
 import { settleCrystalBall } from "@/lib/crystal-ball";
 import { runLeaguepediaIngest } from "@/scripts/ingest";
+import { rosterLockError } from "@/lib/roster-readiness";
 
 async function authorizedWeek(id: number) {
   const week = await prisma.leagueWeek.findUniqueOrThrow({ where: { id }, include: { league: true, week: true } });
@@ -69,11 +70,31 @@ function commissionerRedirect(kind: "notice" | "error", message: string): never 
   redirect(`/commissioner?${params.toString()}`);
 }
 
+function actionRedirect(path: string, kind: "notice" | "error", message: string): never {
+  const params = new URLSearchParams({ [kind]: message.slice(0, 300) });
+  redirect(`${path}?${params.toString()}`);
+}
+
+async function handleExpectedActionError(work: () => Promise<void>, path = "/commissioner") {
+  try {
+    await work();
+  } catch (error) {
+    unstable_rethrow(error);
+    const message = error instanceof Error && error.message.trim()
+      ? error.message
+      : "That action could not be completed. Reload the page and try again.";
+    actionRedirect(path, "error", message);
+  }
+}
+
 async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean) {
   await requireLeagueManager(leagueId);
   const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
   if (league.seasonStatus === "FINAL") throw new Error("The season is already final");
   const weekNumber = league.currentWeek + 1;
+  if (league.isSimulation && scheduleOnly) {
+    throw new Error("Historical simulations load their complete stored schedule when the league is created");
+  }
   await assertNoWeekIngestion(league.tournamentId, weekNumber);
   let week = await prisma.week.findUnique({ where: { tournamentId_number: { tournamentId: league.tournamentId, number: weekNumber } } });
   if (!scheduleOnly) {
@@ -84,6 +105,9 @@ async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean) {
     }
   }
   const globallyReady = scheduleOnly ? Boolean(week?.scheduleImportedAt) : Boolean(week?.resultsImportedAt);
+  if (league.isSimulation && !globallyReady) {
+    throw new Error(`Week ${weekNumber} is missing stored historical results; simulations never call the live API`);
+  }
   const counts = globallyReady ? {
     matches: await prisma.match.count({ where: { weekId: week!.id } }),
     games: await prisma.game.count({ where: { match: { weekId: week!.id } } }),
@@ -116,6 +140,7 @@ export async function fetchNextWeekSchedule(formData: FormData) {
   try {
     result = await runNextWeekIngest(Number(formData.get("leagueId")), true);
   } catch (error) {
+    unstable_rethrow(error);
     commissionerRedirect("error", error instanceof Error ? error.message : String(error));
   }
   commissionerRedirect(
@@ -129,6 +154,7 @@ export async function fetchNextWeekResults(formData: FormData) {
   try {
     result = await runNextWeekIngest(Number(formData.get("leagueId")), false);
   } catch (error) {
+    unstable_rethrow(error);
     commissionerRedirect("error", error instanceof Error ? error.message : String(error));
   }
   commissionerRedirect(
@@ -137,14 +163,14 @@ export async function fetchNextWeekResults(formData: FormData) {
   );
 }
 
-export async function initializeWeeks(formData: FormData) {
+async function initializeWeeksImpl(formData: FormData) {
   const leagueId = Number(formData.get("leagueId"));
   await requireLeagueManager(leagueId);
   await ensureLeagueWeeks(leagueId);
   revalidatePath("/commissioner");
 }
 
-export async function openWeek(formData: FormData) {
+async function openWeekImpl(formData: FormData) {
   const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
   await assertNoWeekIngestion(lw.league.tournamentId, lw.week.number);
   if (!['UPCOMING', 'OPEN'].includes(lw.status)) throw new Error("Only an upcoming week can be opened");
@@ -167,13 +193,14 @@ export async function openWeek(formData: FormData) {
   revalidatePath("/picks");
 }
 
-export async function lockPicks(formData: FormData) {
+async function lockPicksImpl(formData: FormData) {
   const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
   await assertNoWeekIngestion(lw.league.tournamentId, lw.week.number);
   if (lw.status !== "OPEN") throw new Error("Only an open week's picks can be locked");
   if (lw.picksLockedAt) throw new Error(`Week ${lw.week.number} picks are already locked`);
+  const teams = await prisma.fantasyTeam.count({ where: { leagueId: lw.leagueId } });
+  if (teams === 0) throw new Error("Add at least one participant fantasy team before locking picks");
   if (lw.week.number === 1) {
-    const teams = await prisma.fantasyTeam.count({ where: { leagueId: lw.leagueId } });
     if (teams > 0 && lw.league.draftStatus !== "COMPLETE") {
       throw new Error("Complete the Week 0 roster draft before locking Week 1 picks");
     }
@@ -212,7 +239,7 @@ export async function lockPicks(formData: FormData) {
   revalidatePath("/crystal-ball");
 }
 
-export async function unlockPicks(formData: FormData) {
+async function unlockPicksImpl(formData: FormData) {
   const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
   await assertNoWeekIngestion(lw.league.tournamentId, lw.week.number);
   if (!["OPEN", "LOCKED"].includes(lw.status)) throw new Error("Picks cannot be unlocked after results are imported");
@@ -231,20 +258,20 @@ export async function unlockPicks(formData: FormData) {
   revalidatePath("/crystal-ball");
 }
 
-export async function lockRosters(formData: FormData) {
+async function lockRostersImpl(formData: FormData) {
   const leagueId = Number(formData.get("leagueId"));
   await requireLeagueManager(leagueId);
   const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
   if (league.rostersLockedAt) throw new Error("Roster editing is already locked");
-  if (league.currentWeek === 0 && league.draftStatus !== "COMPLETE") {
-    throw new Error("Complete the initial roster draft before locking roster editing");
-  }
+  const teams = await prisma.fantasyTeam.findMany({ where: { leagueId }, include: { roster: true } });
+  const readinessError = rosterLockError({ currentWeek: league.currentWeek, draftStatus: league.draftStatus, teams });
+  if (readinessError) throw new Error(readinessError);
   await prisma.league.update({ where: { id: leagueId }, data: { rostersLockedAt: new Date() } });
   revalidateDataPages();
   revalidatePath("/commissioner/rosters");
 }
 
-export async function unlockRosters(formData: FormData) {
+async function unlockRostersImpl(formData: FormData) {
   const leagueId = Number(formData.get("leagueId"));
   await requireLeagueManager(leagueId);
   const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
@@ -255,7 +282,7 @@ export async function unlockRosters(formData: FormData) {
   revalidatePath("/commissioner/rosters");
 }
 
-export async function validateAndScoreWeek(formData: FormData) {
+async function validateAndScoreWeekImpl(formData: FormData) {
   const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
   await assertNoWeekIngestion(lw.league.tournamentId, lw.week.number);
   if (!['RESULTS_IMPORTED', 'SCORED'].includes(lw.status)) throw new Error("Fetch the week's results before scoring it");
@@ -265,8 +292,7 @@ export async function validateAndScoreWeek(formData: FormData) {
       where: { id: lw.id },
       data: { validationJson: JSON.stringify(result), validationError: result.errors.join("; ") },
     });
-    revalidatePath("/commissioner");
-    return;
+    throw new Error(`Week ${lw.week.number} data failed validation: ${result.errors.slice(0, 3).join("; ")}`);
   }
   if ((await prisma.weeklyRosterSlot.count({ where: { leagueWeekId: lw.id } })) === 0) {
     throw new Error("The frozen weekly roster snapshot is missing; scoring was stopped to protect historical ownership");
@@ -281,7 +307,7 @@ export async function validateAndScoreWeek(formData: FormData) {
   revalidatePath("/leaderboard");
 }
 
-export async function publishWeek(formData: FormData) {
+async function publishWeekImpl(formData: FormData) {
   const lw = await authorizedWeek(Number(formData.get("leagueWeekId")));
   await assertNoWeekIngestion(lw.league.tournamentId, lw.week.number);
   if (lw.status !== "SCORED") throw new Error("Validate and score the week before publishing it");
@@ -303,12 +329,23 @@ export async function publishWeek(formData: FormData) {
       await tx.league.update({ where: { id: lw.leagueId }, data: { currentWeek: lw.week.number, seasonStatus: "ACTIVE" } });
     }
   });
+  if (!next && lw.league.isSimulation) {
+    // Publishing the final week is the natural end of the replay. Crystal Ball
+    // was submission-locked with Week 1; now resolve it from the complete
+    // season data and expose the final scores without an extra lifecycle step.
+    await settleCrystalBall(lw.leagueId);
+    await prisma.league.update({
+      where: { id: lw.leagueId },
+      data: { seasonStatus: "FINAL", crystalBallLockedAt: lw.league.crystalBallLockedAt ?? now },
+    });
+  }
   revalidatePath("/commissioner");
   revalidatePath("/picks");
   revalidatePath("/leaderboard");
+  revalidatePath("/crystal-ball");
 }
 
-export async function finishSeason(formData: FormData) {
+async function finishSeasonImpl(formData: FormData) {
   const leagueId = Number(formData.get("leagueId"));
   await requireLeagueManager(leagueId);
   const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
@@ -346,13 +383,14 @@ export async function recoverStaleIngestion(formData: FormData) {
     });
     if (recovered.count !== 1) throw new Error("The import changed while recovery was requested; reload and try again");
   } catch (error) {
+    unstable_rethrow(error);
     commissionerRedirect("error", error instanceof Error ? error.message : String(error));
   }
   revalidatePath("/commissioner");
   commissionerRedirect("notice", "The stale import was closed safely. You can retry the same week; existing partial rows will be updated rather than duplicated.");
 }
 
-export async function updateRosterSlot(formData: FormData) {
+async function updateRosterSlotImpl(formData: FormData) {
   const rosterSlotId = Number(formData.get("rosterSlotId"));
   const playerId = String(formData.get("playerId"));
   const slot = await prisma.rosterSlot.findUniqueOrThrow({
@@ -373,11 +411,19 @@ export async function updateRosterSlot(formData: FormData) {
     where: { fantasyTeamId: slot.fantasyTeamId, playerId, NOT: { id: slot.id } },
   });
   if (duplicate) throw new Error("That player is already on this roster");
+  const ownedByAnotherTeam = await prisma.rosterSlot.findFirst({
+    where: {
+      playerId,
+      fantasyTeam: { leagueId: slot.fantasyTeam.leagueId, id: { not: slot.fantasyTeamId } },
+    },
+    include: { fantasyTeam: true },
+  });
+  if (ownedByAnotherTeam) throw new Error(`${playerId} is already rostered by ${ownedByAnotherTeam.fantasyTeam.name}`);
   await prisma.rosterSlot.update({ where: { id: slot.id }, data: { playerId } });
   revalidatePath("/commissioner/rosters");
 }
 
-export async function addRosterSlot(formData: FormData) {
+async function addRosterSlotImpl(formData: FormData) {
   const fantasyTeamId = Number(formData.get("fantasyTeamId"));
   const playerId = String(formData.get("playerId"));
   const slotName = String(formData.get("slot"));
@@ -393,18 +439,28 @@ export async function addRosterSlot(formData: FormData) {
   if (!eligibility) throw new Error("Player is not eligible for this league");
   if (SLOT_ROLE[slotName] && (eligibility.role ?? eligibility.player.role) !== SLOT_ROLE[slotName]) throw new Error(`Player must be a ${SLOT_ROLE[slotName]}`);
   if (await prisma.rosterSlot.findFirst({ where: { fantasyTeamId, playerId } })) throw new Error("That player is already on this roster");
+  const ownedByAnotherTeam = await prisma.rosterSlot.findFirst({
+    where: { playerId, fantasyTeam: { leagueId: team.leagueId, id: { not: fantasyTeamId } } },
+    include: { fantasyTeam: true },
+  });
+  if (ownedByAnotherTeam) throw new Error(`${playerId} is already rostered by ${ownedByAnotherTeam.fantasyTeam.name}`);
   await prisma.rosterSlot.create({ data: { fantasyTeamId, playerId, slot: slotName } });
   revalidatePath("/commissioner/rosters");
 }
 
-export async function updateScoringConfig(formData: FormData) {
+async function updateScoringConfigImpl(formData: FormData) {
   const leagueId = Number(formData.get("leagueId"));
   await requireLeagueManager(leagueId);
   const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
   const published = await prisma.leagueWeek.count({ where: { leagueId, status: "PUBLISHED" } });
   if (published > 0) throw new Error("Scoring cannot change after the first week is published");
   const raw = String(formData.get("scoringConfig") ?? "");
-  const parsed = JSON.parse(raw) as { version?: unknown; player?: Record<string, unknown>; pickem?: Record<string, unknown> };
+  let parsed: { version?: unknown; player?: Record<string, unknown>; pickem?: Record<string, unknown> };
+  try {
+    parsed = JSON.parse(raw) as typeof parsed;
+  } catch {
+    throw new Error("Scoring configuration must be valid JSON");
+  }
   if (parsed.version !== DEFAULT_SCORING.version) throw new Error(`Scoring version must be ${DEFAULT_SCORING.version}`);
   for (const section of ["player", "pickem"] as const) {
     const defaults = DEFAULT_SCORING[section];
@@ -417,4 +473,52 @@ export async function updateScoringConfig(formData: FormData) {
   await prisma.league.update({ where: { id: league.id }, data: { scoringConfig: JSON.stringify(parsed) } });
   revalidatePath("/commissioner");
   revalidatePath("/settings");
+}
+
+export async function initializeWeeks(formData: FormData) {
+  await handleExpectedActionError(() => initializeWeeksImpl(formData));
+}
+
+export async function openWeek(formData: FormData) {
+  await handleExpectedActionError(() => openWeekImpl(formData));
+}
+
+export async function lockPicks(formData: FormData) {
+  await handleExpectedActionError(() => lockPicksImpl(formData));
+}
+
+export async function unlockPicks(formData: FormData) {
+  await handleExpectedActionError(() => unlockPicksImpl(formData));
+}
+
+export async function lockRosters(formData: FormData) {
+  await handleExpectedActionError(() => lockRostersImpl(formData));
+}
+
+export async function unlockRosters(formData: FormData) {
+  await handleExpectedActionError(() => unlockRostersImpl(formData));
+}
+
+export async function validateAndScoreWeek(formData: FormData) {
+  await handleExpectedActionError(() => validateAndScoreWeekImpl(formData));
+}
+
+export async function publishWeek(formData: FormData) {
+  await handleExpectedActionError(() => publishWeekImpl(formData));
+}
+
+export async function finishSeason(formData: FormData) {
+  await handleExpectedActionError(() => finishSeasonImpl(formData));
+}
+
+export async function updateRosterSlot(formData: FormData) {
+  await handleExpectedActionError(() => updateRosterSlotImpl(formData), "/commissioner/rosters");
+}
+
+export async function addRosterSlot(formData: FormData) {
+  await handleExpectedActionError(() => addRosterSlotImpl(formData), "/commissioner/rosters");
+}
+
+export async function updateScoringConfig(formData: FormData) {
+  await handleExpectedActionError(() => updateScoringConfigImpl(formData));
 }

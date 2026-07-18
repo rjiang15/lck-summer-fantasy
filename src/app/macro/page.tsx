@@ -185,7 +185,7 @@ export default async function MacroDashboardPage() {
       <div>
         <span className="macro-eyebrow">Season intelligence</span>
         <h1>Macro dashboard</h1>
-        <p>{view.tournamentName} · {view.isLive ? "Live view" : `Through Week ${view.completedWeek}`} · game, draft, objective, champion and team records.</p>
+        <p>{view.tournamentName} · {view.isLive ? view.isSimulation ? "Simulation view" : "Live view" : `Through Week ${view.completedWeek}`} · game, draft, objective, champion and team records.</p>
       </div>
       <Link href="/stats" className="button-link">Open player stat table</Link>
     </header>

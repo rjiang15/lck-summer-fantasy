@@ -44,7 +44,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       {league?.isSimulation && access.membership.role === "OWNER" && <div className="card">
         <h2 style={{ marginTop: 0 }}>Test controls</h2><p className="small muted">Reset only this test league to Week 0. It clears its snake draft, rosters, picks, Crystal Ball answers, snapshots, and scores while preserving members, fantasy teams, and all shared LCK data.</p>
-        <form action={resetTestLeague}><input type="hidden" name="leagueId" value={league.id} /><button type="submit">Reset this test league</button></form>
+        <form action={resetTestLeague} className="safety-confirm"><input type="hidden" name="leagueId" value={league.id} /><label><input type="checkbox" name="confirmReset" value="true" required /><span>Clear the draft, rosters, picks, Crystal Ball answers, and weekly scores for this test league.</span></label><button type="submit">Reset this test league</button></form>
       </div>}
 
       <div className="card">

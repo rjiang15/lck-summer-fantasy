@@ -26,8 +26,13 @@ export default async function GamesPage() {
       },
     },
   });
+  // A replay league knows the complete historical slate from Week 0, just as
+  // a live current-season league knows its announced future schedule. Only the
+  // result cells remain gated by the completed-week cutoff.
   const visibleWeeks =
-    view.isCurrentSeason || view.openWeek === null ? weeks : weeks.filter((w) => w.number <= view.openWeek!);
+    view.isCurrentSeason || view.isSimulation || view.openWeek === null
+      ? weeks
+      : weeks.filter((w) => w.number <= view.openWeek!);
 
   return (
     <>

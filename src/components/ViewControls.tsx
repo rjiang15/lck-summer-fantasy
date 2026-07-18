@@ -9,6 +9,7 @@ export default function ViewControls({
   completedWeek,
   maxWeek,
   isLive,
+  isSimulation,
   isResearch,
   selectedTournamentId,
   leagueTournamentId,
@@ -18,6 +19,7 @@ export default function ViewControls({
   completedWeek: number | null; // null = Final
   maxWeek: number;
   isLive: boolean;
+  isSimulation: boolean;
   isResearch: boolean;
   selectedTournamentId: string;
   leagueTournamentId: string;
@@ -33,8 +35,8 @@ export default function ViewControls({
     completedWeek === null ? null : completedWeek + 1 >= maxWeek ? "final" : completedWeek + 1;
   const label = isLive
     ? completedWeek === 0
-      ? "Live · preseason"
-      : `Live · after Week ${completedWeek}`
+      ? `${isSimulation ? "Simulation" : "Live"} · preseason`
+      : `${isSimulation ? "Simulation" : "Live"} · after Week ${completedWeek}`
     :
     completedWeek === null
       ? "Final"

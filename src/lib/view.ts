@@ -11,6 +11,7 @@ import { prisma } from "./db";
 import { getCurrentUser } from "./auth";
 import { getPreferredMembership } from "./leagues";
 import { isResearchSeasonVisible } from "./tournaments";
+import { resolveCompletedWeek } from "./view-cursor";
 
 export interface ViewState {
   leagueId: number;
@@ -32,6 +33,8 @@ export interface ViewState {
   cutoff: Date | null;
   /** Live leagues follow the commissioner cursor and cannot preview results. */
   isLive: boolean;
+  /** Historical replay uses stored results but follows the same locked cursor. */
+  isSimulation: boolean;
 }
 
 export async function getViewState(leagueId?: number): Promise<ViewState | null> {
@@ -54,23 +57,14 @@ export async function getViewState(leagueId?: number): Promise<ViewState | null>
     orderBy: { number: "asc" },
   });
   const maxWeek = weeks.length ? weeks[weeks.length - 1].number : 0;
-  const isLive = !league.isSimulation && league.seasonStatus !== "FINAL";
+  const isLive = league.seasonStatus !== "FINAL";
   const raw = jar.get(`viewWeek_${league.id}`)?.value;
-  let completedWeek: number | null;
-  if (isLive) {
-    completedWeek = league.currentWeek;
-  } else {
-    completedWeek = raw == null
-      ? (league.seasonStatus === "FINAL" ? null : league.currentWeek)
-      : raw !== "final" ? parseInt(raw, 10) : null;
-    // "after the last week" is the same as Final for archived/simulated splits.
-    if (
-      completedWeek !== null &&
-      (isNaN(completedWeek) || completedWeek < 0 || completedWeek >= maxWeek)
-    ) {
-      completedWeek = null;
-    }
-  }
+  const completedWeek = resolveCompletedWeek({
+    seasonStatus: league.seasonStatus,
+    currentWeek: league.currentWeek,
+    requestedWeek: raw,
+    maxWeek,
+  });
   const openWeek = completedWeek === null ? null : completedWeek + 1;
   const cutoff =
     openWeek === null ? null : weeks.find((w) => w.number === openWeek)?.startsAt ?? null;
@@ -89,6 +83,7 @@ export async function getViewState(leagueId?: number): Promise<ViewState | null>
     maxWeek,
     cutoff,
     isLive,
+    isSimulation: league.isSimulation,
   };
 }
 

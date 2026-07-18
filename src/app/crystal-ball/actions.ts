@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireLeagueMember } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { DRAKE_ANSWERS, PENTAKILL_ANSWERS, YES_NO_ANSWERS } from "@/lib/crystal-ball-options";
+import { unstable_rethrow } from "next/navigation";
 
 export type CrystalBallSaveState = { ok: boolean; message: string; saved: number } | null;
 
@@ -106,6 +107,7 @@ export async function saveAllCrystalBall(
       message: `Saved ${updates.length} of ${questions.length} predictions.`,
     };
   } catch (error) {
+    unstable_rethrow(error);
     return { ok: false, saved: 0, message: error instanceof Error ? error.message : String(error) };
   }
 }

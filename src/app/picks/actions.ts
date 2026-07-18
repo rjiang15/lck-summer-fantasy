@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireLeagueMember } from "@/lib/auth";
 import { validSeriesPrediction } from "@/lib/season";
+import { unstable_rethrow } from "next/navigation";
 
 export type PickSaveState = { ok: boolean; message: string } | null;
 
@@ -63,6 +64,7 @@ export async function savePicks(_previous: PickSaveState, formData: FormData): P
     revalidatePath("/picks");
     return { ok: true, message: `Saved ${updates.length} pick${updates.length === 1 ? "" : "s"}${locked ? `; ${locked} started series stayed locked` : ""}.` };
   } catch (error) {
+    unstable_rethrow(error);
     return { ok: false, message: error instanceof Error ? error.message : String(error) };
   }
 }

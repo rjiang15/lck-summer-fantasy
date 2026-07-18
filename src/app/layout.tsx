@@ -42,6 +42,7 @@ export default async function RootLayout({
                   completedWeek={view.completedWeek}
                   maxWeek={view.maxWeek}
                   isLive={view.isLive}
+                  isSimulation={view.isSimulation}
                   isResearch={view.isResearch}
                   selectedTournamentId={view.tournamentId}
                   leagueTournamentId={view.leagueTournamentId}
