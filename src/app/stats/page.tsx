@@ -15,8 +15,9 @@ const perGame = (value: number, games: number) =>
   games === 0 ? "—" : (value / games).toFixed(1);
 
 const OPTIONAL_PLAYER_METRICS = [
-  "gold", "goldEarned", "goldSpent", "minionKills", "monsterKills", "damage",
-  "damageToObjectives", "damageTaken", "damageMitigated", "totalHeal", "visionScore",
+  "gold", "goldEarned", "goldSpent", "minionKills", "monsterKills",
+  "monsterKillsOwnJungle", "monsterKillsEnemyJungle", "damage", "damageToObjectives",
+  "damageToTowers", "damageTaken", "damageMitigated", "totalHeal", "visionScore",
   "wardsPlaced", "wardsKilled", "controlWardsBought", "doubleKills", "tripleKills",
   "quadraKills", "pentakills", "teamKills", "teamGold", "killParticipation",
   "damageShare", "goldShare",
@@ -216,6 +217,7 @@ export default async function StatsPage() {
       damagePerGame: averageMetric(row, "damage"),
       damageShare: averageMetric(row, "damageShare"),
       objectiveDamagePerGame: averageMetric(row, "damageToObjectives"),
+      towerDamagePerGame: averageMetric(row, "damageToTowers"),
       damageTakenPerGame: averageMetric(row, "damageTaken"),
       damageMitigatedPerGame: averageMetric(row, "damageMitigated"),
       healingPerGame: averageMetric(row, "totalHeal"),
@@ -224,6 +226,8 @@ export default async function StatsPage() {
       maxCs: row.maxCs,
       minionsPerGame: averageMetric(row, "minionKills"),
       monstersPerGame: averageMetric(row, "monsterKills"),
+      ownJungleMonstersPerGame: averageMetric(row, "monsterKillsOwnJungle"),
+      enemyJungleMonstersPerGame: averageMetric(row, "monsterKillsEnemyJungle"),
       goldPerGame: averageMetric(row, "gold"),
       goldEarnedPerGame: averageMetric(row, "goldEarned"),
       goldSpentPerGame: averageMetric(row, "goldSpent"),

@@ -653,7 +653,10 @@ export async function runLeaguepediaIngest({
       } else if (weekNumber === null) {
         await tx.week.updateMany({
           where: { tournamentId: overviewPage },
-          data: { scheduleImportedAt: new Date() },
+          data: {
+            scheduleImportedAt: new Date(),
+            ...(!scheduleOnly ? { resultsImportedAt: new Date() } : {}),
+          },
         });
       }
     });

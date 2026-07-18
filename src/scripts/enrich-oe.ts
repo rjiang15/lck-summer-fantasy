@@ -19,6 +19,11 @@ const num = (value: string | undefined) => {
 const bool = (value: string | undefined) => value === "1" ? true : value === "0" ? false : null;
 const sideName = (value: string | undefined) => value?.toLowerCase() === "blue" ? "Blue" : value?.toLowerCase() === "red" ? "Red" : null;
 const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+const totalFromPerMinute = (rate: string | undefined, lengthSeconds: string | undefined) => {
+  const parsedRate = num(rate);
+  const parsedLength = num(lengthSeconds);
+  return parsedRate === null || parsedLength === null ? null : Math.round(parsedRate * parsedLength / 60);
+};
 
 function parseCsvLine(line: string) {
   const result: string[] = [];
@@ -146,8 +151,12 @@ async function enrich(csvPath: string, split: string, requestedTournament: strin
         if (!target) continue;
         const data = {
           gold: int(row.totalgold), goldEarned: int(row.earnedgold), goldSpent: int(row.goldspent), cs: int(row["total cs"]),
-          minionKills: int(row.minionkills), monsterKills: int(row.monsterkills), damage: int(row.damagetochampions),
-          damageToObjectives: int(row.damagetoobjectives), damageTaken: int(row.totaldamagetaken), damageMitigated: int(row.damagemitigated),
+          minionKills: int(row.minionkills), monsterKills: int(row.monsterkills),
+          monsterKillsOwnJungle: int(row.monsterkillsownjungle), monsterKillsEnemyJungle: int(row.monsterkillsenemyjungle),
+          damage: int(row.damagetochampions), damageToTowers: int(row.damagetotowers),
+          damageToObjectives: int(row.damagetoobjectives),
+          damageTaken: int(row.totaldamagetaken) ?? totalFromPerMinute(row.damagetakenperminute, row.gamelength),
+          damageMitigated: int(row.damagemitigated) ?? totalFromPerMinute(row.damagemitigatedperminute, row.gamelength),
           totalHeal: int(row.totalheal), visionScore: int(row.visionscore), wardsPlaced: int(row.wardsplaced), wardsKilled: int(row.wardskilled),
           controlWardsBought: int(row.controlwardsbought), doubleKills: int(row.doublekills), tripleKills: int(row.triplekills),
           quadraKills: int(row.quadrakills), pentakills: int(row.pentakills), firstBloodKill: bool(row.firstbloodkill),

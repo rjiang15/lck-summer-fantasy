@@ -138,8 +138,11 @@ model PlayerGameStat {
   cs                 Int?
   minionKills        Int?
   monsterKills       Int?
+  monsterKillsOwnJungle   Int?
+  monsterKillsEnemyJungle Int?
   damage             Int? // damage to champions
   damageToObjectives Int?
+  damageToTowers     Int?
   damageTaken        Int?
   damageMitigated    Int?
   totalHeal          Int?

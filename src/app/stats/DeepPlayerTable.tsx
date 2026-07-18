@@ -32,6 +32,7 @@ export type DeepPlayerRow = {
   damagePerGame: number | null;
   damageShare: number | null;
   objectiveDamagePerGame: number | null;
+  towerDamagePerGame: number | null;
   damageTakenPerGame: number | null;
   damageMitigatedPerGame: number | null;
   healingPerGame: number | null;
@@ -40,6 +41,8 @@ export type DeepPlayerRow = {
   maxCs: number;
   minionsPerGame: number | null;
   monstersPerGame: number | null;
+  ownJungleMonstersPerGame: number | null;
+  enemyJungleMonstersPerGame: number | null;
   goldPerGame: number | null;
   goldEarnedPerGame: number | null;
   goldSpentPerGame: number | null;
@@ -105,6 +108,7 @@ const columns: Column[] = [
   { key: "damagePerGame", label: "Dmg/G", group: "Combat", numeric: true, render: (row) => number(row.damagePerGame, 0) },
   { key: "damageShare", label: "Dmg%", group: "Combat", numeric: true, render: (row) => percent(row.damageShare) },
   { key: "objectiveDamagePerGame", label: "Obj Dmg/G", group: "Combat", numeric: true, render: (row) => number(row.objectiveDamagePerGame, 0) },
+  { key: "towerDamagePerGame", label: "Tower Dmg/G", group: "Combat", numeric: true, render: (row) => number(row.towerDamagePerGame, 0) },
   { key: "damageTakenPerGame", label: "Taken/G", group: "Combat", numeric: true, render: (row) => number(row.damageTakenPerGame, 0) },
   { key: "damageMitigatedPerGame", label: "Mitigated/G", group: "Combat", numeric: true, render: (row) => number(row.damageMitigatedPerGame, 0) },
   { key: "healingPerGame", label: "Heal/G", group: "Combat", numeric: true, render: (row) => number(row.healingPerGame, 0) },
@@ -113,6 +117,8 @@ const columns: Column[] = [
   { key: "maxCs", label: "Max CS", group: "Economy", numeric: true, render: (row) => row.maxCs },
   { key: "minionsPerGame", label: "Lane CS/G", group: "Economy", numeric: true, render: (row) => number(row.minionsPerGame) },
   { key: "monstersPerGame", label: "Jungle CS/G", group: "Economy", numeric: true, render: (row) => number(row.monstersPerGame) },
+  { key: "ownJungleMonstersPerGame", label: "Own Jng/G", group: "Economy", numeric: true, render: (row) => number(row.ownJungleMonstersPerGame) },
+  { key: "enemyJungleMonstersPerGame", label: "Enemy Jng/G", group: "Economy", numeric: true, render: (row) => number(row.enemyJungleMonstersPerGame) },
   { key: "goldPerGame", label: "Gold/G", group: "Economy", numeric: true, render: (row) => number(row.goldPerGame, 0) },
   { key: "goldEarnedPerGame", label: "Earned/G", group: "Economy", numeric: true, render: (row) => number(row.goldEarnedPerGame, 0) },
   { key: "goldSpentPerGame", label: "Spent/G", group: "Economy", numeric: true, render: (row) => number(row.goldSpentPerGame, 0) },
