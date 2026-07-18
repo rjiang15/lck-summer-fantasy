@@ -103,6 +103,12 @@ Application rollback does not automatically reverse a database migration.
 Prefer additive migrations (new nullable columns/tables), deploy compatible app
 code, backfill data, and remove old fields only in a later release.
 
+League checkpoints are an application-level recovery feature, not a substitute
+for Neon database backups. They deliberately preserve fantasy-league state but
+reference the shared tournament catalog and existing user accounts. Apply the
+`LeagueBackup` migration before deploying app code that renders `/settings` or
+`/leagues`.
+
 ## Future schema changes
 
 Edit `prisma/schema.prisma` first, then run:
