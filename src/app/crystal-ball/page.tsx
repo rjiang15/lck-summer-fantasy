@@ -70,7 +70,7 @@ export default async function CrystalBallPage() {
       </header>
       <div className="card crystal-rules">
         <b>Automatic grading</b>
-        <span className="muted small">Questions 1–10 award 50 points for a first-place result, 30 for second, and 10 for any lower eligible rank. Ties share a rank. Questions 11–20 are worth 30 points with no partial credit; Questions 16 and 17 award it to every participant tied for closest.</span>
+        <span className="muted small">Questions 1–10 award 50 points for first, 30 for second, 10 for third, and zero below third. Ties share a dense-ranking tier. Questions 11–20 are worth 30 points with no partial credit; Questions 16 and 17 award it to every participant tied for closest.</span>
       </div>
       {!locked ? <CrystalBallForm
         key={team.league.id}
@@ -110,7 +110,7 @@ export default async function CrystalBallPage() {
 }
 
 function questionScoreLabel(question: { gradingMode: string; points: number }) {
-  if (question.gradingMode === "RANKED") return "50 points for 1st · 30 for 2nd · 10 for lower ranks";
+  if (question.gradingMode === "RANKED") return "50 points for 1st · 30 for 2nd · 10 for 3rd · 0 below podium";
   if (question.gradingMode === "CLOSEST") return `${question.points} points · closest prediction wins`;
   return `${question.points} points · all or nothing`;
 }

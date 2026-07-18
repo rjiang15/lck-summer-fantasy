@@ -3,7 +3,7 @@ import { prisma } from "./db";
 export const RANKED_CRYSTAL_BALL_POINTS = {
   first: 50,
   second: 30,
-  other: 10,
+  third: 10,
 } as const;
 
 export const DEFAULT_CRYSTAL_BALL = [
@@ -399,7 +399,8 @@ export function crystalBallPoints(question: GradableQuestion, userId: number) {
     if (!tier) return 0;
     if (tier.rank === 1) return RANKED_CRYSTAL_BALL_POINTS.first;
     if (tier.rank === 2) return RANKED_CRYSTAL_BALL_POINTS.second;
-    return RANKED_CRYSTAL_BALL_POINTS.other;
+    if (tier.rank === 3) return RANKED_CRYSTAL_BALL_POINTS.third;
+    return 0;
   }
   if (question.gradingMode === "CLOSEST") {
     const target = Number(question.correctAnswer);

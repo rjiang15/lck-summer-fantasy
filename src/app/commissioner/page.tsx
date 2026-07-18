@@ -285,7 +285,7 @@ export default async function CommissionerPage({
         <span className="muted small">Locks permanently after the first published week.</span>
       </form>
       <h2>Crystal Ball settlement</h2>
-      <p className="muted small">No manual grading is required. Questions 1–10 use the stored final ranking (50 points for first, 30 for second, 10 for lower eligible ranks). Questions 11–20 are worth 30 points all-or-nothing, with closest-number questions comparing every submitted answer.</p>
+      <p className="muted small">No manual grading is required. Questions 1–10 use the stored final podium (50 points for first, 30 for second, 10 for third, and zero below third). Questions 11–20 are worth 30 points all-or-nothing, with closest-number questions comparing every submitted answer.</p>
       <div className="tablewrap"><table>
         <thead><tr><th>#</th><th>Question</th><th>Mode</th><th>Result</th><th>Audit</th></tr></thead>
         <tbody>{league.cbQuestions.map((question, index) => {

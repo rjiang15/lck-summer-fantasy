@@ -121,7 +121,7 @@ export default function CrystalBallForm({
 }
 
 function questionScoreLabel(question: Pick<Question, "gradingMode" | "points">) {
-  if (question.gradingMode === "RANKED") return "50 points for 1st · 30 for 2nd · 10 for any lower ranked result";
+  if (question.gradingMode === "RANKED") return "50 points for 1st · 30 for 2nd · 10 for 3rd · 0 below podium";
   if (question.gradingMode === "CLOSEST") return `${question.points} points · closest prediction wins`;
   return `${question.points} points`;
 }
