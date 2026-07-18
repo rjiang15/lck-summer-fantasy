@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "npm run prisma:generate",
+    "prisma:generate": "prisma generate && prisma generate --config prisma.postgres.config.ts",
+    "prebuild": "npm run prisma:generate && npm run deploy:check",
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
@@ -18,26 +21,44 @@
     "tournament:current": "tsx src/scripts/set-current-tournament.ts",
     "crystal-ball:sync": "tsx src/scripts/sync-crystal-ball.ts",
     "crystal-ball:verify": "tsx src/scripts/verify-crystal-ball.ts",
+    "db:postgres:deploy": "prisma migrate deploy --config prisma.postgres.config.ts",
+    "db:postgres:status": "prisma migrate status --config prisma.postgres.config.ts",
+    "db:postgres:schema:sync": "node --import tsx src/scripts/sync-postgres-schema.ts",
+    "db:migrate:plan": "node --import tsx src/scripts/migrate-to-postgres.ts --mode=catalog",
+    "db:migrate:catalog": "node --import tsx src/scripts/migrate-to-postgres.ts --mode=catalog --execute --confirm=COPY_SQLITE_TO_POSTGRES",
+    "db:migrate:all": "node --import tsx src/scripts/migrate-to-postgres.ts --mode=all --execute --confirm=COPY_SQLITE_TO_POSTGRES",
+    "db:migrate:verify": "node --import tsx src/scripts/verify-postgres-migration.ts",
+    "deploy:check": "node --import tsx src/scripts/check-deployment-config.ts",
     "test": "node --import tsx --test src/**/*.test.ts",
     "test:pipeline": "node --import tsx src/scripts/smoke-season.ts",
     "report": "tsx src/scripts/report.ts"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.8.0",
+    "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "better-sqlite3": "^12.11.1",
     "dotenv": "^17.4.2",
     "next": "16.2.10",
-    "prisma": "^7.8.0",
+    "pg": "^8.22.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "tsx": "^4.23.1"
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@next/env": "^16.2.10",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "prisma": "^7.8.0",
+    "tsx": "^4.23.1",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@hono/node-server": "1.19.13",
+    "postcss": "8.5.10"
   }
 }

@@ -1,6 +1,6 @@
 # LCK Fantasy
 
-A local-first LCK fantasy league built with Next.js 16, Prisma 7, and SQLite. It imports professional match data, computes fantasy standings from raw game lines, supports weekly historical replay, and includes player, champion-draft, and team-macro analytics.
+A local-first LCK fantasy league built with Next.js 16 and Prisma 7. Local development uses SQLite; the prepared Vercel deployment uses Neon PostgreSQL. It imports professional match data, computes fantasy standings from raw game lines, supports weekly historical replay, and includes player, champion-draft, and team-macro analytics.
 
 ## Run locally
 
@@ -11,6 +11,14 @@ npm run dev
 ```
 
 `DATABASE_URL` defaults to `file:./dev.db`. Put optional Leaguepedia bot credentials in `.env` as `LP_BOT_USERNAME` and `LP_BOT_PASSWORD` to avoid the strict anonymous API limit.
+
+## Deployment preparation
+
+The repository includes a provider-native PostgreSQL schema, a guarded
+SQLite-to-PostgreSQL copier, content verification, Vercel environment checks,
+and CI. Local SQLite continues to work during the migration. Follow
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) after creating the free Neon and Vercel
+accounts.
 
 ## Data ingestion
 

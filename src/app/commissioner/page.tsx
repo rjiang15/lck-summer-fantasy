@@ -21,7 +21,9 @@ import { parseResolutionEvidence } from "@/lib/crystal-ball";
 import { parseScoring } from "@/lib/fantasy";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 3600;
+// The largest existing full-split import took 138 seconds. Weekly imports fit
+// inside Vercel Hobby's five-minute Fluid Compute ceiling.
+export const maxDuration = 300;
 
 export default async function CommissionerPage({
   searchParams,
