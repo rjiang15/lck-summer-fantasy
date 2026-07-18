@@ -8,6 +8,8 @@ const valid = {
   league: {
     name: "Test League", tournamentId: "LCK/Test", scoringConfig: "{}", currentWeek: 0,
     seasonStatus: "PRESEASON", crystalBallLockedAt: null, rostersLockedAt: null, isSimulation: true,
+    draftPricingMode: "DYNAMIC", draftPriceSourceTournamentId: "LCK/2026 Season/Rounds 1-2",
+    draftPriceSheet: JSON.stringify({ version: 1, players: { Faker: { price: 1_100 } } }),
   },
   users: [{ username: "owner", role: "OWNER" }],
   fantasyTeams: [{ username: "owner", name: "Owner Team", roster: [] }],
@@ -25,6 +27,11 @@ test("v7 backups validate without account password hashes", () => {
 test("backup validation rejects malformed ownership and linked usernames", () => {
   assert.throws(() => parseBackup({ ...valid, users: [{ username: "owner", role: "COMMISSIONER" }] }), /exactly one league owner/);
   assert.throws(() => parseBackup({ ...valid, fantasyTeams: [{ username: "missing", name: "Missing", roster: [] }] }), /unknown user/);
+});
+
+test("backup validation rejects invalid draft pricing configuration", () => {
+  assert.throws(() => parseBackup({ ...valid, league: { ...valid.league, draftPricingMode: "AUCTION" } }), /pricing mode/);
+  assert.throws(() => parseBackup({ ...valid, league: { ...valid.league, draftPriceSheet: "not-json" } }), /invalid JSON/);
 });
 
 test("backup validation rejects invalid dates, non-finite scores, and oversized collections", () => {

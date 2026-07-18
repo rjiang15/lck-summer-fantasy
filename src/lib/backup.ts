@@ -49,6 +49,9 @@ export async function exportLeague(leagueId: number, database: BackupDb = prisma
       draftOrder: league.draftOrder ? (JSON.parse(league.draftOrder) as number[]).map((teamId) => league.fantasyTeams.find((team) => team.id === teamId)?.user.username).filter((name): name is string => Boolean(name)) : [],
       draftCurrentPick: league.draftCurrentPick, draftBudget: league.draftBudget,
       draftPlayerPrice: league.draftPlayerPrice, draftPlayersPerRole: league.draftPlayersPerRole,
+      draftPricingMode: league.draftPricingMode,
+      draftPriceSourceTournamentId: league.draftPriceSourceTournamentId,
+      draftPriceSheet: league.draftPriceSheet,
     },
     // Password hashes are deliberately excluded from v7 exports. Restores
     // reconnect memberships to the accounts already present in this database.
@@ -215,6 +218,9 @@ async function applyBackup(
     draftBudget: backup.league.draftBudget ?? 10_000,
     draftPlayerPrice: backup.league.draftPlayerPrice ?? 1_000,
     draftPlayersPerRole: backup.league.draftPlayersPerRole ?? 2,
+    draftPricingMode: backup.league.draftPricingMode ?? "UNIFORM",
+    draftPriceSourceTournamentId: backup.league.draftPriceSourceTournamentId ?? null,
+    draftPriceSheet: backup.league.draftPriceSheet ?? null,
   } });
   for (const saved of backup.draftPicks ?? []) {
     await tx.draftPick.create({ data: { leagueId, fantasyTeamId: teamIds.get(saved.username)!, playerId: saved.playerId, overallPick: saved.overallPick, round: saved.round, role: saved.role, price: saved.price, pickedAt: new Date(saved.pickedAt) } });

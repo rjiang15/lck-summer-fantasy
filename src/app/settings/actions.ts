@@ -78,7 +78,7 @@ async function resetTestLeagueImpl(formData: FormData) {
     if (weeks.length > 0) await tx.leagueWeek.createMany({
       data: initialLeagueWeekRows(leagueId, weeks, now),
     });
-    await tx.league.update({ where: { id: leagueId }, data: { currentWeek: 0, seasonStatus: "PRESEASON", crystalBallLockedAt: null, rostersLockedAt: null, draftStatus: "NOT_STARTED", draftOrder: null, draftCurrentPick: 0 } });
+    await tx.league.update({ where: { id: leagueId }, data: { currentWeek: 0, seasonStatus: "PRESEASON", crystalBallLockedAt: null, rostersLockedAt: null, draftStatus: "NOT_STARTED", draftOrder: null, draftCurrentPick: 0, draftPricingMode: "UNIFORM", draftPriceSourceTournamentId: null, draftPriceSheet: null } });
   });
   revalidatePath("/", "layout");
   (await cookies()).delete(`viewWeek_${leagueId}`);

@@ -121,56 +121,56 @@ model Game {
 }
 
 model PlayerGameStat {
-  id                 Int       @id @default(autoincrement())
-  game               Game      @relation(fields: [gameId], references: [id])
-  gameId             String
-  player             ProPlayer @relation(fields: [playerId], references: [id])
-  playerId           String
-  teamId             String
-  side               String? // Blue | Red
-  champion           String
-  role               String?
-  kills              Int
-  deaths             Int
-  assists            Int
-  gold               Int? // end-of-game total gold
-  goldEarned         Int?
-  goldSpent          Int?
-  cs                 Int?
-  minionKills        Int?
-  monsterKills       Int?
+  id                      Int       @id @default(autoincrement())
+  game                    Game      @relation(fields: [gameId], references: [id])
+  gameId                  String
+  player                  ProPlayer @relation(fields: [playerId], references: [id])
+  playerId                String
+  teamId                  String
+  side                    String? // Blue | Red
+  champion                String
+  role                    String?
+  kills                   Int
+  deaths                  Int
+  assists                 Int
+  gold                    Int? // end-of-game total gold
+  goldEarned              Int?
+  goldSpent               Int?
+  cs                      Int?
+  minionKills             Int?
+  monsterKills            Int?
   monsterKillsOwnJungle   Int?
   monsterKillsEnemyJungle Int?
-  damage             Int? // damage to champions
-  damageToObjectives Int?
-  damageToTowers     Int?
-  damageTaken        Int?
-  damageMitigated    Int?
-  totalHeal          Int?
-  visionScore        Int?
-  wardsPlaced        Int?
-  wardsKilled        Int?
-  controlWardsBought Int?
-  doubleKills        Int?
-  tripleKills        Int?
-  quadraKills        Int?
-  pentakills         Int?
-  firstBloodKill     Boolean?
-  firstBloodAssist   Boolean?
-  firstBloodVictim   Boolean?
-  summonerSpells     String? // JSON array when supplied as a list
-  items              String? // JSON array when supplied as a list
-  trinket            String?
-  primaryRuneTree    String?
-  secondaryRuneTree  String?
-  keystoneRune       String?
-  teamKills          Int?
-  teamGold           Int?
-  killParticipation  Float?
-  damageShare        Float?
-  goldShare          Float?
-  sourceData         String? // JSON: full source row
-  won                Boolean
+  damage                  Int? // damage to champions
+  damageToObjectives      Int?
+  damageToTowers          Int?
+  damageTaken             Int?
+  damageMitigated         Int?
+  totalHeal               Int?
+  visionScore             Int?
+  wardsPlaced             Int?
+  wardsKilled             Int?
+  controlWardsBought      Int?
+  doubleKills             Int?
+  tripleKills             Int?
+  quadraKills             Int?
+  pentakills              Int?
+  firstBloodKill          Boolean?
+  firstBloodAssist        Boolean?
+  firstBloodVictim        Boolean?
+  summonerSpells          String? // JSON array when supplied as a list
+  items                   String? // JSON array when supplied as a list
+  trinket                 String?
+  primaryRuneTree         String?
+  secondaryRuneTree       String?
+  keystoneRune            String?
+  teamKills               Int?
+  teamGold                Int?
+  killParticipation       Float?
+  damageShare             Float?
+  goldShare               Float?
+  sourceData              String? // JSON: full source row
+  won                     Boolean
 
   @@unique([gameId, playerId])
 }
@@ -331,29 +331,32 @@ model Session {
 }
 
 model League {
-  id                  Int                   @id @default(autoincrement())
-  name                String
-  slug                String                @unique @default("")
-  inviteCode          String                @unique
-  tournamentId        String // which LCK split this league runs on
-  scoringConfig       String // JSON: per-stat point values, pickem winner/exact-score values, etc.
-  fantasyTeams        FantasyTeam[]
-  cbQuestions         CrystalBallQuestion[]
-  currentWeek         Int                   @default(0)
-  seasonStatus        String                @default("PRESEASON") // PRESEASON | ACTIVE | FINAL
-  crystalBallLockedAt DateTime?
-  rostersLockedAt     DateTime?             // league-wide editing lock; weekly scoring uses immutable WeeklyRosterSlot snapshots
-  isSimulation        Boolean               @default(false)
-  leagueWeeks         LeagueWeek[]
-  memberships         LeagueMembership[]
-  pickems             Pickem[]
-  draftStatus         String                @default("NOT_STARTED") // NOT_STARTED | ACTIVE | COMPLETE
-  draftOrder          String? // JSON array of FantasyTeam ids; immutable after the draft starts
-  draftCurrentPick    Int                   @default(0)
-  draftBudget         Int                   @default(10000)
-  draftPlayerPrice    Int                   @default(1000)
-  draftPlayersPerRole Int                   @default(2)
-  draftPicks          DraftPick[]
+  id                           Int                   @id @default(autoincrement())
+  name                         String
+  slug                         String                @unique @default("")
+  inviteCode                   String                @unique
+  tournamentId                 String // which LCK split this league runs on
+  scoringConfig                String // JSON: per-stat point values, pickem winner/exact-score values, etc.
+  fantasyTeams                 FantasyTeam[]
+  cbQuestions                  CrystalBallQuestion[]
+  currentWeek                  Int                   @default(0)
+  seasonStatus                 String                @default("PRESEASON") // PRESEASON | ACTIVE | FINAL
+  crystalBallLockedAt          DateTime?
+  rostersLockedAt              DateTime? // league-wide editing lock; weekly scoring uses immutable WeeklyRosterSlot snapshots
+  isSimulation                 Boolean               @default(false)
+  leagueWeeks                  LeagueWeek[]
+  memberships                  LeagueMembership[]
+  pickems                      Pickem[]
+  draftStatus                  String                @default("NOT_STARTED") // NOT_STARTED | ACTIVE | COMPLETE
+  draftOrder                   String? // JSON array of FantasyTeam ids; immutable after the draft starts
+  draftCurrentPick             Int                   @default(0)
+  draftBudget                  Int                   @default(10000)
+  draftPlayerPrice             Int                   @default(1000)
+  draftPlayersPerRole          Int                   @default(2)
+  draftPricingMode             String                @default("UNIFORM") // UNIFORM | DYNAMIC; immutable while a draft is active
+  draftPriceSourceTournamentId String?
+  draftPriceSheet              String? // frozen JSON player-price map captured when the draft starts
+  draftPicks                   DraftPick[]
 }
 
 // Durable fantasy-side checkpoints intentionally have no relation to League,
@@ -402,7 +405,7 @@ model LeagueWeek {
   status            String             @default("UPCOMING") // UPCOMING | OPEN | LOCKED | RESULTS_IMPORTED | SCORED | PUBLISHED
   picksOpenAt       DateTime?
   picksLockedAt     DateTime?
-  rosterLockedAt    DateTime?           // weekly roster snapshot timestamp; does not control current-roster editing
+  rosterLockedAt    DateTime? // weekly roster snapshot timestamp; does not control current-roster editing
   resultsImportedAt DateTime?
   scoredAt          DateTime?
   publishedAt       DateTime?
@@ -510,22 +513,22 @@ model Pickem {
 }
 
 model CrystalBallQuestion {
-  id             Int                 @id @default(autoincrement())
-  league         League              @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  leagueId       Int
-  prompt         String
-  answerType     String // team | player | champion | yes_no | over_under
-  points         Int
-  metricKey      String?
-  gradingMode    String               @default("EXACT") // EXACT | CLOSEST | RANKED
-  resolverConfig String? // JSON configuration for the automatic metric resolver
-  partialRule    String? // JSON: {condition: "top-3"|"bottom-2"|"reached-finals", fraction: 0.5}
-  correctAnswer  String? // set at grading time
-  partialAnswers String? // JSON array of answers earning partial credit
+  id              Int                 @id @default(autoincrement())
+  league          League              @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  leagueId        Int
+  prompt          String
+  answerType      String // team | player | champion | yes_no | over_under
+  points          Int
+  metricKey       String?
+  gradingMode     String              @default("EXACT") // EXACT | CLOSEST | RANKED
+  resolverConfig  String? // JSON configuration for the automatic metric resolver
+  partialRule     String? // JSON: {condition: "top-3"|"bottom-2"|"reached-finals", fraction: 0.5}
+  correctAnswer   String? // set at grading time
+  partialAnswers  String? // JSON array of answers earning partial credit
   resolvedAnswers String? // JSON array; every tied answer receives full credit
-  resolutionData String? // JSON audit evidence captured when the season settles
-  resolvedAt     DateTime?
-  answers        CrystalBallAnswer[]
+  resolutionData  String? // JSON audit evidence captured when the season settles
+  resolvedAt      DateTime?
+  answers         CrystalBallAnswer[]
 
   @@unique([leagueId, metricKey])
 }

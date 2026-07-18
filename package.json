@@ -31,6 +31,7 @@
     "deploy:check": "node --import tsx src/scripts/check-deployment-config.ts",
     "test": "node --import tsx --test src/**/*.test.ts",
     "test:pipeline": "node --import tsx src/scripts/smoke-season.ts",
+    "test:draft-pricing": "node --import tsx src/scripts/smoke-draft-pricing.ts",
     "report": "tsx src/scripts/report.ts"
   },
   "dependencies": {
