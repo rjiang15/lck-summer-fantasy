@@ -50,6 +50,7 @@ export async function exportLeague(leagueId: number, database: BackupDb = prisma
       draftCurrentPick: league.draftCurrentPick, draftBudget: league.draftBudget,
       draftPlayerPrice: league.draftPlayerPrice, draftPlayersPerRole: league.draftPlayersPerRole,
       draftPricingMode: league.draftPricingMode,
+      draftBudgetGuardEnabled: league.draftBudgetGuardEnabled,
       draftPriceSourceTournamentId: league.draftPriceSourceTournamentId,
       draftPriceSheet: league.draftPriceSheet,
     },
@@ -219,6 +220,7 @@ async function applyBackup(
     draftPlayerPrice: backup.league.draftPlayerPrice ?? 1_000,
     draftPlayersPerRole: backup.league.draftPlayersPerRole ?? 2,
     draftPricingMode: backup.league.draftPricingMode ?? "UNIFORM",
+    draftBudgetGuardEnabled: backup.league.draftBudgetGuardEnabled ?? true,
     draftPriceSourceTournamentId: backup.league.draftPriceSourceTournamentId ?? null,
     draftPriceSheet: backup.league.draftPriceSheet ?? null,
   } });

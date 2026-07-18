@@ -8,13 +8,16 @@ import { parseScoring } from "@/lib/fantasy";
 import {
   DRAFT_ROLES,
   conservativeDraftCompletionCost,
+  draftBudgetBlockReason,
   draftFormatForTournament,
   draftGroupForTeam,
   draftPoolSupportsAllTeams,
   draftSlotAvailable,
   isDraftPricingMode,
   isDraftRole,
+  minimumSafeOpeningBudget,
   minimumDraftCompletionCost,
+  roundDraftBudget,
   ROLE_SLOT,
   snakeTeamId,
   totalDraftPicks,
@@ -41,6 +44,7 @@ export async function startDraft(formData: FormData) {
     if (league.draftStatus !== "NOT_STARTED") throw new Error("The draft order is locked once drafting begins");
     const order = formData.getAll("teamId").map(Number);
     const pricingMode = String(formData.get("draftPricingMode") ?? "UNIFORM");
+    const budgetGuardEnabled = formData.get("draftBudgetGuardEnabled") === "true";
     if (!isDraftPricingMode(pricingMode)) throw new Error("Choose a valid draft pricing mode");
     const teamIds = league.fantasyTeams.map((team) => team.id);
     if (order.length !== teamIds.length || new Set(order).size !== teamIds.length || teamIds.some((id) => !order.includes(id))) {
@@ -52,6 +56,7 @@ export async function startDraft(formData: FormData) {
       where: { tournamentId: league.tournamentId },
       include: { player: { select: { role: true } } },
     });
+    let calculatedBudget = DRAFT_ROLES.length * league.draftPlayersPerRole * league.draftPlayerPrice;
     if (format) {
       if (league.draftPlayersPerRole !== format.groups.length) {
         throw new Error(`This split requires exactly ${format.groups.length} players per role`);
@@ -91,15 +96,9 @@ export async function startDraft(formData: FormData) {
       if (!draftPoolSupportsAllTeams(emptyRosters, pool, league.draftPlayersPerRole, groupKeys)) {
         throw new Error("The eligible player pool cannot complete every Legends and Rise roster");
       }
-      const hasSafeOpeningPick = pool.some((candidate) => {
-        const afterPick = emptyRosters.map((picks, index) => index === 0 ? [candidate] : picks);
-        const remaining = pool.filter((player) => player.playerId !== candidate.playerId);
-        const reserve = conservativeDraftCompletionCost(0, afterPick, remaining, league.draftPlayersPerRole, groupKeys);
-        return reserve !== null && draftPoolSupportsAllTeams(afterPick, remaining, league.draftPlayersPerRole, groupKeys) && candidate.price + reserve <= league.draftBudget;
-      });
-      if (!hasSafeOpeningPick) {
-        throw new Error("The selected prices and budget do not provide a safe opening pick for this draft");
-      }
+      const minimumBudget = minimumSafeOpeningBudget(teamIds.length, pool, league.draftPlayersPerRole, groupKeys);
+      if (minimumBudget === null) throw new Error("The eligible player pool cannot provide a safe draft path for this many participants");
+      calculatedBudget = pricingMode === "DYNAMIC" ? roundDraftBudget(minimumBudget) : calculatedBudget;
     }
     await prisma.$transaction(async (tx) => {
       await tx.draftPick.deleteMany({ where: { leagueId } });
@@ -108,7 +107,9 @@ export async function startDraft(formData: FormData) {
         draftStatus: "ACTIVE",
         draftOrder: JSON.stringify(order),
         draftCurrentPick: 0,
+        draftBudget: calculatedBudget,
         draftPricingMode: pricingMode,
+        draftBudgetGuardEnabled: budgetGuardEnabled,
         draftPriceSourceTournamentId: priceSheet?.sourceTournamentId ?? null,
         draftPriceSheet: priceSheet ? JSON.stringify(priceSheet) : null,
       } });
@@ -194,9 +195,15 @@ export async function makeDraftPick(formData: FormData) {
       if (!draftPoolSupportsAllTeams(everyTeamComposition, available, league.draftPlayersPerRole, groupKeys)) {
         throw new Error("That pick would consume a player another fantasy team still needs to complete its required roster");
       }
-      const conservativeReserve = conservativeDraftCompletionCost(currentTeamIndex, everyTeamComposition, available, league.draftPlayersPerRole, groupKeys);
-      if (conservativeReserve === null) throw new Error("That pick would leave no safe league-wide completion path");
-      if (spent + price + conservativeReserve > league.draftBudget) {
+      const conservativeReserve = league.draftBudgetGuardEnabled
+        ? conservativeDraftCompletionCost(currentTeamIndex, everyTeamComposition, available, league.draftPlayersPerRole, groupKeys)
+        : 0;
+      const budgetBlock = draftBudgetBlockReason(spent, price, league.draftBudget, league.draftBudgetGuardEnabled, conservativeReserve);
+      if (budgetBlock === "OVER_BUDGET") {
+        throw new Error(`${team.name} has only $${(league.draftBudget - spent).toLocaleString("en-US")} remaining`);
+      }
+      if (budgetBlock === "BREAKS_RESERVE") {
+        if (conservativeReserve === null) throw new Error("That pick would leave no safe league-wide budget path");
         throw new Error(`${team.name} must preserve at least $${conservativeReserve.toLocaleString("en-US")} for its remaining required slots`);
       }
       const pickIndex = league.draftCurrentPick;
@@ -272,7 +279,7 @@ export async function resetDraft(formData: FormData) {
     await prisma.$transaction(async (tx) => {
       await tx.draftPick.deleteMany({ where: { leagueId } });
       await tx.rosterSlot.deleteMany({ where: { fantasyTeam: { leagueId } } });
-      await tx.league.update({ where: { id: leagueId }, data: { draftStatus: "NOT_STARTED", draftOrder: null, draftCurrentPick: 0, draftPricingMode: "UNIFORM", draftPriceSourceTournamentId: null, draftPriceSheet: null } });
+      await tx.league.update({ where: { id: leagueId }, data: { draftStatus: "NOT_STARTED", draftOrder: null, draftCurrentPick: 0, draftPricingMode: "UNIFORM", draftBudgetGuardEnabled: true, draftPriceSourceTournamentId: null, draftPriceSheet: null } });
     });
     revalidatePath("/commissioner/draft");
   } catch (error) {

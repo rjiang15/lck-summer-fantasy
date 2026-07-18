@@ -55,6 +55,28 @@ async function updateMembershipRoleImpl(formData: FormData) {
   revalidatePath("/settings");
 }
 
+async function removeMembershipImpl(formData: FormData) {
+  const leagueId = Number(formData.get("leagueId"));
+  const { league } = await requireLeagueOwner(leagueId);
+  const membershipId = Number(formData.get("membershipId"));
+  if (formData.get("confirmRemoveMembership") !== "true") throw new Error("Confirm that you want to remove this person from the league");
+  const membership = await prisma.leagueMembership.findUnique({ where: { id: membershipId }, include: { user: true } });
+  if (!membership || membership.leagueId !== leagueId) throw new Error("That league membership no longer exists");
+  if (membership.role === "OWNER") throw new Error("The league owner cannot be removed");
+  const fantasyTeam = await prisma.fantasyTeam.findUnique({ where: { leagueId_userId: { leagueId, userId: membership.userId } } });
+  if (fantasyTeam && (league.currentWeek !== 0 || league.seasonStatus !== "PRESEASON" || league.draftStatus !== "NOT_STARTED")) {
+    throw new Error("A participant with a fantasy team can be removed only during Week 0 before the draft starts. Reset an unneeded test draft first.");
+  }
+  await prisma.$transaction(async (tx) => {
+    await tx.pickem.deleteMany({ where: { leagueId, userId: membership.userId } });
+    await tx.crystalBallAnswer.deleteMany({ where: { userId: membership.userId, question: { leagueId } } });
+    if (fantasyTeam) await tx.fantasyTeam.delete({ where: { id: fantasyTeam.id } });
+    await tx.leagueMembership.delete({ where: { id: membership.id } });
+  });
+  revalidatePath("/", "layout");
+  back(`${membership.user.username} was removed from the league; their account and shared LCK data were kept`);
+}
+
 async function resetTestLeagueImpl(formData: FormData) {
   const leagueId = Number(formData.get("leagueId"));
   const { league } = await requireLeagueOwner(leagueId);
@@ -78,7 +100,7 @@ async function resetTestLeagueImpl(formData: FormData) {
     if (weeks.length > 0) await tx.leagueWeek.createMany({
       data: initialLeagueWeekRows(leagueId, weeks, now),
     });
-    await tx.league.update({ where: { id: leagueId }, data: { currentWeek: 0, seasonStatus: "PRESEASON", crystalBallLockedAt: null, rostersLockedAt: null, draftStatus: "NOT_STARTED", draftOrder: null, draftCurrentPick: 0, draftPricingMode: "UNIFORM", draftPriceSourceTournamentId: null, draftPriceSheet: null } });
+    await tx.league.update({ where: { id: leagueId }, data: { currentWeek: 0, seasonStatus: "PRESEASON", crystalBallLockedAt: null, rostersLockedAt: null, draftStatus: "NOT_STARTED", draftOrder: null, draftCurrentPick: 0, draftPricingMode: "UNIFORM", draftBudgetGuardEnabled: true, draftPriceSourceTournamentId: null, draftPriceSheet: null } });
   });
   revalidatePath("/", "layout");
   (await cookies()).delete(`viewWeek_${leagueId}`);
@@ -91,6 +113,10 @@ export async function addCommissioner(formData: FormData) {
 
 export async function updateMembershipRole(formData: FormData) {
   await handleSettingsError(() => updateMembershipRoleImpl(formData));
+}
+
+export async function removeMembership(formData: FormData) {
+  await handleSettingsError(() => removeMembershipImpl(formData));
 }
 
 export async function resetTestLeague(formData: FormData) {

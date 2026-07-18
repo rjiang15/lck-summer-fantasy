@@ -321,6 +321,11 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .draft-pricing-choices label:has(input:disabled) { opacity: 0.48; cursor: not-allowed; }
 .draft-pricing-choices label > span { display: grid; gap: 0.15rem; }
 .draft-pricing-choices small { color: var(--muted); font-weight: 500; }
+.stack label.draft-guard-choice { display: flex; gap: 0.65rem; align-items: flex-start; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); cursor: pointer; }
+.draft-guard-choice input[type="checkbox"] { width: auto; margin-top: 0.18rem; flex: 0 0 auto; }
+.draft-guard-choice:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--card)); }
+.draft-guard-choice > span { display: grid; gap: 0.15rem; }
+.draft-guard-choice small { color: var(--muted); font-weight: 500; }
 .draft-price-preview { border-top: 1px solid var(--border); padding-top: 0.85rem; }
 .draft-price-preview summary { cursor: pointer; color: var(--accent); font-weight: 700; }
 .draft-tabs, .draft-role-filters, .draft-group-filters { display: flex; gap: 0.45rem; overflow-x: auto; padding-bottom: 0.45rem; }
@@ -330,6 +335,10 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .draft-group-filters button { display: flex; min-width: 140px; justify-content: space-between; align-items: center; }
 .draft-group-filters button.draft-group-legends.active, .draft-group-filters button.draft-group-rise.active { color: var(--draft-group-color); border-color: var(--draft-group-color); background: var(--draft-group-wash); }
 .draft-role-filters button { display: flex; min-width: auto; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.draft-view-controls { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
+.draft-view-toggle { display: inline-flex; gap: 0.4rem; }
+.draft-view-toggle button.active { color: var(--accent); border-color: var(--accent); background: var(--card); }
+.draft-available-toggle { display: inline-flex; width: fit-content; align-items: center; gap: 0.45rem; font-weight: 650; cursor: pointer; }
 .draft-roster { border-top-left-radius: 0; }
 .draft-roster h2 { margin: 0.5rem 0 0; }
 .draft-role-grid { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 0.75rem; overflow-x: auto; }
@@ -353,6 +362,12 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .draft-player-value > span { text-align: right; }
 .draft-player-card .entity-label { display: inline-flex; justify-self: start; margin-top: 0.15rem; }
 .draft-player-card button { width: 100%; margin-top: auto; white-space: normal; }
+.draft-player-table { max-height: min(68vh, 44rem); }
+.draft-player-table tr.draft-group-legends td, .draft-player-table tr.draft-group-rise td { background: var(--draft-group-wash); }
+.draft-player-table tr.draft-group-legends:hover td, .draft-player-table tr.draft-group-rise:hover td { background: color-mix(in srgb, var(--draft-group-color) 15%, var(--card)); }
+.draft-player-table td:first-child { border-left: 3px solid var(--draft-group-color, var(--border)); }
+.draft-player-table .entity-label { font-size: 0.8rem; }
+.draft-player-table button { min-width: 8rem; white-space: normal; }
 .draft-order { display: flex; gap: 1.75rem; flex-wrap: wrap; padding-left: 1.5rem; }
 .draft-order li { padding-left: 0.2rem; }
 .draft-order li span { display: block; }
@@ -622,6 +637,7 @@ button:disabled { cursor: wait; opacity: 0.65; }
   .draft-status { grid-template-columns: 1fr; }
   .draft-format-card { grid-template-columns: 1fr; }
   .draft-pricing-choices { grid-template-columns: 1fr; }
+  .draft-view-controls { align-items: flex-start; flex-direction: column; }
   .draft-role-grid { grid-template-columns: repeat(5, 140px); }
   .pickem-teams { grid-template-columns: 1fr; }
   .pickem-score { width: 100%; margin-left: 0; }

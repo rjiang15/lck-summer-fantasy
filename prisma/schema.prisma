@@ -353,6 +353,7 @@ model League {
   draftPlayerPrice             Int                   @default(1000)
   draftPlayersPerRole          Int                   @default(2)
   draftPricingMode             String                @default("UNIFORM") // UNIFORM | DYNAMIC; immutable while a draft is active
+  draftBudgetGuardEnabled      Boolean               @default(true) // when enabled, each pick must preserve enough budget for all remaining slots
   draftPriceSourceTournamentId String?
   draftPriceSheet              String? // frozen JSON player-price map captured when the draft starts
   draftPicks                   DraftPick[]

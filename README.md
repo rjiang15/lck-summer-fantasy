@@ -96,15 +96,27 @@ deviation with $25 increments, are bounded to $600-$1,400, and assign new or
 no-history players the rounded average price for their group and role. The calculated sheet is frozen
 when the draft starts and is included in league checkpoints and exports.
 
-Every pick is checked for the required group/role slot, the $10,000 budget, and
-a league-wide completion reserve. This prevents a participant from drafting a
-player if doing so would consume another roster's final eligible option or
-leave any participant dependent on the same cheapest remaining player. Re-run
+Every pick is checked for the required group/role slot, the hard draft budget,
+and the league-wide player pool. Before starting, the commissioner can also
+enable the budget-reserve safeguard, which blocks a purchase that would leave
+the current team unable to afford a safe completion of its remaining slots.
+The hard budget and structural safeguards cannot be disabled. The live board
+supports card and group-colored table views with shared group, role, and
+"draftable only" filters. Re-run
 the real-data three-participant greedy snake check with:
 
 ```bash
 npm run test:draft-pricing
 ```
+
+For dynamic pricing, the draft budget is calculated from the frozen price sheet
+and participant count. It uses the smallest completion-safe amount rounded up
+to the next $1,000 while remaining below the price of the most expensive player
+in every required slot. The current R3-4 pool supports at most five fantasy
+teams because Legends has five eligible players at its scarcest role. League
+owners can remove a participant and their unscored preseason entries from
+Settings during Week 0 before the initial draft begins; accounts and shared LCK
+data are never deleted.
 
 ## League checkpoints and recovery
 
