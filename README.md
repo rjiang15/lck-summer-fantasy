@@ -82,6 +82,30 @@ added. Scoring settings can change only before the first published week.
 Authentication uses hashed passwords, opaque database-backed sessions, and
 HTTP-only cookies. Every server mutation checks both identity and league role.
 
+## R3-4 roster draft
+
+LCK 2026 Rounds 3-4 uses the split's two competitive groups. Every fantasy
+team drafts exactly one Top, Jungle, Mid, Bot, and Support from **Legends**
+(T1, HLE, Gen.G, KT, and Dplus Kia), plus the same five roles from **Rise**
+(HANJIN BRION, KRX, BNK FEARX, Nongshim RedForce, and DN SOOPers).
+
+Before the first pick, the commissioner chooses uniform $1,000 pricing or
+dynamic pricing derived from Rounds 1-2 fantasy points per game. Dynamic prices
+average exactly $1,000 across the eligible R3-4 pool, use a $200 standard
+deviation with $25 increments, are bounded to $600-$1,400, and assign new or
+no-history players the neutral $1,000 price. The calculated sheet is frozen
+when the draft starts and is included in league checkpoints and exports.
+
+Every pick is checked for the required group/role slot, the $10,000 budget, and
+a league-wide completion reserve. This prevents a participant from drafting a
+player if doing so would consume another roster's final eligible option or
+leave any participant dependent on the same cheapest remaining player. Re-run
+the real-data three-participant greedy snake check with:
+
+```bash
+npm run test:draft-pricing
+```
+
 ## League checkpoints and recovery
 
 Commissioners can save named checkpoints from `/settings`; league owners can

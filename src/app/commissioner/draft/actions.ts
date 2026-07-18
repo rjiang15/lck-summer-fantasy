@@ -4,7 +4,23 @@ import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { requireLeagueManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { DRAFT_ROLES, isDraftRole, ROLE_SLOT, snakeTeamId, totalDraftPicks } from "@/lib/draft";
+import { parseScoring } from "@/lib/fantasy";
+import {
+  DRAFT_ROLES,
+  conservativeDraftCompletionCost,
+  draftFormatForTournament,
+  draftGroupForTeam,
+  draftPoolSupportsAllTeams,
+  draftSlotAvailable,
+  isDraftPricingMode,
+  isDraftRole,
+  minimumDraftCompletionCost,
+  ROLE_SLOT,
+  snakeTeamId,
+  totalDraftPicks,
+  type DraftCompositionPlayer,
+} from "@/lib/draft";
+import { buildDraftPriceSheet, parseDraftPriceSheet, playerDraftPrice } from "@/lib/draft-pricing";
 
 function draftRedirect(kind: "notice" | "error", message: string): never {
   redirect(`/commissioner/draft?${kind}=${encodeURIComponent(message.slice(0, 240))}`);
@@ -24,21 +40,78 @@ export async function startDraft(formData: FormData) {
     assertWeekZero(league);
     if (league.draftStatus !== "NOT_STARTED") throw new Error("The draft order is locked once drafting begins");
     const order = formData.getAll("teamId").map(Number);
+    const pricingMode = String(formData.get("draftPricingMode") ?? "UNIFORM");
+    if (!isDraftPricingMode(pricingMode)) throw new Error("Choose a valid draft pricing mode");
     const teamIds = league.fantasyTeams.map((team) => team.id);
     if (order.length !== teamIds.length || new Set(order).size !== teamIds.length || teamIds.some((id) => !order.includes(id))) {
       throw new Error("Draft order must include every fantasy team exactly once");
     }
     if (teamIds.length === 0) throw new Error("Add at least one participant fantasy team before starting the draft");
-    for (const role of DRAFT_ROLES) {
-      const available = await prisma.tournamentPlayer.count({ where: { tournamentId: league.tournamentId, role } });
-      if (available < teamIds.length * league.draftPlayersPerRole) {
-        throw new Error(`Not enough eligible ${role} players for this draft`);
+    const format = draftFormatForTournament(league.tournamentId);
+    const eligible = await prisma.tournamentPlayer.findMany({
+      where: { tournamentId: league.tournamentId },
+      include: { player: { select: { role: true } } },
+    });
+    if (format) {
+      if (league.draftPlayersPerRole !== format.groups.length) {
+        throw new Error(`This split requires exactly ${format.groups.length} players per role`);
+      }
+      const unmapped = eligible.filter((row) => !draftGroupForTeam(format, row.teamId));
+      if (unmapped.length > 0) throw new Error(`Some tournament players are not assigned to Legends or Rise: ${unmapped.slice(0, 3).map((row) => row.playerId).join(", ")}`);
+      for (const group of format.groups) for (const role of DRAFT_ROLES) {
+        const available = eligible.filter((row) => draftGroupForTeam(format, row.teamId) === group.key && (row.role ?? row.player.role) === role).length;
+        if (available < teamIds.length) throw new Error(`${group.label} has only ${available} eligible ${role} players; ${teamIds.length} are required`);
+      }
+    } else {
+      for (const role of DRAFT_ROLES) {
+        const available = eligible.filter((row) => (row.role ?? row.player.role) === role).length;
+        if (available < teamIds.length * league.draftPlayersPerRole) {
+          throw new Error(`Not enough eligible ${role} players for this draft`);
+        }
+      }
+    }
+    if (pricingMode === "DYNAMIC" && !format) throw new Error("Dynamic pricing is not configured for this tournament");
+    const priceSheet = pricingMode === "DYNAMIC"
+      ? await buildDraftPriceSheet(league.tournamentId, parseScoring(league.scoringConfig))
+      : null;
+    if (format) {
+      const groupKeys = format.groups.map((group) => group.key);
+      const emptyRosters: DraftCompositionPlayer[][] = teamIds.map(() => []);
+      const pool = eligible.flatMap((row): DraftCompositionPlayer[] => {
+        const role = row.role ?? row.player.role;
+        const group = draftGroupForTeam(format, row.teamId);
+        if (!isDraftRole(role) || !group) return [];
+        return [{
+          playerId: row.playerId,
+          role,
+          group,
+          price: playerDraftPrice(pricingMode, priceSheet, row.playerId, league.draftPlayerPrice),
+        }];
+      });
+      if (!draftPoolSupportsAllTeams(emptyRosters, pool, league.draftPlayersPerRole, groupKeys)) {
+        throw new Error("The eligible player pool cannot complete every Legends and Rise roster");
+      }
+      const hasSafeOpeningPick = pool.some((candidate) => {
+        const afterPick = emptyRosters.map((picks, index) => index === 0 ? [candidate] : picks);
+        const remaining = pool.filter((player) => player.playerId !== candidate.playerId);
+        const reserve = conservativeDraftCompletionCost(0, afterPick, remaining, league.draftPlayersPerRole, groupKeys);
+        return reserve !== null && draftPoolSupportsAllTeams(afterPick, remaining, league.draftPlayersPerRole, groupKeys) && candidate.price + reserve <= league.draftBudget;
+      });
+      if (!hasSafeOpeningPick) {
+        throw new Error("The selected prices and budget do not provide a safe opening pick for this draft");
       }
     }
     await prisma.$transaction(async (tx) => {
       await tx.draftPick.deleteMany({ where: { leagueId } });
       await tx.rosterSlot.deleteMany({ where: { fantasyTeam: { leagueId } } });
-      await tx.league.update({ where: { id: leagueId }, data: { draftStatus: "ACTIVE", draftOrder: JSON.stringify(order), draftCurrentPick: 0 } });
+      await tx.league.update({ where: { id: leagueId }, data: {
+        draftStatus: "ACTIVE",
+        draftOrder: JSON.stringify(order),
+        draftCurrentPick: 0,
+        draftPricingMode: pricingMode,
+        draftPriceSourceTournamentId: priceSheet?.sourceTournamentId ?? null,
+        draftPriceSheet: priceSheet ? JSON.stringify(priceSheet) : null,
+      } });
     });
     revalidatePath("/commissioner/draft");
   } catch (error) {
@@ -64,26 +137,74 @@ export async function makeDraftPick(formData: FormData) {
       if (!expectedTeamId) throw new Error("Draft order is invalid");
       const team = await tx.fantasyTeam.findUniqueOrThrow({ where: { id: expectedTeamId }, include: { user: true } });
       if (team.leagueId !== leagueId) throw new Error("Draft order contains a team from another league");
-      const eligibility = await tx.tournamentPlayer.findUnique({
-        where: { tournamentId_playerId: { tournamentId: league.tournamentId, playerId } },
-        include: { player: true },
+      const format = draftFormatForTournament(league.tournamentId);
+      const groupKeys = format?.groups.map((group) => group.key) ?? [];
+      const priceSheet = parseDraftPriceSheet(league.draftPriceSheet);
+      if (league.draftPricingMode === "DYNAMIC" && !priceSheet) throw new Error("The frozen dynamic price sheet is missing or invalid");
+      const tournamentPlayers = await tx.tournamentPlayer.findMany({
+        where: { tournamentId: league.tournamentId },
+        include: { player: { select: { name: true, role: true } } },
       });
+      const eligibilityById = new Map(tournamentPlayers.map((row) => [row.playerId, row]));
+      const eligibility = eligibilityById.get(playerId);
       const role = eligibility?.role ?? eligibility?.player.role;
       if (!eligibility || !isDraftRole(role)) throw new Error("That player is not eligible for this draft");
+      const group = draftGroupForTeam(format, eligibility.teamId);
+      if (format && !group) throw new Error("That player's team is not assigned to Legends or Rise");
       const alreadyDrafted = await tx.draftPick.findUnique({ where: { leagueId_playerId: { leagueId, playerId } } });
       if (alreadyDrafted) throw new Error("That player has already been drafted");
-      const teamPicks = await tx.draftPick.findMany({ where: { leagueId, fantasyTeamId: team.id } });
-      if (teamPicks.filter((pick) => pick.role === role).length >= league.draftPlayersPerRole) {
-        throw new Error(`${team.name} already has ${league.draftPlayersPerRole} ${role} players`);
+      const allPicks = await tx.draftPick.findMany({ where: { leagueId } });
+      const toComposition = (pick: (typeof allPicks)[number]): DraftCompositionPlayer => {
+        const row = eligibilityById.get(pick.playerId);
+        const pickRole = row?.role ?? row?.player.role;
+        if (!row || !isDraftRole(pickRole)) throw new Error(`Drafted player ${pick.playerId} is no longer eligible`);
+        return { playerId: pick.playerId, role: pickRole, group: draftGroupForTeam(format, row.teamId), price: pick.price };
+      };
+      const teamPicks = allPicks.filter((pick) => pick.fantasyTeamId === team.id);
+      const composition = teamPicks.map(toComposition);
+      if (!draftSlotAvailable(composition, { role, group }, league.draftPlayersPerRole, groupKeys)) {
+        throw new Error(format ? `${team.name} already filled its ${group === "LEGENDS" ? "Legends" : "Rise"} ${role} slot` : `${team.name} already has ${league.draftPlayersPerRole} ${role} players`);
       }
+      const price = playerDraftPrice(league.draftPricingMode, priceSheet, playerId, league.draftPlayerPrice);
       const spent = teamPicks.reduce((sum, pick) => sum + pick.price, 0);
-      if (spent + league.draftPlayerPrice > league.draftBudget) throw new Error(`${team.name} does not have enough budget`);
+      const globallyDrafted = new Set(allPicks.map((pick) => pick.playerId));
+      globallyDrafted.add(playerId);
+      const available = tournamentPlayers.flatMap((row): DraftCompositionPlayer[] => {
+        const availableRole = row.role ?? row.player.role;
+        if (globallyDrafted.has(row.playerId) || !isDraftRole(availableRole)) return [];
+        const availableGroup = draftGroupForTeam(format, row.teamId);
+        if (format && !availableGroup) return [];
+        return [{
+          playerId: row.playerId,
+          role: availableRole,
+          group: availableGroup,
+          price: playerDraftPrice(league.draftPricingMode, priceSheet, row.playerId, league.draftPlayerPrice),
+        }];
+      });
+      const reserve = minimumDraftCompletionCost(
+        [...composition, { playerId, role, group, price }],
+        available,
+        league.draftPlayersPerRole,
+        groupKeys,
+      );
+      if (reserve === null) throw new Error("That pick would make the required roster impossible to complete");
+      const everyTeamComposition = order.map((teamId) => allPicks.filter((pick) => pick.fantasyTeamId === teamId).map(toComposition));
+      const currentTeamIndex = order.indexOf(team.id);
+      everyTeamComposition[currentTeamIndex] = [...composition, { playerId, role, group, price }];
+      if (!draftPoolSupportsAllTeams(everyTeamComposition, available, league.draftPlayersPerRole, groupKeys)) {
+        throw new Error("That pick would consume a player another fantasy team still needs to complete its required roster");
+      }
+      const conservativeReserve = conservativeDraftCompletionCost(currentTeamIndex, everyTeamComposition, available, league.draftPlayersPerRole, groupKeys);
+      if (conservativeReserve === null) throw new Error("That pick would leave no safe league-wide completion path");
+      if (spent + price + conservativeReserve > league.draftBudget) {
+        throw new Error(`${team.name} must preserve at least $${conservativeReserve.toLocaleString("en-US")} for its remaining required slots`);
+      }
       const pickIndex = league.draftCurrentPick;
       const total = totalDraftPicks(order.length, league.draftPlayersPerRole);
       if (pickIndex >= total) throw new Error("The draft is already complete");
       await tx.draftPick.create({ data: {
         leagueId, fantasyTeamId: team.id, playerId, overallPick: pickIndex + 1,
-        round: Math.floor(pickIndex / order.length) + 1, role, price: league.draftPlayerPrice,
+        round: Math.floor(pickIndex / order.length) + 1, role, price,
       } });
       await tx.rosterSlot.create({ data: { fantasyTeamId: team.id, playerId, slot: ROLE_SLOT[role] } });
       const nextPick = pickIndex + 1;
@@ -151,7 +272,7 @@ export async function resetDraft(formData: FormData) {
     await prisma.$transaction(async (tx) => {
       await tx.draftPick.deleteMany({ where: { leagueId } });
       await tx.rosterSlot.deleteMany({ where: { fantasyTeam: { leagueId } } });
-      await tx.league.update({ where: { id: leagueId }, data: { draftStatus: "NOT_STARTED", draftOrder: null, draftCurrentPick: 0 } });
+      await tx.league.update({ where: { id: leagueId }, data: { draftStatus: "NOT_STARTED", draftOrder: null, draftCurrentPick: 0, draftPricingMode: "UNIFORM", draftPriceSourceTournamentId: null, draftPriceSheet: null } });
     });
     revalidatePath("/commissioner/draft");
   } catch (error) {
