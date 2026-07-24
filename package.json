@@ -21,6 +21,8 @@
     "tournament:current": "tsx src/scripts/set-current-tournament.ts",
     "crystal-ball:sync": "tsx src/scripts/sync-crystal-ball.ts",
     "crystal-ball:verify": "tsx src/scripts/verify-crystal-ball.ts",
+    "roster:sync": "tsx src/scripts/sync-roster-overrides.ts",
+    "roster:sync:postgres": "tsx src/scripts/sync-roster-overrides.ts --postgres",
     "db:postgres:deploy": "prisma migrate deploy --config prisma.postgres.config.ts",
     "db:postgres:status": "prisma migrate status --config prisma.postgres.config.ts",
     "db:postgres:schema:sync": "node --import tsx src/scripts/sync-postgres-schema.ts",

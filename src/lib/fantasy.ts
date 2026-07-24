@@ -9,9 +9,9 @@ import {
   DEFAULT_SCORING,
   type ScoringConfig,
   playerGamePoints,
-  playerPointsPerGame,
   pickemPoints,
 } from "./scoring";
+import { resolveRosterWeekContribution, type WeeklyFantasyLine } from "./roster-fallback";
 
 export const ROLE_ORDER = ["Top", "Jungle", "Mid", "Bot", "Support"];
 export const SLOT_ORDER = ["TOP", "JNG", "MID", "BOT", "SUP", "BENCH"];
@@ -119,6 +119,18 @@ export async function loadWeeks(tournamentId: string) {
   });
 }
 
+export function weeklyFantasyLines(matches: WeekBundle["matches"], config: ScoringConfig): WeeklyFantasyLine[] {
+  return matches.flatMap((match) => match.games.flatMap((game) => game.playerStats.map((stat) => ({
+    playerId: stat.playerId,
+    teamId: stat.teamId,
+    points: playerGamePoints(stat, config, {
+      lengthSec: game.lengthSec,
+      teamObjectives: game.teamStats.find((row) => row.teamId === stat.teamId),
+      laneAt15: game.playerTimeline.find((row) => row.playerId === stat.playerId),
+    }),
+  }))));
+}
+
 export interface TeamWeekScore {
   weekNumber: number;
   rosterPts: number;
@@ -189,28 +201,23 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
     ...w,
     matches: w.matches.filter((m) => cutoff === null || m.scheduledAt < cutoff),
   }));
-  const pickems = await prisma.pickem.findMany({ where: { leagueId: league.id } });
+  const [pickems, rosterIdentities] = await Promise.all([
+    prisma.pickem.findMany({ where: { leagueId: league.id } }),
+    prisma.tournamentPlayer.findMany({
+      where: { tournamentId: league.tournamentId },
+      select: { playerId: true, teamId: true, role: true },
+    }),
+  ]);
 
   const standings: FantasyStanding[] = [];
   for (const ft of league.fantasyTeams) {
     const weekly: TeamWeekScore[] = [];
     for (const week of weeks) {
       let rosterPts = 0;
+      const weeklyLines = weeklyFantasyLines(week.matches, cfg);
       for (const slot of ft.roster) {
         if (slot.slot === "BENCH") continue;
-        const gamePoints: number[] = [];
-        for (const match of week.matches) {
-          for (const game of match.games) {
-            const ps = game.playerStats.find((p) => p.playerId === slot.playerId);
-            if (!ps) continue;
-            gamePoints.push(playerGamePoints(ps, cfg, {
-              lengthSec: game.lengthSec,
-              teamObjectives: game.teamStats.find((row) => row.teamId === ps.teamId),
-              laneAt15: game.playerTimeline.find((row) => row.playerId === ps.playerId),
-            }));
-          }
-        }
-        rosterPts += playerPointsPerGame(gamePoints);
+        rosterPts += resolveRosterWeekContribution(slot.playerId, rosterIdentities, weeklyLines).creditedPoints;
       }
       let pickemPts = 0;
       for (const match of week.matches) {

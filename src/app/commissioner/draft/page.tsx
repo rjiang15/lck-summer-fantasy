@@ -25,11 +25,12 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
 
   const format = draftFormatForTournament(league.tournamentId);
   const order = league.draftOrder ? JSON.parse(league.draftOrder) as number[] : league.fantasyTeams.map((team) => team.id);
-  const draftedIds = league.fantasyTeams.flatMap((team) => team.draftPicks.map((pick) => pick.playerId));
-  const eligible = await prisma.tournamentPlayer.findMany({
-    where: { tournamentId: league.tournamentId, role: { in: [...DRAFT_ROLES] }, playerId: { notIn: draftedIds } },
+  const draftedIds = new Set(league.fantasyTeams.flatMap((team) => team.draftPicks.map((pick) => pick.playerId)));
+  const tournamentRoster = await prisma.tournamentPlayer.findMany({
+    where: { tournamentId: league.tournamentId, role: { in: [...DRAFT_ROLES] } },
     include: { player: true }, orderBy: [{ role: "asc" }, { player: { name: "asc" } }],
   });
+  const eligible = tournamentRoster.filter((row) => !draftedIds.has(row.playerId));
   const frozenSheet = parseDraftPriceSheet(league.draftPriceSheet);
   let previewSheet = frozenSheet;
   let previewError: string | null = null;
@@ -119,14 +120,20 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
         availablePlayers={eligible.flatMap((row) => {
           const role = row.role ?? row.player.role;
           if (!role || !DRAFT_ROLES.includes(role as (typeof DRAFT_ROLES)[number])) return [];
-          const group = draftGroupForTeam(format, row.teamId ?? row.player.teamId);
+          const teamId = row.teamId ?? row.player.teamId;
+          const group = draftGroupForTeam(format, teamId);
           if (format && !group) return [];
+          const sharedWith = tournamentRoster.filter((peer) => {
+            const peerRole = peer.role ?? peer.player.role;
+            return peer.playerId !== row.playerId && (peer.teamId ?? peer.player.teamId) === teamId && peerRole === role;
+          }).map((peer) => peer.player.name);
           return [{
             id: row.playerId,
             name: row.player.name,
-            teamId: row.teamId ?? row.player.teamId,
+            teamId,
             role: role as (typeof DRAFT_ROLES)[number],
             group,
+            sharedWith,
             price: playerDraftPrice(league.draftPricingMode, frozenSheet, row.playerId, league.draftPlayerPrice),
             ppg: frozenSheet?.players[row.playerId]?.ppg ?? null,
             games: frozenSheet?.players[row.playerId]?.games ?? 0,

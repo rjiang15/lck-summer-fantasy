@@ -3,6 +3,7 @@
 
 import { cargoQuery, parseUtc, type CargoProgressEvent } from "../lib/leaguepedia";
 import { prisma } from "../lib/db";
+import { mergeTournamentRosterOverrides } from "../lib/tournament-roster-overrides";
 import { validateWeekData } from "../lib/season";
 import { assertSequentialIngest } from "../lib/ingest-order";
 import { encodeIngestionProgress } from "../lib/ingestion-progress";
@@ -182,6 +183,9 @@ async function ingestTournament(
       Role: normalizeRole(player.RoleLast),
     })).filter((player) => player.Player && player.Team && player.Role);
   }
+  rosterPlayers = mergeTournamentRosterOverrides(overviewPage, rosterPlayers)
+    .map((player) => ({ ...player, Role: normalizeRole(player.Role ?? undefined) }))
+    .filter((player) => player.Player && player.Team && player.Role);
   console.log(`  tournament roster players: ${rosterPlayers.length}`);
   for (const [index, player] of rosterPlayers.entries()) {
     await reportLoopProgress(runId, index, rosterPlayers.length, 15, 28, "Saving eligible players");
