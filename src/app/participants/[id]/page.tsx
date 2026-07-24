@@ -10,7 +10,7 @@ import {
   round1,
   SLOT_ORDER,
 } from "@/lib/fantasy";
-import { playerGamePoints, playerPointsPerGame, pickemPoints } from "@/lib/scoring";
+import { pickemPoints } from "@/lib/scoring";
 import { getViewState, isFinished } from "@/lib/view";
 import { requireLeagueMember } from "@/lib/auth";
 import { areWeeklyPicksPublic } from "@/lib/pick-privacy";
@@ -33,7 +33,7 @@ export default async function ParticipantPage({
       league: {
         include: {
           cbQuestions: { include: { answers: true } },
-          leagueWeeks: { include: { week: true, weeklyRosters: true } },
+          leagueWeeks: { include: { week: true, weeklyRosters: true, weeklyScores: true } },
         },
       },
       roster: { include: { player: { include: { tournamentRosters: { where: { tournamentId: access.league.tournamentId } } } } } },
@@ -64,31 +64,29 @@ export default async function ParticipantPage({
   // snapshot shows that player on this fantasy team. This prevents a midseason
   // acquisition from inheriting points earned before they were rostered.
   const slotTotals = new Map<number, number>();
+  const slotFallbackWeeks = new Map<number, number>();
   for (const week of weeks) {
     if (!publishedWeekIds.has(week.id)) continue;
     const leagueWeek = ft.league.leagueWeeks.find((row) => row.weekId === week.id);
     const rosteredPlayerIds = new Set(
       leagueWeek?.weeklyRosters.filter((row) => row.fantasyTeamId === ft.id).map((row) => row.playerId) ?? [],
     );
+    const weeklyScore = leagueWeek?.weeklyScores.find((row) => row.fantasyTeamId === ft.id);
+    let scoreContributions: Array<{ playerId: string; pointsPerGame?: number; creditedPoints?: number; fallback?: unknown }> = [];
+    if (weeklyScore) {
+      try {
+        const parsed = JSON.parse(weeklyScore.breakdown) as { roster?: typeof scoreContributions };
+        if (Array.isArray(parsed.roster)) scoreContributions = parsed.roster;
+      } catch {
+        // Preserve the team total even if an old per-player audit breakdown is malformed.
+      }
+    }
     for (const slot of ft.roster) {
       if (slot.slot === "BENCH" || !rosteredPlayerIds.has(slot.playerId)) continue;
-      const gamePoints: number[] = [];
-      for (const match of week.matches) {
-        if (cutoff !== null && match.scheduledAt >= cutoff) continue;
-        for (const game of match.games) {
-          const ps = game.playerStats.find((p) => p.playerId === slot.playerId);
-          if (ps) {
-            gamePoints.push(playerGamePoints(ps, cfg, {
-              lengthSec: game.lengthSec,
-              teamObjectives: game.teamStats.find((team) => team.teamId === ps.teamId),
-              laneAt15: game.playerTimeline.find((row) => row.playerId === ps.playerId),
-            }));
-          }
-        }
-      }
-      if (gamePoints.length > 0) {
-        slotTotals.set(slot.id, (slotTotals.get(slot.id) ?? 0) + playerPointsPerGame(gamePoints));
-      }
+      const contribution = scoreContributions.find((row) => row.playerId === slot.playerId);
+      const credited = contribution?.creditedPoints ?? contribution?.pointsPerGame ?? 0;
+      slotTotals.set(slot.id, (slotTotals.get(slot.id) ?? 0) + credited);
+      if (contribution?.fallback) slotFallbackWeeks.set(slot.id, (slotFallbackWeeks.get(slot.id) ?? 0) + 1);
     }
   }
 
@@ -138,6 +136,7 @@ export default async function ParticipantPage({
                     <td>{slot.player.tournamentRosters[0]?.teamId ? <TeamLabel name={slot.player.tournamentRosters[0].teamId!} size="xs" /> : "?"}</td>
                     <td className="num">
                       <b>{round1(slotTotals.get(slot.id) ?? 0)}</b>
+                      {(slotFallbackWeeks.get(slot.id) ?? 0) > 0 && <span className="muted small" style={{ display: "block" }}>{slotFallbackWeeks.get(slot.id)} substitute fallback week{slotFallbackWeeks.get(slot.id) === 1 ? "" : "s"}</span>}
                     </td>
                   </tr>
                 ))}

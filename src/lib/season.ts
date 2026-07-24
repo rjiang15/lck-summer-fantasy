@@ -1,6 +1,7 @@
 import { prisma } from "./db";
-import { parseScoring, round1 } from "./fantasy";
-import { pickemPoints, playerGamePoints, playerPointsPerGame } from "./scoring";
+import { parseScoring, round1, weeklyFantasyLines } from "./fantasy";
+import { pickemPoints } from "./scoring";
+import { resolveRosterWeekContribution } from "./roster-fallback";
 
 export const WEEK_STATUSES = [
   "UPCOMING",
@@ -165,9 +166,14 @@ export async function calculateWeeklyScores(
     throw new Error("This week has no frozen roster snapshot; unlock and relock its picks before importing results");
   }
   const config = parseScoring(lw.league.scoringConfig);
-  const picks = await prisma.pickem.findMany({
-    where: { leagueId: lw.leagueId, match: { weekId: lw.weekId } },
-  });
+  const [picks, rosterIdentities] = await Promise.all([
+    prisma.pickem.findMany({ where: { leagueId: lw.leagueId, match: { weekId: lw.weekId } } }),
+    prisma.tournamentPlayer.findMany({
+      where: { tournamentId: lw.league.tournamentId },
+      select: { playerId: true, teamId: true, role: true },
+    }),
+  ]);
+  const weeklyLines = weeklyFantasyLines(lw.week.matches, config);
   await prisma.$transaction(async (tx) => {
     for (const team of lw.league.fantasyTeams) {
       const roster = lw.weeklyRosters.filter(
@@ -175,28 +181,21 @@ export async function calculateWeeklyScores(
       );
       let rosterPts = 0;
       const playerContributions = roster.map((slot) => {
-        const gamePoints: number[] = [];
-        for (const match of lw.week.matches) {
-          for (const game of match.games) {
-            const stat = game.playerStats.find((row) => row.playerId === slot.playerId);
-            if (!stat) continue;
-            const teamObjectives = game.teamStats.find((row) => row.teamId === stat.teamId);
-            gamePoints.push(playerGamePoints(stat, config, {
-              lengthSec: game.lengthSec,
-              teamObjectives,
-              laneAt15: game.playerTimeline.find((row) => row.playerId === stat.playerId),
-            }));
-          }
-        }
-        const rawPoints = gamePoints.reduce((sum, points) => sum + points, 0);
-        const pointsPerGame = playerPointsPerGame(gamePoints);
-        rosterPts += pointsPerGame;
+        const contribution = resolveRosterWeekContribution(slot.playerId, rosterIdentities, weeklyLines);
+        rosterPts += contribution.creditedPoints;
         return {
           playerId: slot.playerId,
           slot: slot.slot,
-          gamesPlayed: gamePoints.length,
-          rawPoints: round1(rawPoints),
-          pointsPerGame: round1(pointsPerGame),
+          gamesPlayed: contribution.gamesPlayed,
+          rawPoints: round1(contribution.rawPoints),
+          pointsPerGame: round1(contribution.pointsPerGame),
+          creditedPoints: round1(contribution.creditedPoints),
+          fallback: contribution.fallback ? {
+            ...contribution.fallback,
+            substitutePointsPerGame: round1(contribution.fallback.substitutePointsPerGame),
+            teamAveragePointsPerGame: round1(contribution.fallback.teamAveragePointsPerGame),
+            creditedPoints: round1(contribution.fallback.creditedPoints),
+          } : null,
         };
       });
       let pickemPts = 0;
@@ -242,6 +241,7 @@ export async function calculateWeeklyScores(
       }
       const breakdown = {
         scoringVersion: config.version,
+        rosterScoringVersion: 2,
         roster: playerContributions,
         ...(recalculationHistory.length > 0 ? { recalculationHistory } : {}),
       };

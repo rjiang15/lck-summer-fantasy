@@ -16,7 +16,7 @@ import { TeamLabel } from "@/components/GameIdentity";
 
 type Pick = { id: number; playerId: string; playerName: string; proTeam: string | null; role: string; group: DraftGroup | null; price: number; overallPick: number };
 type Team = { id: number; name: string; username: string; picks: Pick[] };
-type Player = { id: string; name: string; teamId: string | null; role: DraftRole; group: DraftGroup | null; price: number; ppg: number | null; games: number };
+type Player = { id: string; name: string; teamId: string | null; role: DraftRole; group: DraftGroup | null; sharedWith: string[]; price: number; ppg: number | null; games: number };
 
 export default function DraftBoard({
   leagueId, status, currentPick, totalPicks, currentTeamId, budget, uniformPrice, pricingMode, priceSource,
@@ -124,7 +124,7 @@ export default function DraftBoard({
     </section>
 
     {status === "ACTIVE" && <section>
-      <div className="section-heading"><div><h2>Available players</h2><p className="muted small">Drafted players disappear immediately. Role and league-wide pool safeguards stay active; the future-slot budget reserve is {budgetGuardEnabled ? "on" : "off"}.</p></div><span className="badge pending">{filteredOptions.length} shown · {draftOptions.filter((option) => option.draftable).length} draftable</span></div>
+      <div className="section-heading"><div><h2>Available players</h2><p className="muted small">Drafted players disappear immediately. Shared roster spots are flagged; if one of those players logs zero games in a week, the capped substitute fallback applies. Role and league-wide pool safeguards stay active; the future-slot budget reserve is {budgetGuardEnabled ? "on" : "off"}.</p></div><span className="badge pending">{filteredOptions.length} shown · {draftOptions.filter((option) => option.draftable).length} draftable</span></div>
       <div className="draft-view-controls">
         <div className="draft-view-toggle" role="group" aria-label="Player view">
           <button type="button" className={viewMode === "CARDS" ? "active" : ""} aria-pressed={viewMode === "CARDS"} onClick={() => setViewMode("CARDS")}>Cards</button>
@@ -144,11 +144,12 @@ export default function DraftBoard({
         <input type="hidden" name="leagueId" value={leagueId} /><input type="hidden" name="playerId" value={player.id} />
         <div className="draft-player-card-title"><div><b>{player.name}</b>{player.teamId ? <TeamLabel name={player.teamId} size="xs" /> : <span>Free agent</span>}</div>{groupLabel && <span className={`draft-group-badge draft-group-${player.group?.toLowerCase()}`}>{groupLabel}</span>}</div>
         <div className="draft-player-value"><b>{money(player.price)}</b><span>{player.ppg === null ? "No R1–2 data · peer average" : `${player.ppg.toFixed(1)} Pts/G · ${player.games} games`}</span></div>
+        {player.sharedWith.length > 0 && <div className="draft-shared-warning"><span className="draft-shared-badge">Shared roster spot</span><small>Shares {player.teamId} {player.role} with {player.sharedWith.join(", ")}. Zero-game weeks use the capped substitute fallback.</small></div>}
         <button type="submit" disabled={busy || !draftable}>{busy ? "Updating…" : draftable ? `Draft · ${money(player.price)}` : statusLabel}</button>
       </form>)}</div> : <div className="tablewrap draft-player-table"><table>
-        <thead><tr><th>Player</th><th>Team</th><th>Group</th><th>Role</th><th>R1–2 Pts/G</th><th>Price</th><th>Status</th></tr></thead>
+        <thead><tr><th>Player</th><th>Team</th><th>Group</th><th>Role</th><th>Roster spot</th><th>R1–2 Pts/G</th><th>Price</th><th>Status</th></tr></thead>
         <tbody>{filteredOptions.map(({ player, draftable, groupLabel, statusLabel }) => <tr className={player.group ? `draft-group-${player.group.toLowerCase()}` : ""} key={player.id}>
-          <td><b>{player.name}</b></td><td>{player.teamId ? <TeamLabel name={player.teamId} size="xs" /> : "Free agent"}</td><td>{groupLabel && <span className={`draft-group-badge draft-group-${player.group?.toLowerCase()}`}>{groupLabel}</span>}</td><td>{player.role}</td><td>{player.ppg === null ? <span className="muted">Peer average</span> : <><b>{player.ppg.toFixed(1)}</b><span className="muted small"> · {player.games} games</span></>}</td><td><b>{money(player.price)}</b></td><td><form action={submitPick} className="inline-form"><input type="hidden" name="leagueId" value={leagueId} /><input type="hidden" name="playerId" value={player.id} /><button type="submit" disabled={busy || !draftable}>{busy ? "Updating…" : draftable ? "Draft" : statusLabel}</button></form></td>
+          <td><b>{player.name}</b></td><td>{player.teamId ? <TeamLabel name={player.teamId} size="xs" /> : "Free agent"}</td><td>{groupLabel && <span className={`draft-group-badge draft-group-${player.group?.toLowerCase()}`}>{groupLabel}</span>}</td><td>{player.role}</td><td>{player.sharedWith.length > 0 ? <span className="draft-shared-cell"><span className="draft-shared-badge">Shared</span><small>with {player.sharedWith.join(", ")}</small></span> : <span className="muted">Sole player</span>}</td><td>{player.ppg === null ? <span className="muted">Peer average</span> : <><b>{player.ppg.toFixed(1)}</b><span className="muted small"> · {player.games} games</span></>}</td><td><b>{money(player.price)}</b></td><td><form action={submitPick} className="inline-form"><input type="hidden" name="leagueId" value={leagueId} /><input type="hidden" name="playerId" value={player.id} /><button type="submit" disabled={busy || !draftable}>{busy ? "Updating…" : draftable ? "Draft" : statusLabel}</button></form></td>
         </tr>)}</tbody>
       </table></div>}
     </section>}

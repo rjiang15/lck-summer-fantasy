@@ -6,6 +6,8 @@ import {
   DYNAMIC_PRICE_MAX,
   DYNAMIC_PRICE_MIN,
   DYNAMIC_PRICE_STEP,
+  extendDraftPriceSheetWithPeerValues,
+  type DraftPriceSheet,
 } from "./draft-pricing";
 
 test("dynamic prices are monotonic, bounded, stepped, and average exactly $1,000", () => {
@@ -39,4 +41,31 @@ test("price calculation rejects unusable historical samples", () => {
     { playerId: "one", ppg: 20, games: 1 },
     { playerId: "two", ppg: 20, games: 1 },
   ]), /no usable variation/);
+});
+
+test("a frozen sheet can add a missing no-history player without repricing existing players", () => {
+  const sheet: DraftPriceSheet = {
+    version: 1,
+    targetTournamentId: "target",
+    sourceTournamentId: "source",
+    generatedAt: "2026-07-01T00:00:00.000Z",
+    averagePrice: 1_000,
+    priceStandardDeviation: 200,
+    sourceAveragePpg: 20,
+    sourceStandardDeviationPpg: 5,
+    players: {
+      first: { playerId: "first", ppg: 20, games: 20, peerGroup: "RISE:Support", price: 775 },
+      second: { playerId: "second", ppg: 22, games: 20, peerGroup: "RISE:Support", price: 825 },
+      other: { playerId: "other", ppg: 30, games: 20, peerGroup: "LEGENDS:Mid", price: 1_300 },
+    },
+  };
+  const extended = extendDraftPriceSheetWithPeerValues(sheet, [
+    { playerId: "Peter", ppg: null, games: 0, peerGroup: "RISE:Support" },
+  ]);
+  assert.deepEqual(extended.players.first, sheet.players.first);
+  assert.deepEqual(extended.players.second, sheet.players.second);
+  assert.equal(extended.players.Peter.price, 800);
+  assert.equal(extended.players.Peter.ppg, null);
+  assert.equal(extended.players.Peter.games, 0);
+  assert.equal(sheet.players.Peter, undefined);
 });

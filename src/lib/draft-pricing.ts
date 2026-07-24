@@ -167,6 +167,30 @@ export function parseDraftPriceSheet(value: string | null | undefined): DraftPri
   }
 }
 
+export function extendDraftPriceSheetWithPeerValues(
+  sheet: DraftPriceSheet,
+  values: readonly HistoricalPlayerValue[],
+): DraftPriceSheet {
+  const players = { ...sheet.players };
+  for (const value of values) {
+    if (players[value.playerId]) continue;
+    const allPlayers = Object.values(players);
+    const peers = allPlayers.filter((player) => value.peerGroup && player.peerGroup === value.peerGroup);
+    const priceBasis = peers.length > 0 ? peers : allPlayers;
+    if (priceBasis.length === 0) throw new Error(`Cannot derive a frozen-sheet peer price for ${value.playerId}`);
+    const peerAverage = mean(priceBasis.map((player) => player.price));
+    players[value.playerId] = {
+      ...value,
+      ppg: value.ppg === null ? null : round2(value.ppg),
+      price: Math.max(
+        DYNAMIC_PRICE_MIN,
+        Math.min(DYNAMIC_PRICE_MAX, Math.round(peerAverage / DYNAMIC_PRICE_STEP) * DYNAMIC_PRICE_STEP),
+      ),
+    };
+  }
+  return { ...sheet, players };
+}
+
 export function playerDraftPrice(
   mode: string,
   sheet: DraftPriceSheet | null,

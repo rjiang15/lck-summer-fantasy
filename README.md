@@ -102,7 +102,17 @@ enable the budget-reserve safeguard, which blocks a purchase that would leave
 the current team unable to afford a safe completion of its remaining slots.
 The hard budget and structural safeguards cannot be disabled. The live board
 supports card and group-colored table views with shared group, role, and
-"draftable only" filters. Re-run
+"draftable only" filters. Players who share the same professional team and role
+are explicitly marked. If a drafted player records zero games in a week, their
+roster credit is the lower of that team-role substitute's fantasy points per
+game and the professional team's player-line average for the week; if no
+same-role teammate plays, the credit remains zero. Published weekly score
+snapshots preserve both the credit and its audit details.
+
+Leaguepedia roster omissions needed for drafting are kept in a small,
+idempotent tournament override list. `npm run roster:sync` applies those
+overrides to local SQLite, while `npm run roster:sync:postgres` applies them to
+the configured PostgreSQL database. Re-run
 the real-data three-participant greedy snake check with:
 
 ```bash

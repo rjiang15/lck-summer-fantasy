@@ -360,6 +360,11 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .draft-player-card .draft-player-value { display: flex; justify-content: space-between; gap: 0.65rem; align-items: baseline; text-align: left; }
 .draft-player-value > b { color: var(--draft-group-color, var(--text)); }
 .draft-player-value > span { text-align: right; }
+.draft-shared-warning { display: grid; gap: 0.25rem; padding: 0.55rem; border: 1px solid color-mix(in srgb, #e39b32 58%, var(--border)); border-radius: 6px; background: color-mix(in srgb, #e39b32 10%, var(--card)); }
+.draft-shared-warning small { color: var(--text); line-height: 1.3; }
+.draft-shared-badge { display: inline-flex; width: fit-content; padding: 0.12rem 0.4rem; border-radius: 999px; color: #f1aa42; border: 1px solid color-mix(in srgb, #e39b32 65%, var(--border)); background: color-mix(in srgb, #e39b32 10%, var(--card)); font-size: 0.66rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+.draft-shared-cell { display: grid; gap: 0.2rem; white-space: normal; line-height: 1.25; }
+.draft-shared-cell small { max-width: 10rem; color: var(--muted); }
 .draft-player-card .entity-label { display: inline-flex; justify-self: start; margin-top: 0.15rem; }
 .draft-player-card button { width: 100%; margin-top: auto; white-space: normal; }
 .draft-player-table { max-height: min(68vh, 44rem); }
