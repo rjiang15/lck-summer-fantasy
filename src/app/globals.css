@@ -365,6 +365,12 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .draft-shared-badge { display: inline-flex; width: fit-content; padding: 0.12rem 0.4rem; border-radius: 999px; color: #f1aa42; border: 1px solid color-mix(in srgb, #e39b32 65%, var(--border)); background: color-mix(in srgb, #e39b32 10%, var(--card)); font-size: 0.66rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
 .draft-shared-cell { display: grid; gap: 0.2rem; white-space: normal; line-height: 1.25; }
 .draft-shared-cell small { max-width: 10rem; color: var(--muted); }
+.fallback-credit-badge { display: inline-flex; width: fit-content; padding: 0.12rem 0.4rem; border-radius: 999px; color: #f1aa42; border: 1px solid color-mix(in srgb, #e39b32 65%, var(--border)); background: color-mix(in srgb, #e39b32 10%, var(--card)); font-size: 0.66rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.num > .fallback-credit-badge { display: flex; margin: 0.2rem 0 0 auto; }
+.weekly-roster-audit tr.roster-fallback-row td { background: color-mix(in srgb, #e39b32 8%, var(--card)); }
+.weekly-roster-audit tr.roster-fallback-row td:first-child { border-left: 3px solid #e39b32; }
+.weekly-roster-status { display: grid; min-width: 17rem; gap: 0.2rem; white-space: normal; line-height: 1.3; }
+.weekly-roster-status small { color: var(--muted); }
 .draft-player-card .entity-label { display: inline-flex; justify-self: start; margin-top: 0.15rem; }
 .draft-player-card button { width: 100%; margin-top: auto; white-space: normal; }
 .draft-player-table { max-height: min(68vh, 44rem); }

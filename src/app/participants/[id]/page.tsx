@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import {
   parseScoring,
-  loadWeeks,
   computeStandings,
   fmtDate,
   round1,
@@ -18,6 +17,36 @@ import { TeamLabel } from "@/components/GameIdentity";
 import { crystalBallPoints } from "@/lib/crystal-ball";
 
 export const dynamic = "force-dynamic";
+
+type RosterFallbackBreakdown = {
+  reason: "DID_NOT_PLAY";
+  teamId: string;
+  role: string;
+  substitutePlayerIds: string[];
+  substitutePointsPerGame: number;
+  teamAveragePointsPerGame: number;
+  creditedPoints: number;
+};
+
+type RosterContributionBreakdown = {
+  playerId: string;
+  slot?: string;
+  gamesPlayed?: number;
+  rawPoints?: number;
+  pointsPerGame?: number;
+  creditedPoints?: number;
+  fallback?: RosterFallbackBreakdown | null;
+};
+
+function parseRosterContributions(value: string | null | undefined): RosterContributionBreakdown[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as { roster?: RosterContributionBreakdown[] };
+    return Array.isArray(parsed.roster) ? parsed.roster : [];
+  } catch {
+    return [];
+  }
+}
 
 export default async function ParticipantPage({
   params,
@@ -33,7 +62,21 @@ export default async function ParticipantPage({
       league: {
         include: {
           cbQuestions: { include: { answers: true } },
-          leagueWeeks: { include: { week: true, weeklyRosters: true, weeklyScores: true } },
+          leagueWeeks: {
+            include: {
+              week: true,
+              weeklyRosters: {
+                include: {
+                  player: {
+                    include: {
+                      tournamentRosters: { where: { tournamentId: access.league.tournamentId } },
+                    },
+                  },
+                },
+              },
+              weeklyScores: true,
+            },
+          },
         },
       },
       roster: { include: { player: { include: { tournamentRosters: { where: { tournamentId: access.league.tournamentId } } } } } },
@@ -45,7 +88,6 @@ export default async function ParticipantPage({
   const viewer = access.user;
   const cutoff = view?.cutoff ?? null;
   const cfg = parseScoring(ft.league.scoringConfig);
-  const weeks = await loadWeeks(ft.league.tournamentId);
   const pickems = await prisma.pickem.findMany({
     where: { leagueId: ft.leagueId, userId: ft.userId },
     include: { match: { include: { week: true } } },
@@ -60,33 +102,39 @@ export default async function ParticipantPage({
     ft.league.leagueWeeks.filter(areWeeklyPicksPublic).map((week) => week.weekId),
   );
   const viewerIsMember = viewer ? await prisma.fantasyTeam.count({ where: { leagueId: ft.leagueId, userId: viewer.id } }) > 0 : false;
+  const weeklyRosterAudits = ft.league.leagueWeeks
+    .filter((leagueWeek) => leagueWeek.status === "PUBLISHED" && (cutoff === null || leagueWeek.week.endsAt < cutoff))
+    .sort((left, right) => left.week.number - right.week.number)
+    .map((leagueWeek) => {
+      const score = leagueWeek.weeklyScores.find((row) => row.fantasyTeamId === ft.id);
+      const contributions = parseRosterContributions(score?.breakdown);
+      const rows = leagueWeek.weeklyRosters
+        .filter((row) => row.fantasyTeamId === ft.id && row.slot !== "BENCH")
+        .sort((left, right) => SLOT_ORDER.indexOf(left.slot) - SLOT_ORDER.indexOf(right.slot))
+        .map((row) => {
+          const contribution = contributions.find((item) => item.playerId === row.playerId);
+          return {
+            ...row,
+            gamesPlayed: contribution?.gamesPlayed ?? 0,
+            pointsPerGame: contribution?.pointsPerGame ?? 0,
+            creditedPoints: contribution?.creditedPoints ?? contribution?.pointsPerGame ?? 0,
+            fallback: contribution?.fallback ?? null,
+          };
+        });
+      return { leagueWeekId: leagueWeek.id, weekNumber: leagueWeek.week.number, rows };
+    });
+
   // A current player only receives points for published weeks whose immutable
   // snapshot shows that player on this fantasy team. This prevents a midseason
   // acquisition from inheriting points earned before they were rostered.
   const slotTotals = new Map<number, number>();
   const slotFallbackWeeks = new Map<number, number>();
-  for (const week of weeks) {
-    if (!publishedWeekIds.has(week.id)) continue;
-    const leagueWeek = ft.league.leagueWeeks.find((row) => row.weekId === week.id);
-    const rosteredPlayerIds = new Set(
-      leagueWeek?.weeklyRosters.filter((row) => row.fantasyTeamId === ft.id).map((row) => row.playerId) ?? [],
-    );
-    const weeklyScore = leagueWeek?.weeklyScores.find((row) => row.fantasyTeamId === ft.id);
-    let scoreContributions: Array<{ playerId: string; pointsPerGame?: number; creditedPoints?: number; fallback?: unknown }> = [];
-    if (weeklyScore) {
-      try {
-        const parsed = JSON.parse(weeklyScore.breakdown) as { roster?: typeof scoreContributions };
-        if (Array.isArray(parsed.roster)) scoreContributions = parsed.roster;
-      } catch {
-        // Preserve the team total even if an old per-player audit breakdown is malformed.
-      }
-    }
-    for (const slot of ft.roster) {
-      if (slot.slot === "BENCH" || !rosteredPlayerIds.has(slot.playerId)) continue;
-      const contribution = scoreContributions.find((row) => row.playerId === slot.playerId);
-      const credited = contribution?.creditedPoints ?? contribution?.pointsPerGame ?? 0;
-      slotTotals.set(slot.id, (slotTotals.get(slot.id) ?? 0) + credited);
-      if (contribution?.fallback) slotFallbackWeeks.set(slot.id, (slotFallbackWeeks.get(slot.id) ?? 0) + 1);
+  for (const weeklyRoster of weeklyRosterAudits) {
+    for (const row of weeklyRoster.rows) {
+      const currentSlot = ft.roster.find((slot) => slot.slot !== "BENCH" && slot.playerId === row.playerId);
+      if (!currentSlot) continue;
+      slotTotals.set(currentSlot.id, (slotTotals.get(currentSlot.id) ?? 0) + row.creditedPoints);
+      if (row.fallback) slotFallbackWeeks.set(currentSlot.id, (slotFallbackWeeks.get(currentSlot.id) ?? 0) + 1);
     }
   }
 
@@ -136,7 +184,7 @@ export default async function ParticipantPage({
                     <td>{slot.player.tournamentRosters[0]?.teamId ? <TeamLabel name={slot.player.tournamentRosters[0].teamId!} size="xs" /> : "?"}</td>
                     <td className="num">
                       <b>{round1(slotTotals.get(slot.id) ?? 0)}</b>
-                      {(slotFallbackWeeks.get(slot.id) ?? 0) > 0 && <span className="muted small" style={{ display: "block" }}>{slotFallbackWeeks.get(slot.id)} substitute fallback week{slotFallbackWeeks.get(slot.id) === 1 ? "" : "s"}</span>}
+                      {(slotFallbackWeeks.get(slot.id) ?? 0) > 0 && <span className="fallback-credit-badge">{slotFallbackWeeks.get(slot.id)} fallback week{slotFallbackWeeks.get(slot.id) === 1 ? "" : "s"}</span>}
                     </td>
                   </tr>
                 ))}
@@ -187,6 +235,52 @@ export default async function ParticipantPage({
           </div>
         </div>
       </div>
+
+      <h2>Weekly roster scoring</h2>
+      <p className="muted small">
+        This is the frozen roster used for each published week. A highlighted substitute credit means the drafted player logged zero games and received the lower of the shared-slot production or that professional team&apos;s weekly player average.
+      </p>
+      {weeklyRosterAudits.length === 0 ? <p className="card muted">No weekly roster scores have been published yet.</p> : <div className="tablewrap weekly-roster-audit">
+        <table>
+          <thead>
+            <tr>
+              <th>Week</th>
+              <th>Slot</th>
+              <th>Player</th>
+              <th>Pro team</th>
+              <th className="num">Games</th>
+              <th className="num">Own Pts/G</th>
+              <th className="num">Credited</th>
+              <th>Scoring status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {weeklyRosterAudits.flatMap((weeklyRoster) => weeklyRoster.rows.map((row) => {
+              const teamId = row.fallback?.teamId ?? row.player.tournamentRosters[0]?.teamId ?? row.player.teamId;
+              return <tr className={row.fallback ? "roster-fallback-row" : ""} key={`${weeklyRoster.leagueWeekId}-${row.id}`}>
+                <td><b>Week {weeklyRoster.weekNumber}</b></td>
+                <td className="muted">{row.slot}</td>
+                <td><b>{row.player.name}</b></td>
+                <td>{teamId ? <TeamLabel name={teamId} size="xs" /> : "?"}</td>
+                <td className="num">{row.gamesPlayed}</td>
+                <td className="num">{round1(row.pointsPerGame)}</td>
+                <td className="num"><b>{round1(row.creditedPoints)}</b></td>
+                <td className="weekly-roster-status">
+                  {row.fallback ? <>
+                    <span className="fallback-credit-badge">Substitute credit applied</span>
+                    <small>
+                      {row.fallback.substitutePlayerIds.join(", ")}: {round1(row.fallback.substitutePointsPerGame)} Pts/G · team average: {round1(row.fallback.teamAveragePointsPerGame)} · lower value credited
+                    </small>
+                  </> : row.gamesPlayed > 0 ? <span className="muted small">Played normally</span> : <>
+                    <span className="badge loss">No games · 0 points</span>
+                    <small>No same-team, same-role substitute recorded a game.</small>
+                  </>}
+                </td>
+              </tr>;
+            }))}
+          </tbody>
+        </table>
+      </div>}
 
       <h2>Weekly predictions</h2>
       <div className="tablewrap">
