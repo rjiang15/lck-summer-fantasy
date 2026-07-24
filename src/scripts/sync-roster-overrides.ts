@@ -1,6 +1,5 @@
 import { loadEnvConfig } from "@next/env";
 import { draftFormatForTournament, draftGroupForTeam, isDraftRole } from "../lib/draft";
-import { extendDraftPriceSheetWithPeerValues, parseDraftPriceSheet } from "../lib/draft-pricing";
 import { mergeTournamentRosterOverrides, TOURNAMENT_ROSTER_OVERRIDES } from "../lib/tournament-roster-overrides";
 
 loadEnvConfig(process.cwd());
@@ -18,6 +17,9 @@ async function main() {
       || "file:./dev.db";
   }
   const { prisma } = await import("../lib/db");
+  // draft-pricing imports the shared Prisma client, so it must load only after
+  // DATABASE_URL has been pointed at the requested local or PostgreSQL target.
+  const { extendDraftPriceSheetWithPeerValues, parseDraftPriceSheet } = await import("../lib/draft-pricing");
 
   for (const tournamentId of Object.keys(TOURNAMENT_ROSTER_OVERRIDES)) {
     const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId }, select: { id: true } });
