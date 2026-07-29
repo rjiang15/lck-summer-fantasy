@@ -60,9 +60,11 @@ async function weekSubmissionReadiness(leagueId: number, weekId: number, weekNum
 const SLOT_ROLE: Record<string, string> = { TOP: "Top", JNG: "Jungle", MID: "Mid", BOT: "Bot", SUP: "Support" };
 
 function revalidateDataPages() {
-  for (const path of ["/", "/commissioner", "/picks", "/stats", "/leaderboard"]) {
+  for (const path of ["/", "/commissioner", "/picks", "/stats", "/macro", "/leaderboard"]) {
     revalidatePath(path);
   }
+  revalidatePath("/games/[id]", "page");
+  revalidatePath("/participants/[id]", "page");
 }
 
 function commissionerRedirect(kind: "notice" | "error", message: string): never {
@@ -87,11 +89,14 @@ async function handleExpectedActionError(work: () => Promise<void>, path = "/com
   }
 }
 
-async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean) {
+async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean, live = false) {
   await requireLeagueManager(leagueId);
   const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
   if (league.seasonStatus === "FINAL") throw new Error("The season is already final");
   const weekNumber = league.currentWeek + 1;
+  if (live && league.isSimulation) {
+    throw new Error("Historical simulations do not contact the live data source");
+  }
   if (league.isSimulation && scheduleOnly) {
     throw new Error("Historical simulations load their complete stored schedule when the league is created");
   }
@@ -104,7 +109,7 @@ async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean) {
       throw new Error(`Lock Week ${weekNumber} picks to freeze its predictions and roster snapshot before fetching results`);
     }
   }
-  const globallyReady = scheduleOnly ? Boolean(week?.scheduleImportedAt) : Boolean(week?.resultsImportedAt);
+  const globallyReady = !live && (scheduleOnly ? Boolean(week?.scheduleImportedAt) : Boolean(week?.resultsImportedAt));
   if (league.isSimulation && !globallyReady) {
     throw new Error(`Week ${weekNumber} is missing stored historical results; simulations never call the live API`);
   }
@@ -115,9 +120,13 @@ async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean) {
     rosterPlayers: await prisma.tournamentPlayer.count({ where: { tournamentId: league.tournamentId } }),
     playerStats: await prisma.playerGameStat.count({ where: { game: { match: { weekId: week!.id } } } }),
     draftActions: await prisma.draftAction.count({ where: { game: { match: { weekId: week!.id } } } }),
-  } : await runLeaguepediaIngest({ overviewPage: league.tournamentId, weekNumber, scheduleOnly });
+    writes: { created: 0, updated: 0, unchanged: 0 },
+  } : await runLeaguepediaIngest({ overviewPage: league.tournamentId, weekNumber, scheduleOnly, live });
   week = await prisma.week.findUniqueOrThrow({ where: { tournamentId_number: { tournamentId: league.tournamentId, number: weekNumber } } });
-  if (scheduleOnly) {
+  if (live) {
+    // Live refreshes leave lifecycle, persistent scores, and Crystal Ball
+    // settlement untouched. Public pages calculate the provisional view.
+  } else if (scheduleOnly) {
     const existingOpen = await prisma.leagueWeek.findFirst({ where: { leagueId, status: "OPEN" } });
     await prisma.leagueWeek.upsert({
       where: { leagueId_weekId: { leagueId, weekId: week.id } },
@@ -160,6 +169,21 @@ export async function fetchNextWeekResults(formData: FormData) {
   commissionerRedirect(
     "notice",
     `Week ${result.weekNumber} results ready${result.reused ? " (reused shared LCK data)" : ""}: ${result.counts.games} games, ${result.counts.playerStats} player lines, and ${result.counts.draftActions} draft actions.`,
+  );
+}
+
+export async function refreshLiveWeek(formData: FormData) {
+  let result: Awaited<ReturnType<typeof runNextWeekIngest>>;
+  try {
+    result = await runNextWeekIngest(Number(formData.get("leagueId")), false, true);
+  } catch (error) {
+    unstable_rethrow(error);
+    commissionerRedirect("error", error instanceof Error ? error.message : String(error));
+  }
+  const writes = result.counts.writes;
+  commissionerRedirect(
+    "notice",
+    `Week ${result.weekNumber} live view refreshed: ${result.counts.games} completed games and ${result.counts.playerStats} player lines. Wrote ${writes.created + writes.updated} changed rows; skipped ${writes.unchanged} unchanged rows. Crystal Ball remains provisional.`,
   );
 }
 

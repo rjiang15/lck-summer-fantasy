@@ -53,6 +53,17 @@ export default async function LeaderboardPage() {
     team: row.teamId ?? row.player.teamId,
   }]));
   const revealPredictions = crystalBallPredictionsPublic(league);
+  const hasProvisional = result?.standings.some((standing) => standing.hasProvisional) ?? false;
+  const substitutePlayerIds = [...new Set(
+    result?.standings.flatMap((standing) =>
+      standing.weekly.flatMap((week) =>
+        week.roster.flatMap((row) => row.fallback?.substitutePlayerIds ?? []),
+      ),
+    ) ?? [],
+  )];
+  const substituteNames = substitutePlayerIds.map(
+    (playerId) => playerIdentities.get(playerId)?.name ?? playerId,
+  );
   const answerKey = league.cbQuestions.filter((question) => question.metricKey).map((question, index) => {
     let resolution: MetricResolution | null = null;
     try {
@@ -69,12 +80,19 @@ export default async function LeaderboardPage() {
       <div><h1>Leaderboard</h1><p className="muted small">Fantasy standings and everyone&apos;s season-long Crystal Ball calls.</p></div>
     </header>
 
-    {view.completedWeek !== null && <p className="muted small">
+    {hasProvisional ? <div className="card live-data-note">
+      <b>Live standings · provisional</b>
+      <span className="muted small">Totals include completed games from Week {result?.standings.find((standing) => standing.provisionalWeek)?.provisionalWeek}. They update after each refresh and become official only when the commissioner validates and publishes the week. Crystal Ball points remain unawarded.</span>
+    </div> : view.completedWeek !== null && <p className="muted small">
       Fantasy totals include commissioner-published weeks only. Detailed pro-player scoring and performance metrics are available under Deep Stats.
     </p>}
+    {substituteNames.length > 0 && <div className="card substitute-rule-note">
+      <b>Substitute scoring active · {substituteNames.join(", ")}</b>
+      <span className="muted small">For each affected roster slot, the credited Pts/G is the lower of that professional team&apos;s weekly player average and the same-team, same-role substitute&apos;s performance. Open a participant roster for the exact calculation.</span>
+    </div>}
 
     {result && <section>
-      <h2>Fantasy standings</h2>
+      <h2>Fantasy standings {hasProvisional && <span className="badge win">live</span>}</h2>
       <div className="tablewrap">
         <table>
           <thead><tr><th>#</th><th>Participant</th><th>Team name</th><th className="num">Roster</th><th className="num">Pickems</th><th className="num">Crystal Ball</th><th className="num">Total</th></tr></thead>
@@ -84,7 +102,7 @@ export default async function LeaderboardPage() {
             <td><Link href={`/participants/${standing.fantasyTeamId}`}>{standing.teamName}</Link></td>
             <td className="num">{standing.rosterTotal}</td>
             <td className="num">{standing.pickemTotal}</td>
-            <td className="num">{standing.crystalBallTotal}</td>
+            <td className="num">{league.seasonStatus === "FINAL" ? standing.crystalBallTotal : <span className="muted" title="Not awarded until season settlement">—</span>}</td>
             <td className="num"><b>{standing.total}</b></td>
           </tr>)}</tbody>
         </table>
@@ -94,7 +112,7 @@ export default async function LeaderboardPage() {
     <section className="leaderboard-crystal-section">
       <div className="macro-section-title">
         <div><span>Crystal Ball</span><h2>Running answer key</h2></div>
-        <p>If the season ended at the selected cutoff, these are the answers the automatic grader would use.</p>
+        <p>Preview from completed games only. It updates live but is not stored as the final answer key or awarded as points.</p>
       </div>
       {!revealPredictions && <div className="card crystal-privacy-note"><b>Predictions are still private</b><span className="muted small">Participant choices will appear under every question after the commissioner locks Crystal Ball for the season.</span></div>}
       <div className="macro-record-grid leaderboard-answer-grid">

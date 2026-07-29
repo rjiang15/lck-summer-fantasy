@@ -35,6 +35,8 @@ export interface ViewState {
   isLive: boolean;
   /** Historical replay uses stored results but follows the same locked cursor. */
   isSimulation: boolean;
+  /** Current real-world leagues expose imported completed games before weekly publication. */
+  showsLiveProgress: boolean;
 }
 
 export async function getViewState(leagueId?: number): Promise<ViewState | null> {
@@ -66,8 +68,16 @@ export async function getViewState(leagueId?: number): Promise<ViewState | null>
     maxWeek,
   });
   const openWeek = completedWeek === null ? null : completedWeek + 1;
+  const showsLiveProgress =
+    !league.isSimulation &&
+    league.seasonStatus !== "FINAL" &&
+    tournament.catalogStatus === "CURRENT";
   const cutoff =
-    openWeek === null ? null : weeks.find((w) => w.number === openWeek)?.startsAt ?? null;
+    openWeek === null
+      ? null
+      : showsLiveProgress
+        ? new Date()
+        : weeks.find((w) => w.number === openWeek)?.startsAt ?? null;
 
   return {
     leagueId: league.id,
@@ -84,6 +94,7 @@ export async function getViewState(leagueId?: number): Promise<ViewState | null>
     cutoff,
     isLive,
     isSimulation: league.isSimulation,
+    showsLiveProgress,
   };
 }
 
@@ -145,6 +156,7 @@ export async function getDataViewState(leagueId?: number): Promise<ViewState | n
     isLive: false,
     isResearch: true,
     isCurrentSeason: false,
+    showsLiveProgress: false,
   };
 }
 
@@ -154,6 +166,16 @@ export function isFinished(
   cutoff: Date | null,
 ): boolean {
   return m.winner !== null && (cutoff === null || m.scheduledAt < cutoff);
+}
+
+/** A completed game can be public while its best-of series is still underway. */
+export function isGameFinished(
+  game: { winner: string | null; playedAt: Date | null },
+  match: { scheduledAt: Date },
+  cutoff: Date | null,
+) {
+  const playedAt = game.playedAt ?? match.scheduledAt;
+  return game.winner !== null && (cutoff === null || playedAt < cutoff);
 }
 
 export async function listTournaments() {
