@@ -8,6 +8,7 @@ import { validateWeekData } from "../lib/season";
 import { assertSequentialIngest } from "../lib/ingest-order";
 import { encodeIngestionProgress } from "../lib/ingestion-progress";
 import { setCurrentTournament } from "../lib/tournaments";
+import { createWriteCounts, writeIfChanged, type WriteCounts } from "../lib/change-aware-write";
 
 const int = (s: string | undefined) => {
   const n = parseInt(s ?? "", 10);
@@ -39,13 +40,14 @@ function normalizeRole(value: string | undefined) {
 }
 
 export interface LeaguepediaIngestCounts {
-  mode?: "SCHEDULE_ONLY";
+  mode?: "SCHEDULE_ONLY" | "LIVE";
   matches: number;
   games: number;
   players: number;
   rosterPlayers: number;
   playerStats: number;
   draftActions: number;
+  writes: WriteCounts;
 }
 
 class IngestionCancelledError extends Error {
@@ -99,8 +101,19 @@ async function ingestTournament(
   weekNumber: number | null,
   runId: number,
   scheduleOnly: boolean,
+  live: boolean,
 ): Promise<LeaguepediaIngestCounts> {
   const esc = overviewPage.replace(/"/g, '\\"');
+  const writes = createWriteCounts();
+  const knownTeams = new Set(
+    (await prisma.proTeam.findMany({ select: { id: true } })).map((team) => team.id),
+  );
+  const ensureTeam = async (teamId: string) => {
+    if (knownTeams.has(teamId)) return;
+    await prisma.proTeam.create({ data: { id: teamId } });
+    knownTeams.add(teamId);
+    writes.created++;
+  };
 
   console.log(`Ingesting: ${overviewPage}`);
   await reportIngestionProgress(runId, 3, "Connecting to Leaguepedia…");
@@ -114,19 +127,18 @@ async function ingestTournament(
     onProgress: cargoHeartbeat(runId, 5, "Fetching tournament metadata"),
   });
   if (!t) throw new Error(`Tournament not found: ${overviewPage}`);
-  await prisma.tournament.upsert({
-    where: { id: overviewPage },
-    create: {
-      id: overviewPage,
-      name: t.Name,
-      dateStart: parseUtc(t.DateStart ? `${t.DateStart} 00:00:00` : null),
-      dateEnd: parseUtc(t.Date ? `${t.Date} 23:59:59` : null),
-    },
-    update: {
-      name: t.Name,
-      dateStart: parseUtc(t.DateStart ? `${t.DateStart} 00:00:00` : null),
-      dateEnd: parseUtc(t.Date ? `${t.Date} 23:59:59` : null),
-    },
+  const tournamentData = {
+    name: t.Name,
+    dateStart: parseUtc(t.DateStart ? `${t.DateStart} 00:00:00` : null),
+    dateEnd: parseUtc(t.Date ? `${t.Date} 23:59:59` : null),
+  };
+  const existingTournament = await prisma.tournament.findUnique({ where: { id: overviewPage } });
+  await writeIfChanged({
+    existing: existingTournament,
+    incoming: tournamentData,
+    counts: writes,
+    create: () => prisma.tournament.create({ data: { id: overviewPage, ...tournamentData } }),
+    update: () => prisma.tournament.update({ where: { id: overviewPage }, data: tournamentData }),
   });
   await reportIngestionProgress(runId, 10, "Tournament metadata saved");
 
@@ -190,33 +202,37 @@ async function ingestTournament(
   for (const [index, player] of rosterPlayers.entries()) {
     await reportLoopProgress(runId, index, rosterPlayers.length, 15, 28, "Saving eligible players");
     if (!player.Player) continue;
-    if (player.Team) {
-      await prisma.proTeam.upsert({
-        where: { id: player.Team },
-        create: { id: player.Team },
-        update: {},
-      });
-    }
-    await prisma.proPlayer.upsert({
-      where: { id: player.Player },
-      create: {
-        id: player.Player,
-        name: player.Name || player.Player,
-        role: player.Role || null,
-        teamId: player.Team || null,
-        tournamentId: overviewPage,
-      },
-      update: {
-        name: player.Name || player.Player,
-        role: player.Role || null,
-        teamId: player.Team || null,
-        tournamentId: overviewPage,
-      },
+    if (player.Team) await ensureTeam(player.Team);
+    const proPlayerData = {
+      name: player.Name || player.Player,
+      role: player.Role || null,
+      teamId: player.Team || null,
+      tournamentId: overviewPage,
+    };
+    const existingPlayer = await prisma.proPlayer.findUnique({ where: { id: player.Player } });
+    await writeIfChanged({
+      existing: existingPlayer,
+      incoming: proPlayerData,
+      counts: writes,
+      create: () => prisma.proPlayer.create({ data: { id: player.Player, ...proPlayerData } }),
+      update: () => prisma.proPlayer.update({ where: { id: player.Player }, data: proPlayerData }),
     });
-    await prisma.tournamentPlayer.upsert({
-      where: { tournamentId_playerId: { tournamentId: overviewPage, playerId: player.Player } },
-      create: { tournamentId: overviewPage, playerId: player.Player, teamId: player.Team || null, role: player.Role || null },
-      update: { teamId: player.Team || null, role: player.Role || null, importedAt: new Date() },
+    const tournamentPlayerKey = {
+      tournamentId_playerId: { tournamentId: overviewPage, playerId: player.Player },
+    };
+    const tournamentPlayerData = { teamId: player.Team || null, role: player.Role || null };
+    const existingRosterPlayer = await prisma.tournamentPlayer.findUnique({ where: tournamentPlayerKey });
+    await writeIfChanged({
+      existing: existingRosterPlayer,
+      incoming: tournamentPlayerData,
+      counts: writes,
+      create: () => prisma.tournamentPlayer.create({
+        data: { tournamentId: overviewPage, playerId: player.Player, ...tournamentPlayerData },
+      }),
+      update: () => prisma.tournamentPlayer.update({
+        where: tournamentPlayerKey,
+        data: { ...tournamentPlayerData, importedAt: new Date() },
+      }),
     });
   }
 
@@ -240,13 +256,20 @@ async function ingestTournament(
     if (dates.length === 0) continue;
     const startsAt = new Date(Math.min(...dates.map((d) => d.getTime())));
     const endsAt = new Date(Math.max(...dates.map((d) => d.getTime())));
-    const week = await prisma.week.upsert({
-      where: {
-        tournamentId_number: { tournamentId: overviewPage, number: selectedTab ? weekNumber! : i + 1 },
-      },
-      create: { tournamentId: overviewPage, number: selectedTab ? weekNumber! : i + 1, sourceLabel: tab, startsAt, endsAt },
-      update: { sourceLabel: tab, startsAt, endsAt },
+    const number = selectedTab ? weekNumber! : i + 1;
+    const weekKey = { tournamentId_number: { tournamentId: overviewPage, number } };
+    const weekData = { sourceLabel: tab, startsAt, endsAt };
+    const existingWeek = await prisma.week.findUnique({ where: weekKey });
+    await writeIfChanged({
+      existing: existingWeek,
+      incoming: weekData,
+      counts: writes,
+      create: () => prisma.week.create({
+        data: { tournamentId: overviewPage, number, ...weekData },
+      }),
+      update: () => prisma.week.update({ where: weekKey, data: weekData }),
     });
+    const week = await prisma.week.findUniqueOrThrow({ where: weekKey });
     weekIdByTab.set(tab, week.id);
   }
 
@@ -256,21 +279,35 @@ async function ingestTournament(
     if (!m.MatchId || !scheduledAt) continue;
     const winner = scheduleOnly ? null :
       m.Winner === "1" ? m.Team1 : m.Winner === "2" ? m.Team2 : null;
-    const data = {
+    const baseData = {
       tournamentId: overviewPage,
       weekId: weekIdByTab.get(m.Tab) ?? null,
       team1: m.Team1,
       team2: m.Team2,
       bestOf: int(m.BestOf) ?? 3,
       scheduledAt,
-      winner,
-      team1Score: scheduleOnly ? null : int(m.Team1Score),
-      team2Score: scheduleOnly ? null : int(m.Team2Score),
     };
-    await prisma.match.upsert({
-      where: { id: m.MatchId },
-      create: { id: m.MatchId, ...data },
-      update: data,
+    const resultData = {
+      winner,
+      team1Score: int(m.Team1Score),
+      team2Score: int(m.Team2Score),
+    };
+    // A schedule refresh must never erase results already captured by a live
+    // refresh. Result fields are included only in full/live ingestion updates.
+    const createData = {
+      ...baseData,
+      winner: scheduleOnly ? null : resultData.winner,
+      team1Score: scheduleOnly ? null : resultData.team1Score,
+      team2Score: scheduleOnly ? null : resultData.team2Score,
+    };
+    const updateData = scheduleOnly ? baseData : { ...baseData, ...resultData };
+    const existingMatch = await prisma.match.findUnique({ where: { id: m.MatchId } });
+    await writeIfChanged({
+      existing: existingMatch,
+      incoming: updateData,
+      counts: writes,
+      create: () => prisma.match.create({ data: { id: m.MatchId, ...createData } }),
+      update: () => prisma.match.update({ where: { id: m.MatchId }, data: updateData }),
     });
   }
 
@@ -284,6 +321,7 @@ async function ingestTournament(
       rosterPlayers: new Set(rosterPlayers.map((row) => row.Player).filter(Boolean)).size,
       playerStats: 0,
       draftActions: 0,
+      writes,
     };
     console.log("Done:", counts);
     return counts;
@@ -333,25 +371,26 @@ async function ingestTournament(
       riotGameId: g.RiotGameId || null,
       sourceData: JSON.stringify(g),
     };
-    await prisma.game.upsert({
-      where: { id: g.GameId },
-      create: { id: g.GameId, ...gameData },
-      update: gameData,
+    const existingGame = await prisma.game.findUnique({ where: { id: g.GameId } });
+    const gameWrite = await writeIfChanged({
+      existing: existingGame,
+      incoming: gameData,
+      counts: writes,
+      create: () => prisma.game.create({ data: { id: g.GameId, ...gameData } }),
+      update: () => prisma.game.update({ where: { id: g.GameId }, data: gameData }),
     });
-    await prisma.statProvenance.upsert({
-      where: { gameId_entityType_entityKey_source: { gameId: g.GameId, entityType: "GAME", entityKey: g.GameId, source: "LEAGUEPEDIA" } },
-      create: { gameId: g.GameId, runId, entityType: "GAME", entityKey: g.GameId, source: "LEAGUEPEDIA", fields: JSON.stringify(Object.keys(gameData)) },
-      update: { runId, fields: JSON.stringify(Object.keys(gameData)), importedAt: new Date() },
-    });
+    if (gameWrite !== "unchanged") {
+      await prisma.statProvenance.upsert({
+        where: { gameId_entityType_entityKey_source: { gameId: g.GameId, entityType: "GAME", entityKey: g.GameId, source: "LEAGUEPEDIA" } },
+        create: { gameId: g.GameId, runId, entityType: "GAME", entityKey: g.GameId, source: "LEAGUEPEDIA", fields: JSON.stringify(Object.keys(gameData)) },
+        update: { runId, fields: JSON.stringify(Object.keys(gameData)), importedAt: new Date() },
+      });
+    }
 
     for (const side of [1, 2] as const) {
       const teamId = side === 1 ? g.Team1 : g.Team2;
       if (!teamId) continue;
-      await prisma.proTeam.upsert({
-        where: { id: teamId },
-        create: { id: teamId },
-        update: {},
-      });
+      await ensureTeam(teamId);
       const stat = {
         teamId,
         side: side === 1 ? "Blue" : "Red",
@@ -374,16 +413,22 @@ async function ingestTournament(
         sourceData: JSON.stringify(g),
         won: g.WinTeam === teamId,
       };
-      await prisma.teamGameStat.upsert({
-        where: { gameId_teamId: { gameId: g.GameId, teamId } },
-        create: { gameId: g.GameId, ...stat },
-        update: stat,
+      const teamStatKey = { gameId_teamId: { gameId: g.GameId, teamId } };
+      const existingTeamStat = await prisma.teamGameStat.findUnique({ where: teamStatKey });
+      const teamStatWrite = await writeIfChanged({
+        existing: existingTeamStat,
+        incoming: stat,
+        counts: writes,
+        create: () => prisma.teamGameStat.create({ data: { gameId: g.GameId, ...stat } }),
+        update: () => prisma.teamGameStat.update({ where: teamStatKey, data: stat }),
       });
-      await prisma.statProvenance.upsert({
-        where: { gameId_entityType_entityKey_source: { gameId: g.GameId, entityType: "TEAM_GAME", entityKey: teamId, source: "LEAGUEPEDIA" } },
-        create: { gameId: g.GameId, runId, entityType: "TEAM_GAME", entityKey: teamId, source: "LEAGUEPEDIA", fields: JSON.stringify(Object.keys(stat)) },
-        update: { runId, fields: JSON.stringify(Object.keys(stat)), importedAt: new Date() },
-      });
+      if (teamStatWrite !== "unchanged") {
+        await prisma.statProvenance.upsert({
+          where: { gameId_entityType_entityKey_source: { gameId: g.GameId, entityType: "TEAM_GAME", entityKey: teamId, source: "LEAGUEPEDIA" } },
+          create: { gameId: g.GameId, runId, entityType: "TEAM_GAME", entityKey: teamId, source: "LEAGUEPEDIA", fields: JSON.stringify(Object.keys(stat)) },
+          update: { runId, fields: JSON.stringify(Object.keys(stat)), importedAt: new Date() },
+        });
+      }
     }
   }
 
@@ -417,28 +462,42 @@ async function ingestTournament(
     if (!p.GameId || !p.Link) continue;
     const game = await prisma.game.findUnique({ where: { id: p.GameId } });
     if (!game) continue;
-    if (p.Team) {
-      await prisma.proTeam.upsert({
-        where: { id: p.Team },
-        create: { id: p.Team },
-        update: {},
-      });
-    }
-    await prisma.proPlayer.upsert({
-      where: { id: p.Link },
-      create: {
-        id: p.Link,
-        name: p.Name || p.Link,
-        role: p.IngameRole || null,
-        teamId: p.Team || null,
-        tournamentId: overviewPage,
-      },
-      update: {
-        name: p.Name || p.Link,
-        role: p.IngameRole || null,
-        teamId: p.Team || null,
-        tournamentId: overviewPage,
-      },
+    if (p.Team) await ensureTeam(p.Team);
+    const proPlayerData = {
+      name: p.Name || p.Link,
+      role: (normalizeRole(p.IngameRole) ?? p.IngameRole) || null,
+      teamId: p.Team || null,
+      tournamentId: overviewPage,
+    };
+    const existingPlayer = await prisma.proPlayer.findUnique({ where: { id: p.Link } });
+    await writeIfChanged({
+      existing: existingPlayer,
+      incoming: proPlayerData,
+      counts: writes,
+      create: () => prisma.proPlayer.create({ data: { id: p.Link, ...proPlayerData } }),
+      update: () => prisma.proPlayer.update({ where: { id: p.Link }, data: proPlayerData }),
+    });
+    // Scoreboard rows are authoritative evidence that a substitute belongs to
+    // this tournament, even when TournamentPlayers has not been updated yet.
+    const tournamentPlayerKey = {
+      tournamentId_playerId: { tournamentId: overviewPage, playerId: p.Link },
+    };
+    const tournamentPlayerData = {
+      teamId: p.Team || null,
+      role: (normalizeRole(p.IngameRole) ?? p.IngameRole) || null,
+    };
+    const existingRosterPlayer = await prisma.tournamentPlayer.findUnique({ where: tournamentPlayerKey });
+    await writeIfChanged({
+      existing: existingRosterPlayer,
+      incoming: tournamentPlayerData,
+      counts: writes,
+      create: () => prisma.tournamentPlayer.create({
+        data: { tournamentId: overviewPage, playerId: p.Link, ...tournamentPlayerData },
+      }),
+      update: () => prisma.tournamentPlayer.update({
+        where: tournamentPlayerKey,
+        data: { ...tournamentPlayerData, importedAt: new Date() },
+      }),
     });
     const stat = {
       teamId: p.Team ?? "",
@@ -476,16 +535,22 @@ async function ingestTournament(
       sourceData: JSON.stringify(p),
       won: p.PlayerWin === "Yes",
     };
-    await prisma.playerGameStat.upsert({
-      where: { gameId_playerId: { gameId: p.GameId, playerId: p.Link } },
-      create: { gameId: p.GameId, playerId: p.Link, ...stat },
-      update: stat,
+    const playerStatKey = { gameId_playerId: { gameId: p.GameId, playerId: p.Link } };
+    const existingPlayerStat = await prisma.playerGameStat.findUnique({ where: playerStatKey });
+    const playerStatWrite = await writeIfChanged({
+      existing: existingPlayerStat,
+      incoming: stat,
+      counts: writes,
+      create: () => prisma.playerGameStat.create({ data: { gameId: p.GameId, playerId: p.Link, ...stat } }),
+      update: () => prisma.playerGameStat.update({ where: playerStatKey, data: stat }),
     });
-    await prisma.statProvenance.upsert({
-      where: { gameId_entityType_entityKey_source: { gameId: p.GameId, entityType: "PLAYER_GAME", entityKey: p.Link, source: "LEAGUEPEDIA" } },
-      create: { gameId: p.GameId, runId, entityType: "PLAYER_GAME", entityKey: p.Link, source: "LEAGUEPEDIA", fields: JSON.stringify(Object.keys(stat)) },
-      update: { runId, fields: JSON.stringify(Object.keys(stat)), importedAt: new Date() },
-    });
+    if (playerStatWrite !== "unchanged") {
+      await prisma.statProvenance.upsert({
+        where: { gameId_entityType_entityKey_source: { gameId: p.GameId, entityType: "PLAYER_GAME", entityKey: p.Link, source: "LEAGUEPEDIA" } },
+        create: { gameId: p.GameId, runId, entityType: "PLAYER_GAME", entityKey: p.Link, source: "LEAGUEPEDIA", fields: JSON.stringify(Object.keys(stat)) },
+        update: { runId, fields: JSON.stringify(Object.keys(stat)), importedAt: new Date() },
+      });
+    }
   }
 
   // 5. Ordered champion draft. This table records each side's pick/ban order
@@ -529,12 +594,16 @@ async function ingestTournament(
                 ? playerByGameTeamChampion.get(`${d.GameId}\u0000${teamId}\u0000${champion}`) ?? null
                 : null,
           };
-          await prisma.draftAction.upsert({
-            where: {
-              gameId_teamId_action_sequence: { gameId: d.GameId, teamId, action, sequence },
-            },
-            create: { gameId: d.GameId, ...data },
-            update: data,
+          const draftKey = {
+            gameId_teamId_action_sequence: { gameId: d.GameId, teamId, action, sequence },
+          };
+          const existingDraft = await prisma.draftAction.findUnique({ where: draftKey });
+          await writeIfChanged({
+            existing: existingDraft,
+            incoming: data,
+            counts: writes,
+            create: () => prisma.draftAction.create({ data: { gameId: d.GameId, ...data } }),
+            update: () => prisma.draftAction.update({ where: draftKey, data }),
           });
         }
       }
@@ -547,7 +616,8 @@ async function ingestTournament(
     tournamentId: overviewPage,
     ...(weekNumber === null ? {} : { week: { number: weekNumber } }),
   };
-  const counts = {
+  const counts: LeaguepediaIngestCounts = {
+    ...(live ? { mode: "LIVE" as const } : {}),
     matches: await prisma.match.count({ where: matchScope }),
     games: await prisma.game.count({
       where: { match: matchScope },
@@ -560,6 +630,7 @@ async function ingestTournament(
     draftActions: await prisma.draftAction.count({
       where: { game: { match: matchScope } },
     }),
+    writes,
   };
 
   console.log(`Done:`, counts);
@@ -588,13 +659,17 @@ export async function runLeaguepediaIngest({
   overviewPage,
   weekNumber,
   scheduleOnly = false,
+  live = false,
   markCurrent = false,
 }: {
   overviewPage: string;
   weekNumber: number | null;
   scheduleOnly?: boolean;
+  live?: boolean;
   markCurrent?: boolean;
 }): Promise<LeaguepediaIngestCounts> {
+  if (live && scheduleOnly) throw new Error("A live refresh cannot be schedule-only");
+  if (live && weekNumber === null) throw new Error("A live refresh requires a week number");
   await validateIngestRequest(overviewPage, weekNumber, scheduleOnly);
 
   const active = await prisma.ingestionRun.findFirst({
@@ -609,7 +684,7 @@ export async function runLeaguepediaIngest({
 
   const run = await prisma.ingestionRun.create({
     data: {
-      source: scheduleOnly ? "LEAGUEPEDIA_SCHEDULE" : "LEAGUEPEDIA",
+      source: scheduleOnly ? "LEAGUEPEDIA_SCHEDULE" : live ? "LEAGUEPEDIA_LIVE" : "LEAGUEPEDIA",
       tournamentId: overviewPage,
       weekNumber,
       summary: encodeIngestionProgress(1, "Import queued…"),
@@ -617,14 +692,14 @@ export async function runLeaguepediaIngest({
   });
 
   try {
-    const counts = await ingestTournament(overviewPage, weekNumber, run.id, scheduleOnly);
+    const counts = await ingestTournament(overviewPage, weekNumber, run.id, scheduleOnly, live);
 
     if (markCurrent) {
       await reportIngestionProgress(run.id, 97, "Updating the current/past season catalog…");
       await setCurrentTournament(overviewPage);
     }
 
-    if (!scheduleOnly && weekNumber !== null) {
+    if (!scheduleOnly && !live && weekNumber !== null) {
       await reportIngestionProgress(run.id, 98, "Validating game, player, team, and draft data…");
       const target = await prisma.week.findUnique({ where: { tournamentId_number: { tournamentId: overviewPage, number: weekNumber } }, select: { id: true } });
       if (target) {
@@ -644,7 +719,7 @@ export async function runLeaguepediaIngest({
         data: { status: "SUCCEEDED", completedAt: new Date(), rowCount: counts.playerStats, summary: JSON.stringify(counts) },
       });
       if (completed.count !== 1) throw new IngestionCancelledError();
-      if (!scheduleOnly && weekNumber !== null) {
+      if (!scheduleOnly && !live && weekNumber !== null) {
         await tx.week.update({
           where: { tournamentId_number: { tournamentId: overviewPage, number: weekNumber } },
           data: { resultsImportedAt: new Date() },
@@ -654,7 +729,7 @@ export async function runLeaguepediaIngest({
           where: { tournamentId_number: { tournamentId: overviewPage, number: weekNumber } },
           data: { scheduleImportedAt: new Date() },
         });
-      } else if (weekNumber === null) {
+      } else if (!live && weekNumber === null) {
         await tx.week.updateMany({
           where: { tournamentId: overviewPage },
           data: {
@@ -680,11 +755,12 @@ async function runCli() {
   const weekArg = process.argv.find((arg) => arg.startsWith("--week="));
   const weekNumber = weekArg ? Number(weekArg.split("=")[1]) : null;
   const scheduleOnly = process.argv.includes("--schedule-only");
+  const live = process.argv.includes("--live");
   const markCurrent = process.argv.includes("--current-season");
   if (!overviewPage) {
-    throw new Error('Usage: npm run ingest -- "<Leaguepedia OverviewPage>" [--week=N] [--schedule-only] [--current-season]');
+    throw new Error('Usage: npm run ingest -- "<Leaguepedia OverviewPage>" [--week=N] [--schedule-only|--live] [--current-season]');
   }
-  await runLeaguepediaIngest({ overviewPage, weekNumber, scheduleOnly, markCurrent });
+  await runLeaguepediaIngest({ overviewPage, weekNumber, scheduleOnly, live, markCurrent });
 }
 
 const isCliEntry = /[/\\]src[/\\]scripts[/\\]ingest\.ts$/.test(process.argv[1] ?? "");

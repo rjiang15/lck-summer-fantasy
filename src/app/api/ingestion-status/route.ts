@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const weekNumber = Number(params.get("weekNumber"));
   const source = params.get("source");
   const since = Number(params.get("since"));
-  if (!Number.isInteger(leagueId) || !Number.isInteger(weekNumber) || !["LEAGUEPEDIA", "LEAGUEPEDIA_SCHEDULE"].includes(source ?? "")) {
+  if (!Number.isInteger(leagueId) || !Number.isInteger(weekNumber) || !["LEAGUEPEDIA", "LEAGUEPEDIA_LIVE", "LEAGUEPEDIA_SCHEDULE"].includes(source ?? "")) {
     return Response.json({ error: "Invalid ingestion status request" }, { status: 400 });
   }
 

@@ -32,6 +32,9 @@ npm run ingest -- "LCK/2026 Season/Rounds 1-2" --week=1 --schedule-only
 
 # After that week is played and picks are locked: complete results and stats
 npm run ingest -- "LCK/2026 Season/Rounds 1-2" --week=1
+
+# While a locked week is underway: import only newly completed/changed rows
+npm run ingest -- "LCK/2026 Season/Rounds 3-4" --week=1 --live
 ```
 
 The schedule-only pull imports tournament roster membership before any games
@@ -52,6 +55,13 @@ Both commands create an `IngestionRun` audit record. Per-game provenance records
 which fields came from Leaguepedia and which were enriched by Oracle's Elixir.
 Unmatched OE games are reported and never inserted as duplicate games.
 
+Live refreshes are change-aware: existing source rows are compared before an
+update is issued, unchanged rows and provenance timestamps are left alone, and
+the audit summary reports created, updated, and skipped counts. They expose
+completed games, locked pick&apos;ems, provisional roster/pick&apos;em totals, and the
+running Crystal Ball answer-key preview without advancing the week, persisting
+`WeeklyScore`, or settling Crystal Ball.
+
 ## Weekly season workflow
 
 `currentWeek` means the week completed through, not the prediction target.
@@ -62,14 +72,23 @@ Week 1 is published, the league advances to Week 1 and accepts Week 2 picks.
    create rosters, submit season-long Crystal Ball answers, and predict Week 1.
 2. Lock Week 1 before play. This locks picks, snapshots every roster, and locks
    Crystal Ball for the whole season.
-3. After Week 1, use **Get Week 1 results** and optionally run the matching
-   Oracle's Elixir enrichment.
-4. On `/commissioner`, run **Validate + score**, then publish. Public standings
+3. During Week 1, use **Refresh in-progress Week 1** after each series or day.
+   The button is safe to repeat because unchanged source rows are skipped.
+4. After Week 1 ends, use **Finalize complete Week 1 results** and optionally
+   run the matching Oracle's Elixir enrichment.
+5. On `/commissioner`, run **Validate + score**, then publish. Public standings
    read only this immutable published snapshot; the league is now at Week 1.
-5. Get the Week 2 schedule from the Commissioner UI. It opens automatically for roster changes
+6. Get the Week 2 schedule from the Commissioner UI. It opens automatically for roster changes
    and Week 2 pickems. Repeat the same cycle for every following week.
-6. After the last imported week is published, explicitly finish the season in
+7. After the last imported week is published, explicitly finish the season in
    the Commissioner UI to settle Crystal Ball points.
+
+If a frozen starter records zero games while a same-team, same-role substitute
+plays, the roster slot receives the lower of (a) that professional team&apos;s
+weekly player-line average and (b) the substitute&apos;s own PPG. The participant
+roster page shows the detected substitute, both inputs, and the awarded value.
+This applies automatically to cases such as Frog playing DRX Top or Fenir
+playing KT Bot; no player-specific exception is hard-coded.
 
 The pre-reset populated database is preserved under
 `archive/full-season-2026-07-17/dev.db`. `npm run season:reset` clears live LCK
