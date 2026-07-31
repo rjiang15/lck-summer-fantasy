@@ -1,5 +1,6 @@
 import { requireLeagueManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { effectiveFantasyRosterPlayerId } from "@/lib/roster-trade-exceptions";
 import { addRosterSlot, updateRosterSlot } from "../actions";
 import Link from "next/link";
 
@@ -48,10 +49,15 @@ export default async function RostersPage({ searchParams }: { searchParams: Prom
               }
               const role = slotRole[slot.slot];
               const eligible = players.filter((p) => !role || slot.slot === "BENCH" || p.role === role);
+              const effectivePlayerId = effectiveFantasyRosterPlayerId(
+                league.tournamentId,
+                team.user.username,
+                slot.playerId,
+              );
               return (
                 <form action={updateRosterSlot} className="roster-row" key={slot.id}>
                   <b>{slot.slot}</b><input type="hidden" name="rosterSlotId" value={slot.id} />
-                  <select name="playerId" defaultValue={slot.playerId} disabled={Boolean(league.rostersLockedAt)}>
+                  <select name="playerId" defaultValue={effectivePlayerId} disabled={Boolean(league.rostersLockedAt)}>
                     {eligible.map((player) => <option value={player.id} key={player.id}>{player.name} — {player.teamId}</option>)}
                   </select>
                   <button type="submit" disabled={Boolean(league.rostersLockedAt)}>Change</button>
