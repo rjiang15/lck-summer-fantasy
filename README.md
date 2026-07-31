@@ -131,10 +131,11 @@ snapshots preserve both the credit and its audit details.
 The July 30 Aiming/Jiwoo trade has one commissioner-approved exception, scoped
 to this R3-4 tournament and the exact fantasy owner/player pairs. PerpetualOwl
 (Howard) retains Aiming as his signed Legends ADC after Aiming moves to KRX,
-and Ryan retains Jiwoo as his signed Rise ADC after Jiwoo moves to KT. Starting
-July 30, a zero-game Aiming uses KRX's Bot substitute fallback and a zero-game
-Jiwoo uses KT's Bot substitute fallback. Earlier match lines retain the old team
-assignment, and existing published score snapshots are never rewritten.
+and Ryan's signed Rise ADC changes from LazyFeel to Jiwoo after Jiwoo moves to
+KT. Starting July 30, a zero-game Aiming uses KRX's Bot substitute fallback and
+a zero-game Jiwoo uses KT's Bot substitute fallback. Current and future roster
+views resolve Ryan's former LazyFeel slot to Jiwoo; earlier match lines retain
+the prior assignment, and existing published score snapshots are never rewritten.
 
 Leaguepedia roster omissions needed for drafting are kept in a small,
 idempotent tournament override list. `npm run roster:sync` applies those

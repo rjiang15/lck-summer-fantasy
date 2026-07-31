@@ -5,6 +5,8 @@ export type FantasyRosterTradeException = {
   ownerLabel: string;
   playerId: string;
   playerName: string;
+  replacesPlayerId?: string;
+  replacesPlayerName?: string;
   previousTeamId: string;
   currentTeamId: string;
   role: string;
@@ -44,6 +46,8 @@ export const FANTASY_ROSTER_TRADE_EXCEPTIONS: readonly FantasyRosterTradeExcepti
     ownerLabel: "Ryan",
     playerId: "Jiwoo",
     playerName: "Jiwoo",
+    replacesPlayerId: "LazyFeel",
+    replacesPlayerName: "LazyFeel",
     previousTeamId: "Kiwoom DRX",
     currentTeamId: "KT Rolster",
     role: "Bot",
@@ -67,6 +71,49 @@ export function fantasyRosterTradeException(
     && exception.playerId === playerId
     && exception.ownerAliases.some((alias) => normalizeOwner(alias) === owner),
   ) ?? null;
+}
+
+/**
+ * Finds an exception from either the retained player or the outgoing roster
+ * assignment. Ryan's database roster can still contain LazyFeel because
+ * historical weekly snapshots must not be rewritten, while his effective
+ * current/future assignment is Jiwoo.
+ */
+export function fantasyRosterTradeExceptionForRosterPlayer(
+  tournamentId: string,
+  ownerUsername: string,
+  rosterPlayerId: string,
+) {
+  const owner = normalizeOwner(ownerUsername);
+  return FANTASY_ROSTER_TRADE_EXCEPTIONS.find((exception) =>
+    exception.tournamentId === tournamentId
+    && (exception.playerId === rosterPlayerId || exception.replacesPlayerId === rosterPlayerId)
+    && exception.ownerAliases.some((alias) => normalizeOwner(alias) === owner),
+  ) ?? null;
+}
+
+export function effectiveFantasyRosterPlayerId(
+  tournamentId: string,
+  ownerUsername: string,
+  rosterPlayerId: string,
+) {
+  const exception = fantasyRosterTradeExceptionForRosterPlayer(
+    tournamentId,
+    ownerUsername,
+    rosterPlayerId,
+  );
+  return exception?.replacesPlayerId === rosterPlayerId
+    ? exception.playerId
+    : rosterPlayerId;
+}
+
+export function rosterPlayerMatchesTradeException(
+  exception: FantasyRosterTradeException,
+  rosterPlayerIds: readonly string[],
+) {
+  return rosterPlayerIds.some((playerId) =>
+    playerId === exception.playerId || playerId === exception.replacesPlayerId,
+  );
 }
 
 export function fantasyRosterTradeExceptionsForOwners(
