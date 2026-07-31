@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/fantasy";
 import { crystalBallPredictionsPublic, loadCrystalBallSnapshot, resolveCrystalBallMetric, type MetricResolution } from "@/lib/crystal-ball";
 import { getViewState } from "@/lib/view";
+import { fantasyRosterTradeExceptionsForOwners } from "@/lib/roster-trade-exceptions";
+import RosterTradeExceptionNotice from "@/components/RosterTradeExceptionNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +31,7 @@ export default async function LeaderboardPage() {
     prisma.league.findUnique({
       where: { id: view.leagueId },
       include: {
-        fantasyTeams: { include: { user: true }, orderBy: { id: "asc" } },
+        fantasyTeams: { include: { user: true, roster: { select: { playerId: true } } }, orderBy: { id: "asc" } },
         cbQuestions: { include: { answers: true }, orderBy: { id: "asc" } },
       },
     }),
@@ -53,6 +55,10 @@ export default async function LeaderboardPage() {
     team: row.teamId ?? row.player.teamId,
   }]));
   const revealPredictions = crystalBallPredictionsPublic(league);
+  const rosterTradeExceptions = league.fantasyTeams.flatMap((team) =>
+    fantasyRosterTradeExceptionsForOwners(view.tournamentId, [team.user.username])
+      .filter((exception) => team.roster.some((slot) => slot.playerId === exception.playerId)),
+  );
   const hasProvisional = result?.standings.some((standing) => standing.hasProvisional) ?? false;
   const substitutePlayerIds = [...new Set(
     result?.standings.flatMap((standing) =>
@@ -90,6 +96,8 @@ export default async function LeaderboardPage() {
       <b>Substitute scoring active · {substituteNames.join(", ")}</b>
       <span className="muted small">For each affected roster slot, the credited Pts/G is the lower of that professional team&apos;s weekly player average and the same-team, same-role substitute&apos;s performance. Open a participant roster for the exact calculation.</span>
     </div>}
+
+    <RosterTradeExceptionNotice exceptions={rosterTradeExceptions} />
 
     {result && <section>
       <h2>Fantasy standings {hasProvisional && <span className="badge win">live</span>}</h2>

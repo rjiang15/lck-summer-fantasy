@@ -17,6 +17,10 @@ import {
   type TournamentRosterIdentity,
   type WeeklyFantasyLine,
 } from "./roster-fallback";
+import {
+  fantasyRosterTradeException,
+  type FantasyRosterTradeException,
+} from "./roster-trade-exceptions";
 
 export const ROLE_ORDER = ["Top", "Jungle", "Mid", "Bot", "Support"];
 export const SLOT_ORDER = ["TOP", "JNG", "MID", "BOT", "SUP", "BENCH"];
@@ -137,6 +141,7 @@ export function weeklyFantasyLines(matches: WeekBundle["matches"], config: Scori
       teamObjectives: game.teamStats.find((row) => row.teamId === stat.teamId),
       laneAt15: game.playerTimeline.find((row) => row.playerId === stat.playerId),
     }),
+    playedAt: game.playedAt ?? match.scheduledAt,
   }))));
 }
 
@@ -149,6 +154,10 @@ export type PlayerWeekContribution = {
   pointsPerGame: number;
   creditedPoints: number;
   fallback: RosterWeekContribution["fallback"];
+  rosterException: Pick<
+    FantasyRosterTradeException,
+    "id" | "effectiveAt" | "previousTeamId" | "currentTeamId" | "retainedGroup" | "currentGroup"
+  > | null;
 };
 
 type ScoringRosterSlot = {
@@ -161,12 +170,29 @@ function scoreRosterSlots(
   roster: readonly ScoringRosterSlot[],
   rosterIdentities: readonly TournamentRosterIdentity[],
   lines: readonly WeeklyFantasyLine[],
+  context: { tournamentId: string; ownerUsername: string },
 ) {
   let rosterPts = 0;
   const contributions = roster
     .filter((slot) => slot.slot !== "BENCH")
     .map((slot): PlayerWeekContribution => {
-      const contribution = resolveRosterWeekContribution(slot.playerId, rosterIdentities, lines);
+      const exception = fantasyRosterTradeException(
+        context.tournamentId,
+        context.ownerUsername,
+        slot.playerId,
+      );
+      const contribution = resolveRosterWeekContribution(
+        slot.playerId,
+        rosterIdentities,
+        lines,
+        exception ? {
+          id: exception.id,
+          effectiveAt: new Date(exception.effectiveAt),
+          previousTeamId: exception.previousTeamId,
+          currentTeamId: exception.currentTeamId,
+          role: exception.role,
+        } : null,
+      );
       rosterPts += contribution.creditedPoints;
       return {
         playerId: slot.playerId,
@@ -181,6 +207,14 @@ function scoreRosterSlots(
           substitutePointsPerGame: round1(contribution.fallback.substitutePointsPerGame),
           teamAveragePointsPerGame: round1(contribution.fallback.teamAveragePointsPerGame),
           creditedPoints: round1(contribution.fallback.creditedPoints),
+        } : null,
+        rosterException: exception ? {
+          id: exception.id,
+          effectiveAt: exception.effectiveAt,
+          previousTeamId: exception.previousTeamId,
+          currentTeamId: exception.currentTeamId,
+          retainedGroup: exception.retainedGroup,
+          currentGroup: exception.currentGroup,
         } : null,
       };
     });
@@ -280,6 +314,7 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
           roster,
           rosterIdentities,
           weeklyFantasyLines(visibleLiveMatches, cfg),
+          { tournamentId: league.tournamentId, ownerUsername: ft.user.username },
         );
         let livePickemPts = 0;
         for (const match of visibleLiveMatches) {
@@ -343,7 +378,12 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
     const weekly: TeamWeekScore[] = [];
     for (const week of weeks) {
       const weeklyLines = weeklyFantasyLines(week.matches, cfg);
-      const scoredRoster = scoreRosterSlots(ft.roster, rosterIdentities, weeklyLines);
+      const scoredRoster = scoreRosterSlots(
+        ft.roster,
+        rosterIdentities,
+        weeklyLines,
+        { tournamentId: league.tournamentId, ownerUsername: ft.user.username },
+      );
       let pickemPts = 0;
       for (const match of week.matches) {
         if (!match.winner || match.team1Score === null || match.team2Score === null) continue;
@@ -418,6 +458,7 @@ function parseRosterBreakdown(value: string | undefined): PlayerWeekContribution
         pointsPerGame: row.pointsPerGame ?? 0,
         creditedPoints: row.creditedPoints ?? row.pointsPerGame ?? 0,
         fallback: row.fallback ?? null,
+        rosterException: row.rosterException ?? null,
       }];
     });
   } catch {

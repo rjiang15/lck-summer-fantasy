@@ -128,6 +128,14 @@ game and the professional team's player-line average for the week; if no
 same-role teammate plays, the credit remains zero. Published weekly score
 snapshots preserve both the credit and its audit details.
 
+The July 30 Aiming/Jiwoo trade has one commissioner-approved exception, scoped
+to this R3-4 tournament and the exact fantasy owner/player pairs. PerpetualOwl
+(Howard) retains Aiming as his signed Legends ADC after Aiming moves to KRX,
+and Ryan retains Jiwoo as his signed Rise ADC after Jiwoo moves to KT. Starting
+July 30, a zero-game Aiming uses KRX's Bot substitute fallback and a zero-game
+Jiwoo uses KT's Bot substitute fallback. Earlier match lines retain the old team
+assignment, and existing published score snapshots are never rewritten.
+
 Leaguepedia roster omissions needed for drafting are kept in a small,
 idempotent tournament override list. `npm run roster:sync` applies those
 overrides to local SQLite, while `npm run roster:sync:postgres` applies them to

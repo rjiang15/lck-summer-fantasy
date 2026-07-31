@@ -54,3 +54,52 @@ test("fallback is zero when no same-team same-role player took the slot", () => 
   assert.equal(result.creditedPoints, 0);
   assert.equal(result.fallback, null);
 });
+
+test("an effective-dated trade exception preserves old-team lines and switches future fallback lines", () => {
+  const effectiveAt = new Date("2026-07-30T00:00:00.000Z");
+  const timedRoster: TournamentRosterIdentity[] = [
+    { playerId: "Aiming", teamId: "Kiwoom DRX", role: "Bot" },
+    { playerId: "FenRir", teamId: "KT Rolster", role: "Bot" },
+    { playerId: "LazyFeel", teamId: "Kiwoom DRX", role: "Bot" },
+    { playerId: "kt-top", teamId: "KT Rolster", role: "Top" },
+    { playerId: "krx-top", teamId: "Kiwoom DRX", role: "Top" },
+  ];
+  const result = resolveRosterWeekContribution("Aiming", timedRoster, [
+    { playerId: "FenRir", teamId: "KT Rolster", points: 10, playedAt: new Date("2026-07-29T08:00:00.000Z") },
+    { playerId: "kt-top", teamId: "KT Rolster", points: 30, playedAt: new Date("2026-07-29T08:00:00.000Z") },
+    { playerId: "LazyFeel", teamId: "Kiwoom DRX", points: 50, playedAt: new Date("2026-07-30T08:00:00.000Z") },
+    { playerId: "krx-top", teamId: "Kiwoom DRX", points: 10, playedAt: new Date("2026-07-30T08:00:00.000Z") },
+    // These are on the wrong team for their side of the cutoff and must not count.
+    { playerId: "LazyFeel", teamId: "Kiwoom DRX", points: 500, playedAt: new Date("2026-07-29T08:00:00.000Z") },
+    { playerId: "FenRir", teamId: "KT Rolster", points: 500, playedAt: new Date("2026-07-30T08:00:00.000Z") },
+  ], {
+    id: "aiming-trade",
+    effectiveAt,
+    previousTeamId: "KT Rolster",
+    currentTeamId: "Kiwoom DRX",
+    role: "Bot",
+  });
+  assert.deepEqual(result.fallback?.substitutePlayerIds, ["FenRir", "LazyFeel"]);
+  assert.equal(result.fallback?.substitutePointsPerGame, 30);
+  assert.equal(result.fallback?.teamAveragePointsPerGame, 25);
+  assert.equal(result.creditedPoints, 25);
+  assert.equal(result.fallback?.teamId, "Kiwoom DRX");
+});
+
+test("a retained player who plays after the trade receives their own points without a penalty", () => {
+  const result = resolveRosterWeekContribution("Jiwoo", [
+    { playerId: "Jiwoo", teamId: "KT Rolster", role: "Bot" },
+    { playerId: "FenRir", teamId: "KT Rolster", role: "Bot" },
+  ], [
+    { playerId: "Jiwoo", teamId: "KT Rolster", points: 33, playedAt: new Date("2026-07-31T08:00:00.000Z") },
+    { playerId: "FenRir", teamId: "KT Rolster", points: 50, playedAt: new Date("2026-07-31T08:00:00.000Z") },
+  ], {
+    id: "jiwoo-trade",
+    effectiveAt: new Date("2026-07-30T00:00:00.000Z"),
+    previousTeamId: "Kiwoom DRX",
+    currentTeamId: "KT Rolster",
+    role: "Bot",
+  });
+  assert.equal(result.creditedPoints, 33);
+  assert.equal(result.fallback, null);
+});
