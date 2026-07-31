@@ -12,6 +12,7 @@ import {
   pickemPoints,
 } from "./scoring";
 import { resolveRosterWeekContribution, type WeeklyFantasyLine } from "./roster-fallback";
+import { fantasyRosterTradeException } from "./roster-trade-exceptions";
 
 export const ROLE_ORDER = ["Top", "Jungle", "Mid", "Bot", "Support"];
 export const SLOT_ORDER = ["TOP", "JNG", "MID", "BOT", "SUP", "BENCH"];
@@ -128,6 +129,7 @@ export function weeklyFantasyLines(matches: WeekBundle["matches"], config: Scori
       teamObjectives: game.teamStats.find((row) => row.teamId === stat.teamId),
       laneAt15: game.playerTimeline.find((row) => row.playerId === stat.playerId),
     }),
+    playedAt: match.scheduledAt,
   }))));
 }
 
@@ -217,7 +219,23 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
       const weeklyLines = weeklyFantasyLines(week.matches, cfg);
       for (const slot of ft.roster) {
         if (slot.slot === "BENCH") continue;
-        rosterPts += resolveRosterWeekContribution(slot.playerId, rosterIdentities, weeklyLines).creditedPoints;
+        const exception = fantasyRosterTradeException(
+          league.tournamentId,
+          ft.user.username,
+          slot.playerId,
+        );
+        rosterPts += resolveRosterWeekContribution(
+          slot.playerId,
+          rosterIdentities,
+          weeklyLines,
+          exception ? {
+            id: exception.id,
+            effectiveAt: new Date(exception.effectiveAt),
+            previousTeamId: exception.previousTeamId,
+            currentTeamId: exception.currentTeamId,
+            role: exception.role,
+          } : null,
+        ).creditedPoints;
       }
       let pickemPts = 0;
       for (const match of week.matches) {

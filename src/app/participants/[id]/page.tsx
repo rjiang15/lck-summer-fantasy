@@ -15,6 +15,8 @@ import { requireLeagueMember } from "@/lib/auth";
 import { areWeeklyPicksPublic } from "@/lib/pick-privacy";
 import { TeamLabel } from "@/components/GameIdentity";
 import { crystalBallPoints } from "@/lib/crystal-ball";
+import { fantasyRosterTradeExceptionsForOwners } from "@/lib/roster-trade-exceptions";
+import RosterTradeExceptionNotice from "@/components/RosterTradeExceptionNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +38,14 @@ type RosterContributionBreakdown = {
   pointsPerGame?: number;
   creditedPoints?: number;
   fallback?: RosterFallbackBreakdown | null;
+  rosterException?: {
+    id: string;
+    effectiveAt: string;
+    previousTeamId: string;
+    currentTeamId: string;
+    retainedGroup: "Legends" | "Rise";
+    currentGroup: "Legends" | "Rise";
+  } | null;
 };
 
 function parseRosterContributions(value: string | null | undefined): RosterContributionBreakdown[] {
@@ -119,6 +129,7 @@ export default async function ParticipantPage({
             pointsPerGame: contribution?.pointsPerGame ?? 0,
             creditedPoints: contribution?.creditedPoints ?? contribution?.pointsPerGame ?? 0,
             fallback: contribution?.fallback ?? null,
+            rosterException: contribution?.rosterException ?? null,
           };
         });
       return { leagueWeekId: leagueWeek.id, weekNumber: leagueWeek.week.number, rows };
@@ -147,6 +158,10 @@ export default async function ParticipantPage({
   const sortedPickems = [...visiblePickems].sort(
     (a, b) => a.match.scheduledAt.getTime() - b.match.scheduledAt.getTime(),
   );
+  const rosterTradeExceptions = fantasyRosterTradeExceptionsForOwners(
+    ft.league.tournamentId,
+    [ft.user.username],
+  ).filter((exception) => ft.roster.some((slot) => slot.playerId === exception.playerId));
 
   return (
     <>
@@ -162,6 +177,8 @@ export default async function ParticipantPage({
           {mine.pickemTotal} · crystal ball {mine.crystalBallTotal})
         </p>
       )}
+
+      <RosterTradeExceptionNotice exceptions={rosterTradeExceptions} />
 
       <div className="grid2">
         <div className="card">
@@ -256,7 +273,10 @@ export default async function ParticipantPage({
           </thead>
           <tbody>
             {weeklyRosterAudits.flatMap((weeklyRoster) => weeklyRoster.rows.map((row) => {
-              const teamId = row.fallback?.teamId ?? row.player.tournamentRosters[0]?.teamId ?? row.player.teamId;
+              const teamId = row.fallback?.teamId
+                ?? row.rosterException?.currentTeamId
+                ?? row.player.tournamentRosters[0]?.teamId
+                ?? row.player.teamId;
               return <tr className={row.fallback ? "roster-fallback-row" : ""} key={`${weeklyRoster.leagueWeekId}-${row.id}`}>
                 <td><b>Week {weeklyRoster.weekNumber}</b></td>
                 <td className="muted">{row.slot}</td>
@@ -267,13 +287,13 @@ export default async function ParticipantPage({
                 <td className="num"><b>{round1(row.creditedPoints)}</b></td>
                 <td className="weekly-roster-status">
                   {row.fallback ? <>
-                    <span className="fallback-credit-badge">Substitute credit applied</span>
+                    <span className="fallback-credit-badge">{row.rosterException ? "Trade-exception substitute credit" : "Substitute credit applied"}</span>
                     <small>
                       {row.fallback.substitutePlayerIds.join(", ")}: {round1(row.fallback.substitutePointsPerGame)} Pts/G · team average: {round1(row.fallback.teamAveragePointsPerGame)} · lower value credited
                     </small>
-                  </> : row.gamesPlayed > 0 ? <span className="muted small">Played normally</span> : <>
+                  </> : row.gamesPlayed > 0 ? <span className="muted small">{row.rosterException ? "Trade exception · played normally · no penalty" : "Played normally"}</span> : <>
                     <span className="badge loss">No games · 0 points</span>
-                    <small>No same-team, same-role substitute recorded a game.</small>
+                    <small>{row.rosterException ? "No eligible ADC substitute recorded a game under the trade exception." : "No same-team, same-role substitute recorded a game."}</small>
                   </>}
                 </td>
               </tr>;

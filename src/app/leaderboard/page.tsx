@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/fantasy";
 import { crystalBallPredictionsPublic, loadCrystalBallSnapshot, resolveCrystalBallMetric, type MetricResolution } from "@/lib/crystal-ball";
 import { getViewState } from "@/lib/view";
+import { fantasyRosterTradeExceptionsForOwners } from "@/lib/roster-trade-exceptions";
+import RosterTradeExceptionNotice from "@/components/RosterTradeExceptionNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +31,7 @@ export default async function LeaderboardPage() {
     prisma.league.findUnique({
       where: { id: view.leagueId },
       include: {
-        fantasyTeams: { include: { user: true }, orderBy: { id: "asc" } },
+        fantasyTeams: { include: { user: true, roster: { select: { playerId: true } } }, orderBy: { id: "asc" } },
         cbQuestions: { include: { answers: true }, orderBy: { id: "asc" } },
       },
     }),
@@ -53,6 +55,10 @@ export default async function LeaderboardPage() {
     team: row.teamId ?? row.player.teamId,
   }]));
   const revealPredictions = crystalBallPredictionsPublic(league);
+  const rosterTradeExceptions = league.fantasyTeams.flatMap((team) =>
+    fantasyRosterTradeExceptionsForOwners(view.tournamentId, [team.user.username])
+      .filter((exception) => team.roster.some((slot) => slot.playerId === exception.playerId)),
+  );
   const answerKey = league.cbQuestions.filter((question) => question.metricKey).map((question, index) => {
     let resolution: MetricResolution | null = null;
     try {
@@ -72,6 +78,8 @@ export default async function LeaderboardPage() {
     {view.completedWeek !== null && <p className="muted small">
       Fantasy totals include commissioner-published weeks only. Detailed pro-player scoring and performance metrics are available under Deep Stats.
     </p>}
+
+    <RosterTradeExceptionNotice exceptions={rosterTradeExceptions} />
 
     {result && <section>
       <h2>Fantasy standings</h2>

@@ -2,6 +2,7 @@ import { prisma } from "./db";
 import { parseScoring, round1, weeklyFantasyLines } from "./fantasy";
 import { pickemPoints } from "./scoring";
 import { resolveRosterWeekContribution } from "./roster-fallback";
+import { fantasyRosterTradeException } from "./roster-trade-exceptions";
 
 export const WEEK_STATUSES = [
   "UPCOMING",
@@ -139,7 +140,7 @@ export async function calculateWeeklyScores(
   const lw = await prisma.leagueWeek.findUniqueOrThrow({
     where: { id: leagueWeekId },
     include: {
-      league: { include: { fantasyTeams: true } },
+      league: { include: { fantasyTeams: { include: { user: true } } } },
       week: {
         include: {
           matches: {
@@ -181,7 +182,23 @@ export async function calculateWeeklyScores(
       );
       let rosterPts = 0;
       const playerContributions = roster.map((slot) => {
-        const contribution = resolveRosterWeekContribution(slot.playerId, rosterIdentities, weeklyLines);
+        const exception = fantasyRosterTradeException(
+          lw.league.tournamentId,
+          team.user.username,
+          slot.playerId,
+        );
+        const contribution = resolveRosterWeekContribution(
+          slot.playerId,
+          rosterIdentities,
+          weeklyLines,
+          exception ? {
+            id: exception.id,
+            effectiveAt: new Date(exception.effectiveAt),
+            previousTeamId: exception.previousTeamId,
+            currentTeamId: exception.currentTeamId,
+            role: exception.role,
+          } : null,
+        );
         rosterPts += contribution.creditedPoints;
         return {
           playerId: slot.playerId,
@@ -195,6 +212,14 @@ export async function calculateWeeklyScores(
             substitutePointsPerGame: round1(contribution.fallback.substitutePointsPerGame),
             teamAveragePointsPerGame: round1(contribution.fallback.teamAveragePointsPerGame),
             creditedPoints: round1(contribution.fallback.creditedPoints),
+          } : null,
+          rosterException: exception ? {
+            id: exception.id,
+            effectiveAt: exception.effectiveAt,
+            previousTeamId: exception.previousTeamId,
+            currentTeamId: exception.currentTeamId,
+            retainedGroup: exception.retainedGroup,
+            currentGroup: exception.currentGroup,
           } : null,
         };
       });
@@ -241,7 +266,7 @@ export async function calculateWeeklyScores(
       }
       const breakdown = {
         scoringVersion: config.version,
-        rosterScoringVersion: 2,
+        rosterScoringVersion: 3,
         roster: playerContributions,
         ...(recalculationHistory.length > 0 ? { recalculationHistory } : {}),
       };
