@@ -30,6 +30,7 @@ export type RosterWeekContribution = {
 export type RosterAssignmentException = {
   id: string;
   effectiveAt: Date;
+  previousPlayerId?: string;
   previousTeamId: string;
   currentTeamId: string;
   role: string;
@@ -45,7 +46,16 @@ export function resolveRosterWeekContribution(
   lines: readonly WeeklyFantasyLine[],
   assignmentException: RosterAssignmentException | null = null,
 ): RosterWeekContribution {
-  const ownLines = lines.filter((line) => line.playerId === playerId);
+  const ownLines = lines.filter((line) => {
+    if (!assignmentException?.previousPlayerId) return line.playerId === playerId;
+    const playedAt = line.playedAt?.getTime();
+    const effectivePlayerId = playedAt !== undefined
+      && playedAt !== null
+      && playedAt < assignmentException.effectiveAt.getTime()
+      ? assignmentException.previousPlayerId
+      : playerId;
+    return line.playerId === effectivePlayerId;
+  });
   const rawPoints = ownLines.reduce((sum, line) => sum + line.points, 0);
   const pointsPerGame = average(ownLines.map((line) => line.points));
   if (ownLines.length > 0) {
@@ -73,7 +83,15 @@ export function resolveRosterWeekContribution(
   const substituteIdsByTeam = new Map(eligibleTeams.map((teamId) => [
     teamId,
     new Set(roster
-      .filter((player) => player.playerId !== playerId && player.teamId === teamId && player.role === role)
+      .filter((player) => {
+        const assignedPlayerId = assignmentException?.previousPlayerId
+          && teamId === assignmentException.previousTeamId
+          ? assignmentException.previousPlayerId
+          : playerId;
+        return player.playerId !== assignedPlayerId
+          && player.teamId === teamId
+          && player.role === role;
+      })
       .map((player) => player.playerId)),
   ]));
   const substituteLines = lines.filter((line) => {

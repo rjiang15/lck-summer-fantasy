@@ -20,10 +20,17 @@ export default function RosterTradeExceptionNotice({
     </p>
     <ul>
       {exceptions.map((exception) => <li key={exception.id}>
-        <b>{exception.ownerLabel}</b> keeps <b>{exception.playerName}</b> as the
-        {" "}{exception.retainedGroup} ADC after the move to <TeamLabel name={exception.currentTeamId} size="xs" />{" "}
-        ({exception.currentGroup}). If {exception.playerName} logs no games, the
-        normal capped substitute credit uses the ADC fielded by {exception.currentTeamId}.
+        {exception.replacesPlayerName ? <>
+          <b>{exception.ownerLabel}</b> replaces <b>{exception.replacesPlayerName}</b> with{" "}
+          <b>{exception.playerName}</b> as the signed {exception.retainedGroup} ADC after{" "}
+          {exception.playerName}&apos;s move to <TeamLabel name={exception.currentTeamId} size="xs" />{" "}
+          ({exception.currentGroup}).
+        </> : <>
+          <b>{exception.ownerLabel}</b> keeps <b>{exception.playerName}</b> as the{" "}
+          {exception.retainedGroup} ADC after the move to <TeamLabel name={exception.currentTeamId} size="xs" />{" "}
+          ({exception.currentGroup}).
+        </>} If {exception.playerName} logs no games, the normal capped substitute credit
+        uses the ADC fielded by {exception.currentTeamId}.
       </li>)}
     </ul>
   </aside>;

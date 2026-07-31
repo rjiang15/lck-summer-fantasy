@@ -103,3 +103,27 @@ test("a retained player who plays after the trade receives their own points with
   assert.equal(result.creditedPoints, 33);
   assert.equal(result.fallback, null);
 });
+
+test("a replacement ownership slot keeps outgoing results before the effective date", () => {
+  const result = resolveRosterWeekContribution("Jiwoo", [
+    { playerId: "LazyFeel", teamId: "Kiwoom DRX", role: "Bot" },
+    { playerId: "Jiwoo", teamId: "KT Rolster", role: "Bot" },
+  ], [
+    { playerId: "LazyFeel", teamId: "Kiwoom DRX", points: 21, playedAt: new Date("2026-07-29T08:00:00.000Z") },
+    { playerId: "Jiwoo", teamId: "KT Rolster", points: 33, playedAt: new Date("2026-07-31T08:00:00.000Z") },
+    // Neither player counts on the other side of the ownership cutoff.
+    { playerId: "Jiwoo", teamId: "Kiwoom DRX", points: 300, playedAt: new Date("2026-07-29T08:00:00.000Z") },
+    { playerId: "LazyFeel", teamId: "Kiwoom DRX", points: 400, playedAt: new Date("2026-07-31T08:00:00.000Z") },
+  ], {
+    id: "jiwoo-replaces-lazyfeel",
+    effectiveAt: new Date("2026-07-30T00:00:00.000Z"),
+    previousPlayerId: "LazyFeel",
+    previousTeamId: "Kiwoom DRX",
+    currentTeamId: "KT Rolster",
+    role: "Bot",
+  });
+  assert.equal(result.gamesPlayed, 2);
+  assert.equal(result.rawPoints, 54);
+  assert.equal(result.creditedPoints, 27);
+  assert.equal(result.fallback, null);
+});

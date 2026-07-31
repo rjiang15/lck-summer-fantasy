@@ -5,7 +5,10 @@ import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/fantasy";
 import { crystalBallPredictionsPublic, loadCrystalBallSnapshot, resolveCrystalBallMetric, type MetricResolution } from "@/lib/crystal-ball";
 import { getViewState } from "@/lib/view";
-import { fantasyRosterTradeExceptionsForOwners } from "@/lib/roster-trade-exceptions";
+import {
+  fantasyRosterTradeExceptionsForOwners,
+  rosterPlayerMatchesTradeException,
+} from "@/lib/roster-trade-exceptions";
 import RosterTradeExceptionNotice from "@/components/RosterTradeExceptionNotice";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +60,12 @@ export default async function LeaderboardPage() {
   const revealPredictions = crystalBallPredictionsPublic(league);
   const rosterTradeExceptions = league.fantasyTeams.flatMap((team) =>
     fantasyRosterTradeExceptionsForOwners(view.tournamentId, [team.user.username])
-      .filter((exception) => team.roster.some((slot) => slot.playerId === exception.playerId)),
+      .filter((exception) =>
+        rosterPlayerMatchesTradeException(
+          exception,
+          team.roster.map((slot) => slot.playerId),
+        ),
+      ),
   );
   const hasProvisional = result?.standings.some((standing) => standing.hasProvisional) ?? false;
   const substitutePlayerIds = [...new Set(

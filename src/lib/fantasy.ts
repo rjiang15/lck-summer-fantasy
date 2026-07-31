@@ -18,7 +18,7 @@ import {
   type WeeklyFantasyLine,
 } from "./roster-fallback";
 import {
-  fantasyRosterTradeException,
+  fantasyRosterTradeExceptionForRosterPlayer,
   type FantasyRosterTradeException,
 } from "./roster-trade-exceptions";
 
@@ -156,7 +156,7 @@ export type PlayerWeekContribution = {
   fallback: RosterWeekContribution["fallback"];
   rosterException: Pick<
     FantasyRosterTradeException,
-    "id" | "effectiveAt" | "previousTeamId" | "currentTeamId" | "retainedGroup" | "currentGroup"
+    "id" | "effectiveAt" | "replacesPlayerId" | "previousTeamId" | "currentTeamId" | "retainedGroup" | "currentGroup"
   > | null;
 };
 
@@ -176,18 +176,22 @@ function scoreRosterSlots(
   const contributions = roster
     .filter((slot) => slot.slot !== "BENCH")
     .map((slot): PlayerWeekContribution => {
-      const exception = fantasyRosterTradeException(
+      const exception = fantasyRosterTradeExceptionForRosterPlayer(
         context.tournamentId,
         context.ownerUsername,
         slot.playerId,
       );
+      const effectivePlayerId = exception?.replacesPlayerId === slot.playerId
+        ? exception.playerId
+        : slot.playerId;
       const contribution = resolveRosterWeekContribution(
-        slot.playerId,
+        effectivePlayerId,
         rosterIdentities,
         lines,
         exception ? {
           id: exception.id,
           effectiveAt: new Date(exception.effectiveAt),
+          previousPlayerId: exception.replacesPlayerId,
           previousTeamId: exception.previousTeamId,
           currentTeamId: exception.currentTeamId,
           role: exception.role,
@@ -195,8 +199,10 @@ function scoreRosterSlots(
       );
       rosterPts += contribution.creditedPoints;
       return {
-        playerId: slot.playerId,
-        playerName: slot.player.name,
+        playerId: effectivePlayerId,
+        playerName: effectivePlayerId === exception?.playerId
+          ? exception.playerName
+          : slot.player.name,
         slot: slot.slot,
         gamesPlayed: contribution.gamesPlayed,
         rawPoints: round1(contribution.rawPoints),
@@ -211,6 +217,7 @@ function scoreRosterSlots(
         rosterException: exception ? {
           id: exception.id,
           effectiveAt: exception.effectiveAt,
+          replacesPlayerId: exception.replacesPlayerId,
           previousTeamId: exception.previousTeamId,
           currentTeamId: exception.currentTeamId,
           retainedGroup: exception.retainedGroup,

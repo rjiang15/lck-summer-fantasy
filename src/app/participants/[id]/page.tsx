@@ -15,7 +15,11 @@ import { requireLeagueMember } from "@/lib/auth";
 import { areWeeklyPicksPublic } from "@/lib/pick-privacy";
 import { TeamLabel } from "@/components/GameIdentity";
 import { crystalBallPoints } from "@/lib/crystal-ball";
-import { fantasyRosterTradeExceptionsForOwners } from "@/lib/roster-trade-exceptions";
+import {
+  fantasyRosterTradeExceptionForRosterPlayer,
+  fantasyRosterTradeExceptionsForOwners,
+  rosterPlayerMatchesTradeException,
+} from "@/lib/roster-trade-exceptions";
 import RosterTradeExceptionNotice from "@/components/RosterTradeExceptionNotice";
 
 export const dynamic = "force-dynamic";
@@ -80,9 +84,22 @@ export default async function ParticipantPage({
       .filter((row) => row.fantasyTeamId === ft.id && row.slot !== "BENCH")
       .sort((left, right) => SLOT_ORDER.indexOf(left.slot) - SLOT_ORDER.indexOf(right.slot))
       .map((row) => {
-        const contribution = weekScore.roster.find((item) => item.playerId === row.playerId);
+        const exception = fantasyRosterTradeExceptionForRosterPlayer(
+          ft.league.tournamentId,
+          ft.user.username,
+          row.playerId,
+        );
+        const effectivePlayerId = exception?.replacesPlayerId === row.playerId
+          ? exception.playerId
+          : row.playerId;
+        const contribution = weekScore.roster.find((item) =>
+          item.playerId === row.playerId || item.playerId === effectivePlayerId,
+        );
         return {
           ...row,
+          effectivePlayerId,
+          effectivePlayerName: contribution?.playerName
+            ?? (effectivePlayerId === exception?.playerId ? exception.playerName : row.player.name),
           gamesPlayed: contribution?.gamesPlayed ?? 0,
           pointsPerGame: contribution?.pointsPerGame ?? 0,
           creditedPoints: contribution?.creditedPoints ?? contribution?.pointsPerGame ?? 0,
@@ -105,7 +122,17 @@ export default async function ParticipantPage({
   const slotFallbackWeeks = new Map<number, number>();
   for (const weeklyRoster of weeklyRosterAudits) {
     for (const row of weeklyRoster.rows) {
-      const currentSlot = ft.roster.find((slot) => slot.slot !== "BENCH" && slot.playerId === row.playerId);
+      const currentSlot = ft.roster.find((slot) => {
+        if (slot.slot === "BENCH") return false;
+        const exception = fantasyRosterTradeExceptionForRosterPlayer(
+          ft.league.tournamentId,
+          ft.user.username,
+          slot.playerId,
+        );
+        return row.playerId === slot.playerId
+          || row.playerId === exception?.playerId
+          || row.playerId === exception?.replacesPlayerId;
+      });
       if (!currentSlot) continue;
       slotTotals.set(currentSlot.id, (slotTotals.get(currentSlot.id) ?? 0) + row.creditedPoints);
       if (row.fallback) slotFallbackWeeks.set(currentSlot.id, (slotFallbackWeeks.get(currentSlot.id) ?? 0) + 1);
@@ -127,7 +154,43 @@ export default async function ParticipantPage({
     : [];
   const substituteNames = new Map(substitutePlayers.map((player) => [player.id, player.name]));
 
-  const sortedRoster = [...ft.roster].sort(
+  const rosterTradeExceptions = fantasyRosterTradeExceptionsForOwners(
+    ft.league.tournamentId,
+    [ft.user.username],
+  ).filter((exception) =>
+    rosterPlayerMatchesTradeException(
+      exception,
+      ft.roster.map((slot) => slot.playerId),
+    ),
+  );
+  const replacementPlayerIds = rosterTradeExceptions.flatMap((exception) =>
+    exception.replacesPlayerId
+      && ft.roster.some((slot) => slot.playerId === exception.replacesPlayerId)
+      ? [exception.playerId]
+      : [],
+  );
+  const replacementPlayers = replacementPlayerIds.length > 0
+    ? await prisma.proPlayer.findMany({
+        where: { id: { in: replacementPlayerIds } },
+        include: {
+          tournamentRosters: { where: { tournamentId: access.league.tournamentId } },
+        },
+      })
+    : [];
+  const replacementPlayerById = new Map(replacementPlayers.map((player) => [player.id, player]));
+  const sortedRoster = ft.roster.map((slot) => {
+    const exception = fantasyRosterTradeExceptionForRosterPlayer(
+      ft.league.tournamentId,
+      ft.user.username,
+      slot.playerId,
+    );
+    const replacement = exception?.replacesPlayerId === slot.playerId
+      ? replacementPlayerById.get(exception.playerId)
+      : null;
+    return replacement
+      ? { ...slot, playerId: replacement.id, player: replacement }
+      : slot;
+  }).sort(
     (a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot),
   );
   const visiblePickems = pickems.filter((pick) =>
@@ -136,11 +199,6 @@ export default async function ParticipantPage({
   const sortedPickems = [...visiblePickems].sort(
     (a, b) => a.match.scheduledAt.getTime() - b.match.scheduledAt.getTime(),
   );
-  const rosterTradeExceptions = fantasyRosterTradeExceptionsForOwners(
-    ft.league.tournamentId,
-    [ft.user.username],
-  ).filter((exception) => ft.roster.some((slot) => slot.playerId === exception.playerId));
-
   return (
     <>
       <p className="small">
@@ -163,8 +221,8 @@ export default async function ParticipantPage({
         <span className="muted small">When a rostered player logs zero games and a same-team, same-role substitute plays, the credited Pts/G is the lower of that professional team&apos;s weekly player average and the substitute&apos;s individual performance.</span>
         <div className="substitute-calculations">
           {substituteAdjustments.map(({ weekNumber, provisional, row, fallback }) => (
-            <div key={`${weekNumber}:${row.playerId}:${fallback.substitutePlayerIds.join(":")}`}>
-              <span><b>{row.player.name}</b> · Week {weekNumber}{provisional ? " live provisional" : ""} · {fallback.teamId} {fallback.role}</span>
+            <div key={`${weekNumber}:${row.effectivePlayerId}:${fallback.substitutePlayerIds.join(":")}`}>
+              <span><b>{row.effectivePlayerName}</b> · Week {weekNumber}{provisional ? " live provisional" : ""} · {fallback.teamId} {fallback.role}</span>
               <span>
                 {(fallback.substitutePlayerIds.map((playerId) => substituteNames.get(playerId) ?? playerId)).join(" / ")}:
                 {" "}min(team avg {round1(fallback.teamAveragePointsPerGame)}, substitute {round1(fallback.substitutePointsPerGame)}) = <b>{round1(fallback.creditedPoints)} Pts/G</b>
@@ -274,7 +332,7 @@ export default async function ParticipantPage({
               return <tr className={row.fallback ? "roster-fallback-row" : ""} key={`${weeklyRoster.leagueWeekId}-${row.id}`}>
                 <td><b>Week {weeklyRoster.weekNumber}</b>{weeklyRoster.provisional && <span className="badge win">live</span>}</td>
                 <td className="muted">{row.slot}</td>
-                <td><b>{row.player.name}</b></td>
+                <td><b>{row.effectivePlayerName}</b></td>
                 <td>{teamId ? <TeamLabel name={teamId} size="xs" /> : "?"}</td>
                 <td className="num">{row.gamesPlayed}</td>
                 <td className="num">{round1(row.pointsPerGame)}</td>
