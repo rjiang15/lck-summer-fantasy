@@ -11,6 +11,7 @@ import {
   openWeek,
   publishWeek,
   recoverStaleIngestion,
+  refreshLiveWeek,
   unlockPicks,
   unlockRosters,
   updateScoringConfig,
@@ -89,11 +90,18 @@ export default async function CommissionerPage({
   const resultsRunning = runs.some(
     (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.source === "LEAGUEPEDIA" && run.status === "RUNNING",
   );
+  const liveRefreshRunning = runs.some(
+    (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.source === "LEAGUEPEDIA_LIVE" && run.status === "RUNNING",
+  );
   const scheduleAllowed = !league.isSimulation && league.seasonStatus !== "FINAL" && (
     !target || target.status === "UPCOMING" || (target.status === "OPEN" && !target.picksLockedAt)
   );
   const resultsAllowed =
     league.seasonStatus !== "FINAL" && !!target && ["LOCKED", "RESULTS_IMPORTED"].includes(target.status);
+  const liveRefreshAllowed =
+    !league.isSimulation &&
+    league.seasonStatus !== "FINAL" &&
+    target?.status === "LOCKED";
   return (
     <>
       <h1>Commissioner — {league.name}</h1>
@@ -130,7 +138,7 @@ export default async function CommissionerPage({
           <p className="muted small" style={{ marginBottom: 0 }}>
             {league.isSimulation
               ? "The full historical schedule and player pool are already loaded. Lock the next week's picks and roster snapshot, then reveal only that week's stored results. No API request is made."
-              : "Imports are restricted to the next unpublished week. Fetch the slate first; locking picks also freezes that week's roster snapshot, then completed results can be fetched."}
+              : "Imports are restricted to the next unpublished week. After picks and the scoring roster are frozen, live refreshes add completed games without advancing the week; finalization validates the complete slate."}
           </p>
         </div>
         <div className="inline-form">
@@ -151,6 +159,19 @@ export default async function CommissionerPage({
           ) : (
             <span className="muted small">Week {targetWeek} schedule is locked.</span>
           )}
+          {liveRefreshAllowed && (
+            <form action={refreshLiveWeek}>
+              <input type="hidden" name="leagueId" value={league.id} />
+              <IngestButton
+                disabled={importRunning}
+                running={liveRefreshRunning}
+                leagueId={league.id}
+                weekNumber={targetWeek}
+                source="LEAGUEPEDIA_LIVE"
+                label={`Refresh in-progress Week ${targetWeek}`}
+              />
+            </form>
+          )}
           {resultsAllowed && (
             <form action={fetchNextWeekResults}>
               <input type="hidden" name="leagueId" value={league.id} />
@@ -163,10 +184,13 @@ export default async function CommissionerPage({
                   leagueId={league.id}
                   weekNumber={targetWeek}
                   source="LEAGUEPEDIA"
-                  label={target?.status === "RESULTS_IMPORTED" ? `Refresh Week ${targetWeek} results` : `Get Week ${targetWeek} results`}
+                  label={target?.status === "RESULTS_IMPORTED" ? `Recheck final Week ${targetWeek} results` : `Finalize complete Week ${targetWeek} results`}
                 />
               )}
             </form>
+          )}
+          {liveRefreshAllowed && !importRunning && (
+            <span className="muted small">Safe to repeat after each series: unchanged rows are skipped, live points are provisional, and Crystal Ball is not settled.</span>
           )}
           {staleTargetRun ? (
             <form action={recoverStaleIngestion} className="stack">
@@ -248,7 +272,7 @@ export default async function CommissionerPage({
                     ? <Action action={openWeek} id={lw.id} label="Open week" />
                     : <span className="muted small">opens after Week {lw.week.number - 1}</span>)}
                   {lw.status === "OPEN" && <span className="muted small">Lock picks when the deadline arrives.</span>}
-                  {lw.status === "LOCKED" && <span className="muted small">fetch results above</span>}
+                  {lw.status === "LOCKED" && <span className="muted small">refresh live above; finalize after the week</span>}
                   {lw.status === "RESULTS_IMPORTED" && <Action action={validateAndScoreWeek} id={lw.id} label="Validate + score" />}
                   {lw.status === "SCORED" && <Action action={publishWeek} id={lw.id} label="Publish + open next" />}
                   {lw.status === "PUBLISHED" && <span className="muted small">published</span>}

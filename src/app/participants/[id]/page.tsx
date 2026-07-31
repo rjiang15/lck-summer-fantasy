@@ -20,44 +20,6 @@ import RosterTradeExceptionNotice from "@/components/RosterTradeExceptionNotice"
 
 export const dynamic = "force-dynamic";
 
-type RosterFallbackBreakdown = {
-  reason: "DID_NOT_PLAY";
-  teamId: string;
-  role: string;
-  substitutePlayerIds: string[];
-  substitutePointsPerGame: number;
-  teamAveragePointsPerGame: number;
-  creditedPoints: number;
-};
-
-type RosterContributionBreakdown = {
-  playerId: string;
-  slot?: string;
-  gamesPlayed?: number;
-  rawPoints?: number;
-  pointsPerGame?: number;
-  creditedPoints?: number;
-  fallback?: RosterFallbackBreakdown | null;
-  rosterException?: {
-    id: string;
-    effectiveAt: string;
-    previousTeamId: string;
-    currentTeamId: string;
-    retainedGroup: "Legends" | "Rise";
-    currentGroup: "Legends" | "Rise";
-  } | null;
-};
-
-function parseRosterContributions(value: string | null | undefined): RosterContributionBreakdown[] {
-  if (!value) return [];
-  try {
-    const parsed = JSON.parse(value) as { roster?: RosterContributionBreakdown[] };
-    return Array.isArray(parsed.roster) ? parsed.roster : [];
-  } catch {
-    return [];
-  }
-}
-
 export default async function ParticipantPage({
   params,
 }: {
@@ -105,38 +67,39 @@ export default async function ParticipantPage({
   const standings = await computeStandings(cutoff, ft.leagueId);
   const mine = standings?.standings.find((s) => s.fantasyTeamId === ft.id);
 
-  const publishedWeekIds = new Set(
-    ft.league.leagueWeeks.filter((week) => week.status === "PUBLISHED").map((week) => week.weekId),
-  );
   const publicPickWeekIds = new Set(
     ft.league.leagueWeeks.filter(areWeeklyPicksPublic).map((week) => week.weekId),
   );
   const viewerIsMember = viewer ? await prisma.fantasyTeam.count({ where: { leagueId: ft.leagueId, userId: viewer.id } }) > 0 : false;
-  const weeklyRosterAudits = ft.league.leagueWeeks
-    .filter((leagueWeek) => leagueWeek.status === "PUBLISHED" && (cutoff === null || leagueWeek.week.endsAt < cutoff))
-    .sort((left, right) => left.week.number - right.week.number)
-    .map((leagueWeek) => {
-      const score = leagueWeek.weeklyScores.find((row) => row.fantasyTeamId === ft.id);
-      const contributions = parseRosterContributions(score?.breakdown);
-      const rows = leagueWeek.weeklyRosters
-        .filter((row) => row.fantasyTeamId === ft.id && row.slot !== "BENCH")
-        .sort((left, right) => SLOT_ORDER.indexOf(left.slot) - SLOT_ORDER.indexOf(right.slot))
-        .map((row) => {
-          const contribution = contributions.find((item) => item.playerId === row.playerId);
-          return {
-            ...row,
-            gamesPlayed: contribution?.gamesPlayed ?? 0,
-            pointsPerGame: contribution?.pointsPerGame ?? 0,
-            creditedPoints: contribution?.creditedPoints ?? contribution?.pointsPerGame ?? 0,
-            fallback: contribution?.fallback ?? null,
-            rosterException: contribution?.rosterException ?? null,
-          };
-        });
-      return { leagueWeekId: leagueWeek.id, weekNumber: leagueWeek.week.number, rows };
-    });
+  const weeklyRosterAudits = (mine?.weekly ?? []).flatMap((weekScore) => {
+    const leagueWeek = ft.league.leagueWeeks.find(
+      (candidate) => candidate.week.number === weekScore.weekNumber,
+    );
+    if (!leagueWeek) return [];
+    const rows = leagueWeek.weeklyRosters
+      .filter((row) => row.fantasyTeamId === ft.id && row.slot !== "BENCH")
+      .sort((left, right) => SLOT_ORDER.indexOf(left.slot) - SLOT_ORDER.indexOf(right.slot))
+      .map((row) => {
+        const contribution = weekScore.roster.find((item) => item.playerId === row.playerId);
+        return {
+          ...row,
+          gamesPlayed: contribution?.gamesPlayed ?? 0,
+          pointsPerGame: contribution?.pointsPerGame ?? 0,
+          creditedPoints: contribution?.creditedPoints ?? contribution?.pointsPerGame ?? 0,
+          fallback: contribution?.fallback ?? null,
+          rosterException: contribution?.rosterException ?? null,
+        };
+      });
+    return [{
+      leagueWeekId: leagueWeek.id,
+      weekNumber: leagueWeek.week.number,
+      provisional: weekScore.provisional,
+      rows,
+    }];
+  });
 
-  // A current player only receives points for published weeks whose immutable
-  // snapshot shows that player on this fantasy team. This prevents a midseason
+  // Contributions come from immutable published snapshots plus the request-time
+  // provisional score for the locked live week. This prevents a midseason
   // acquisition from inheriting points earned before they were rostered.
   const slotTotals = new Map<number, number>();
   const slotFallbackWeeks = new Map<number, number>();
@@ -148,6 +111,21 @@ export default async function ParticipantPage({
       if (row.fallback) slotFallbackWeeks.set(currentSlot.id, (slotFallbackWeeks.get(currentSlot.id) ?? 0) + 1);
     }
   }
+  const substituteAdjustments = weeklyRosterAudits.flatMap((week) =>
+    week.rows.flatMap((row) => row.fallback
+      ? [{ weekNumber: week.weekNumber, provisional: week.provisional, row, fallback: row.fallback }]
+      : []),
+  );
+  const substitutePlayerIds = [...new Set(
+    substituteAdjustments.flatMap(({ fallback }) => fallback.substitutePlayerIds),
+  )];
+  const substitutePlayers = substitutePlayerIds.length > 0
+    ? await prisma.proPlayer.findMany({
+        where: { id: { in: substitutePlayerIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const substituteNames = new Map(substitutePlayers.map((player) => [player.id, player.name]));
 
   const sortedRoster = [...ft.roster].sort(
     (a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot),
@@ -173,12 +151,28 @@ export default async function ParticipantPage({
       </h1>
       {mine && (
         <p className="muted small">
-          Season total <b>{mine.total}</b> (roster {mine.rosterTotal} · pickems{" "}
-          {mine.pickemTotal} · crystal ball {mine.crystalBallTotal})
+          Season total <b>{mine.total}</b> {mine.hasProvisional && <span className="badge win">live provisional</span>} (roster {mine.rosterTotal} · pickems{" "}
+          {mine.pickemTotal} · crystal ball {ft.league.seasonStatus === "FINAL" ? mine.crystalBallTotal : "pending"})
         </p>
       )}
 
       <RosterTradeExceptionNotice exceptions={rosterTradeExceptions} />
+
+      {substituteAdjustments.length > 0 && <div className="card substitute-rule-note">
+        <b>Substitute points adjustment</b>
+        <span className="muted small">When a rostered player logs zero games and a same-team, same-role substitute plays, the credited Pts/G is the lower of that professional team&apos;s weekly player average and the substitute&apos;s individual performance.</span>
+        <div className="substitute-calculations">
+          {substituteAdjustments.map(({ weekNumber, provisional, row, fallback }) => (
+            <div key={`${weekNumber}:${row.playerId}:${fallback.substitutePlayerIds.join(":")}`}>
+              <span><b>{row.player.name}</b> · Week {weekNumber}{provisional ? " live provisional" : ""} · {fallback.teamId} {fallback.role}</span>
+              <span>
+                {(fallback.substitutePlayerIds.map((playerId) => substituteNames.get(playerId) ?? playerId)).join(" / ")}:
+                {" "}min(team avg {round1(fallback.teamAveragePointsPerGame)}, substitute {round1(fallback.substitutePointsPerGame)}) = <b>{round1(fallback.creditedPoints)} Pts/G</b>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>}
 
       <div className="grid2">
         <div className="card">
@@ -190,7 +184,7 @@ export default async function ParticipantPage({
                   <th>Slot</th>
                   <th>Player</th>
                   <th>Pro team</th>
-                  <th className="num">Weekly PPG points</th>
+                  <th className="num">Season roster points</th>
                 </tr>
               </thead>
               <tbody>
@@ -208,7 +202,7 @@ export default async function ParticipantPage({
               </tbody>
             </table>
           </div>
-          <p className="muted small" style={{ marginBottom: 0 }}>Team totals also retain points earned by players who are no longer on the current roster.</p>
+          <p className="muted small" style={{ marginBottom: 0 }}>Team totals retain points earned by players no longer on the current roster. Live-week values update as completed games arrive.</p>
         </div>
 
         <div className="card">
@@ -255,9 +249,9 @@ export default async function ParticipantPage({
 
       <h2>Weekly roster scoring</h2>
       <p className="muted small">
-        This is the frozen roster used for each published week. A highlighted substitute credit means the drafted player logged zero games and received the lower of the shared-slot production or that professional team&apos;s weekly player average.
+        This is the frozen roster used for each published week plus any live provisional week. A highlighted substitute credit means the drafted player logged zero games and received the lower of the same-role substitute&apos;s production or that professional team&apos;s weekly player average.
       </p>
-      {weeklyRosterAudits.length === 0 ? <p className="card muted">No weekly roster scores have been published yet.</p> : <div className="tablewrap weekly-roster-audit">
+      {weeklyRosterAudits.length === 0 ? <p className="card muted">No published or live weekly roster scores yet.</p> : <div className="tablewrap weekly-roster-audit">
         <table>
           <thead>
             <tr>
@@ -278,7 +272,7 @@ export default async function ParticipantPage({
                 ?? row.player.tournamentRosters[0]?.teamId
                 ?? row.player.teamId;
               return <tr className={row.fallback ? "roster-fallback-row" : ""} key={`${weeklyRoster.leagueWeekId}-${row.id}`}>
-                <td><b>Week {weeklyRoster.weekNumber}</b></td>
+                <td><b>Week {weeklyRoster.weekNumber}</b>{weeklyRoster.provisional && <span className="badge win">live</span>}</td>
                 <td className="muted">{row.slot}</td>
                 <td><b>{row.player.name}</b></td>
                 <td>{teamId ? <TeamLabel name={teamId} size="xs" /> : "?"}</td>
@@ -289,7 +283,7 @@ export default async function ParticipantPage({
                   {row.fallback ? <>
                     <span className="fallback-credit-badge">{row.rosterException ? "Trade-exception substitute credit" : "Substitute credit applied"}</span>
                     <small>
-                      {row.fallback.substitutePlayerIds.join(", ")}: {round1(row.fallback.substitutePointsPerGame)} Pts/G · team average: {round1(row.fallback.teamAveragePointsPerGame)} · lower value credited
+                      {row.fallback.substitutePlayerIds.map((playerId) => substituteNames.get(playerId) ?? playerId).join(", ")}: {round1(row.fallback.substitutePointsPerGame)} Pts/G · team average: {round1(row.fallback.teamAveragePointsPerGame)} · min = {round1(row.fallback.creditedPoints)} credited
                     </small>
                   </> : row.gamesPlayed > 0 ? <span className="muted small">{row.rosterException ? "Trade exception · played normally · no penalty" : "Played normally"}</span> : <>
                     <span className="badge loss">No games · 0 points</span>
@@ -318,7 +312,7 @@ export default async function ParticipantPage({
             {sortedPickems.map((p) => {
               const m = p.match;
               const finished =
-                m.weekId !== null && publishedWeekIds.has(m.weekId) && isFinished(m, cutoff) && m.team1Score !== null && m.team2Score !== null;
+                m.weekId !== null && publicPickWeekIds.has(m.weekId) && isFinished(m, cutoff) && m.team1Score !== null && m.team2Score !== null;
               const actualScore = finished ? `${m.team1Score}-${m.team2Score}` : null;
               const pts = finished
                 ? pickemPoints(p.predictedWinner, p.predictedScore, m.winner!, actualScore!, cfg)

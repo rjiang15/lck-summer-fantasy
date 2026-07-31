@@ -23,7 +23,7 @@ export function IngestButton({
   label: string;
   leagueId: number;
   weekNumber: number;
-  source: "LEAGUEPEDIA" | "LEAGUEPEDIA_SCHEDULE";
+  source: "LEAGUEPEDIA" | "LEAGUEPEDIA_LIVE" | "LEAGUEPEDIA_SCHEDULE";
   disabled?: boolean;
   running?: boolean;
 }) {

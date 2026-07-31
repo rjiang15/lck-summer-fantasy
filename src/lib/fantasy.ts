@@ -11,8 +11,16 @@ import {
   playerGamePoints,
   pickemPoints,
 } from "./scoring";
-import { resolveRosterWeekContribution, type WeeklyFantasyLine } from "./roster-fallback";
-import { fantasyRosterTradeException } from "./roster-trade-exceptions";
+import {
+  resolveRosterWeekContribution,
+  type RosterWeekContribution,
+  type TournamentRosterIdentity,
+  type WeeklyFantasyLine,
+} from "./roster-fallback";
+import {
+  fantasyRosterTradeException,
+  type FantasyRosterTradeException,
+} from "./roster-trade-exceptions";
 
 export const ROLE_ORDER = ["Top", "Jungle", "Mid", "Bot", "Support"];
 export const SLOT_ORDER = ["TOP", "JNG", "MID", "BOT", "SUP", "BENCH"];
@@ -83,7 +91,11 @@ export async function getDemoLeague(leagueId?: number) {
       },
       cbQuestions: { include: { answers: true } },
       leagueWeeks: {
-        include: { week: true, weeklyScores: true },
+        include: {
+          week: true,
+          weeklyScores: true,
+          weeklyRosters: { include: { player: true } },
+        },
         orderBy: { week: { number: "asc" } },
       },
     },
@@ -129,14 +141,92 @@ export function weeklyFantasyLines(matches: WeekBundle["matches"], config: Scori
       teamObjectives: game.teamStats.find((row) => row.teamId === stat.teamId),
       laneAt15: game.playerTimeline.find((row) => row.playerId === stat.playerId),
     }),
-    playedAt: match.scheduledAt,
+    playedAt: game.playedAt ?? match.scheduledAt,
   }))));
+}
+
+export type PlayerWeekContribution = {
+  playerId: string;
+  playerName: string;
+  slot: string;
+  gamesPlayed: number;
+  rawPoints: number;
+  pointsPerGame: number;
+  creditedPoints: number;
+  fallback: RosterWeekContribution["fallback"];
+  rosterException: Pick<
+    FantasyRosterTradeException,
+    "id" | "effectiveAt" | "previousTeamId" | "currentTeamId" | "retainedGroup" | "currentGroup"
+  > | null;
+};
+
+type ScoringRosterSlot = {
+  playerId: string;
+  slot: string;
+  player: { name: string };
+};
+
+function scoreRosterSlots(
+  roster: readonly ScoringRosterSlot[],
+  rosterIdentities: readonly TournamentRosterIdentity[],
+  lines: readonly WeeklyFantasyLine[],
+  context: { tournamentId: string; ownerUsername: string },
+) {
+  let rosterPts = 0;
+  const contributions = roster
+    .filter((slot) => slot.slot !== "BENCH")
+    .map((slot): PlayerWeekContribution => {
+      const exception = fantasyRosterTradeException(
+        context.tournamentId,
+        context.ownerUsername,
+        slot.playerId,
+      );
+      const contribution = resolveRosterWeekContribution(
+        slot.playerId,
+        rosterIdentities,
+        lines,
+        exception ? {
+          id: exception.id,
+          effectiveAt: new Date(exception.effectiveAt),
+          previousTeamId: exception.previousTeamId,
+          currentTeamId: exception.currentTeamId,
+          role: exception.role,
+        } : null,
+      );
+      rosterPts += contribution.creditedPoints;
+      return {
+        playerId: slot.playerId,
+        playerName: slot.player.name,
+        slot: slot.slot,
+        gamesPlayed: contribution.gamesPlayed,
+        rawPoints: round1(contribution.rawPoints),
+        pointsPerGame: round1(contribution.pointsPerGame),
+        creditedPoints: round1(contribution.creditedPoints),
+        fallback: contribution.fallback ? {
+          ...contribution.fallback,
+          substitutePointsPerGame: round1(contribution.fallback.substitutePointsPerGame),
+          teamAveragePointsPerGame: round1(contribution.fallback.teamAveragePointsPerGame),
+          creditedPoints: round1(contribution.fallback.creditedPoints),
+        } : null,
+        rosterException: exception ? {
+          id: exception.id,
+          effectiveAt: exception.effectiveAt,
+          previousTeamId: exception.previousTeamId,
+          currentTeamId: exception.currentTeamId,
+          retainedGroup: exception.retainedGroup,
+          currentGroup: exception.currentGroup,
+        } : null,
+      };
+    });
+  return { rosterPts: round1(rosterPts), contributions };
 }
 
 export interface TeamWeekScore {
   weekNumber: number;
   rosterPts: number;
   pickemPts: number;
+  provisional: boolean;
+  roster: PlayerWeekContribution[];
 }
 
 export interface FantasyStanding {
@@ -148,6 +238,8 @@ export interface FantasyStanding {
   pickemTotal: number;
   crystalBallTotal: number;
   total: number;
+  hasProvisional: boolean;
+  provisionalWeek: number | null;
 }
 
 /**
@@ -161,23 +253,92 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
   const league = await getDemoLeague(leagueId);
   if (!league) return null;
   const cfg = parseScoring(league.scoringConfig);
-  const allWeeks = await loadWeeks(league.tournamentId);
+  const [allWeeks, rosterIdentities] = await Promise.all([
+    loadWeeks(league.tournamentId),
+    prisma.tournamentPlayer.findMany({
+      where: { tournamentId: league.tournamentId },
+      select: { playerId: true, teamId: true, role: true },
+    }),
+  ]);
   // Once lifecycle rows exist, public standings use only commissioner-published
-  // score snapshots. Raw future results can never leak into fantasy standings.
+  // score snapshots plus a request-time provisional score for the currently
+  // locked live week. The provisional row is never written to WeeklyScore.
   if (league.leagueWeeks.length > 0) {
     const published = league.leagueWeeks.filter(
       (lw) => lw.status === "PUBLISHED" && (cutoff === null || lw.week.endsAt < cutoff),
     );
+    const liveLeagueWeek = cutoff === null ? null : league.leagueWeeks.find(
+      (lw) =>
+        lw.week.number === league.currentWeek + 1 &&
+        ["LOCKED", "RESULTS_IMPORTED", "SCORED"].includes(lw.status) &&
+        lw.weeklyRosters.length > 0,
+    );
+    const liveWeek = liveLeagueWeek
+      ? allWeeks.find((week) => week.id === liveLeagueWeek.weekId)
+      : null;
+    const visibleLiveMatches = liveWeek
+      ? liveWeek.matches
+          .filter((match) => match.scheduledAt < cutoff!)
+          .map((match) => ({
+            ...match,
+            games: match.games.filter((game) =>
+              game.winner !== null && (game.playedAt ?? match.scheduledAt) < cutoff!,
+            ),
+          }))
+      : [];
+    const liveGames = visibleLiveMatches.flatMap((match) =>
+      match.games,
+    );
+    const livePicks = liveGames.length > 0
+      ? await prisma.pickem.findMany({
+          where: { leagueId: league.id, match: { weekId: liveWeek!.id } },
+        })
+      : [];
     const crystalSettled = league.seasonStatus === "FINAL";
     const standings: FantasyStanding[] = league.fantasyTeams.map((ft) => {
-      const weekly = published.map((lw) => {
+      const weekly: TeamWeekScore[] = published.map((lw) => {
         const score = lw.weeklyScores.find((row) => row.fantasyTeamId === ft.id);
         return {
           weekNumber: lw.week.number,
           rosterPts: score?.rosterPts ?? 0,
           pickemPts: score?.pickemPts ?? 0,
+          provisional: false,
+          roster: parseRosterBreakdown(score?.breakdown),
         };
       });
+      if (liveLeagueWeek && liveWeek && liveGames.length > 0) {
+        const roster = liveLeagueWeek.weeklyRosters.filter(
+          (slot) => slot.fantasyTeamId === ft.id && slot.slot !== "BENCH",
+        );
+        const liveRoster = scoreRosterSlots(
+          roster,
+          rosterIdentities,
+          weeklyFantasyLines(visibleLiveMatches, cfg),
+          { tournamentId: league.tournamentId, ownerUsername: ft.user.username },
+        );
+        let livePickemPts = 0;
+        for (const match of visibleLiveMatches) {
+          if (!match.winner || match.team1Score == null || match.team2Score == null) continue;
+          const pick = livePicks.find(
+            (row) => row.userId === ft.userId && row.matchId === match.id,
+          );
+          if (!pick) continue;
+          livePickemPts += pickemPoints(
+            pick.predictedWinner,
+            pick.predictedScore,
+            match.winner,
+            `${match.team1Score}-${match.team2Score}`,
+            cfg,
+          );
+        }
+        weekly.push({
+          weekNumber: liveWeek.number,
+          rosterPts: liveRoster.rosterPts,
+          pickemPts: livePickemPts,
+          provisional: true,
+          roster: liveRoster.contributions,
+        });
+      }
       const crystalBallTotal = crystalSettled
         ? league.cbQuestions.reduce((sum, question) => sum + crystalBallPoints(question, ft.userId), 0)
         : 0;
@@ -192,51 +353,37 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
         pickemTotal,
         crystalBallTotal,
         total: round1(rosterTotal + pickemTotal + crystalBallTotal),
+        hasProvisional: weekly.some((row) => row.provisional),
+        provisionalWeek: weekly.find((row) => row.provisional)?.weekNumber ?? null,
       };
     }).sort((a, b) => b.total - a.total);
     return {
       standings,
-      weeks: published.map((lw) => ({ number: lw.week.number, startsAt: lw.week.startsAt, endsAt: lw.week.endsAt })),
+      weeks: [
+        ...published.map((lw) => ({ number: lw.week.number, startsAt: lw.week.startsAt, endsAt: lw.week.endsAt })),
+        ...(liveLeagueWeek && liveWeek && liveGames.length > 0
+          ? [{ number: liveWeek.number, startsAt: liveWeek.startsAt, endsAt: liveWeek.endsAt }]
+          : []),
+      ],
     };
   }
   const weeks = allWeeks.map((w) => ({
     ...w,
     matches: w.matches.filter((m) => cutoff === null || m.scheduledAt < cutoff),
   }));
-  const [pickems, rosterIdentities] = await Promise.all([
-    prisma.pickem.findMany({ where: { leagueId: league.id } }),
-    prisma.tournamentPlayer.findMany({
-      where: { tournamentId: league.tournamentId },
-      select: { playerId: true, teamId: true, role: true },
-    }),
-  ]);
+  const pickems = await prisma.pickem.findMany({ where: { leagueId: league.id } });
 
   const standings: FantasyStanding[] = [];
   for (const ft of league.fantasyTeams) {
     const weekly: TeamWeekScore[] = [];
     for (const week of weeks) {
-      let rosterPts = 0;
       const weeklyLines = weeklyFantasyLines(week.matches, cfg);
-      for (const slot of ft.roster) {
-        if (slot.slot === "BENCH") continue;
-        const exception = fantasyRosterTradeException(
-          league.tournamentId,
-          ft.user.username,
-          slot.playerId,
-        );
-        rosterPts += resolveRosterWeekContribution(
-          slot.playerId,
-          rosterIdentities,
-          weeklyLines,
-          exception ? {
-            id: exception.id,
-            effectiveAt: new Date(exception.effectiveAt),
-            previousTeamId: exception.previousTeamId,
-            currentTeamId: exception.currentTeamId,
-            role: exception.role,
-          } : null,
-        ).creditedPoints;
-      }
+      const scoredRoster = scoreRosterSlots(
+        ft.roster,
+        rosterIdentities,
+        weeklyLines,
+        { tournamentId: league.tournamentId, ownerUsername: ft.user.username },
+      );
       let pickemPts = 0;
       for (const match of week.matches) {
         if (!match.winner || match.team1Score === null || match.team2Score === null) continue;
@@ -252,12 +399,18 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
           cfg,
         );
       }
-      weekly.push({ weekNumber: week.number, rosterPts: round1(rosterPts), pickemPts });
+      weekly.push({
+        weekNumber: week.number,
+        rosterPts: scoredRoster.rosterPts,
+        pickemPts,
+        provisional: false,
+        roster: scoredRoster.contributions,
+      });
     }
     // Crystal ball settles at the end of the split — mid-split cursor shows 0
-    const crystalBallTotal = cutoff !== null
-      ? 0
-      : league.cbQuestions.reduce((sum, question) => sum + crystalBallPoints(question, ft.userId), 0);
+    const crystalBallTotal = league.seasonStatus === "FINAL"
+      ? league.cbQuestions.reduce((sum, question) => sum + crystalBallPoints(question, ft.userId), 0)
+      : 0;
 
     const rosterTotal = round1(weekly.reduce((s, w) => s + w.rosterPts, 0));
     const pickemTotal = weekly.reduce((s, w) => s + w.pickemPts, 0);
@@ -270,6 +423,8 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
       pickemTotal,
       crystalBallTotal,
       total: round1(rosterTotal + pickemTotal + crystalBallTotal),
+      hasProvisional: false,
+      provisionalWeek: null,
     });
   }
   standings.sort((a, b) => b.total - a.total);
@@ -277,6 +432,38 @@ export async function computeStandings(cutoff: Date | null = null, leagueId?: nu
     standings,
     weeks: weeks.map((w) => ({ number: w.number, startsAt: w.startsAt, endsAt: w.endsAt })),
   };
+}
+
+function parseRosterBreakdown(value: string | undefined): PlayerWeekContribution[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as {
+      roster?: Array<Partial<PlayerWeekContribution> & {
+        playerId?: string;
+        slot?: string;
+        gamesPlayed?: number;
+        rawPoints?: number;
+        pointsPerGame?: number;
+      }>;
+    };
+    if (!Array.isArray(parsed.roster)) return [];
+    return parsed.roster.flatMap((row) => {
+      if (!row.playerId || !row.slot) return [];
+      return [{
+        playerId: row.playerId,
+        playerName: row.playerName ?? row.playerId,
+        slot: row.slot,
+        gamesPlayed: row.gamesPlayed ?? 0,
+        rawPoints: row.rawPoints ?? 0,
+        pointsPerGame: row.pointsPerGame ?? 0,
+        creditedPoints: row.creditedPoints ?? row.pointsPerGame ?? 0,
+        fallback: row.fallback ?? null,
+        rosterException: row.rosterException ?? null,
+      }];
+    });
+  } catch {
+    return [];
+  }
 }
 
 /** Pro-player leaderboard for a tournament (fantasy points per game). */

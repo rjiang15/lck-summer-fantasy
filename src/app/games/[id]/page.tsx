@@ -7,7 +7,7 @@ import { parseScoring, fmtDate, fmtLength, ROLE_ORDER, round1 } from "@/lib/fant
 import { playerGamePoints } from "@/lib/scoring";
 import { requireLeagueMember } from "@/lib/auth";
 import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
-import { getDataViewState, isFinished } from "@/lib/view";
+import { getDataViewState, isGameFinished } from "@/lib/view";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,7 @@ export default async function GamePage({
       events: { orderBy: { timestampMs: "asc" } },
     },
   });
-  if (!game || !view || game.match.tournamentId !== view.tournamentId || !isFinished(game.match, view.cutoff)) notFound();
+  if (!game || !view || game.match.tournamentId !== view.tournamentId || !isGameFinished(game, game.match, view.cutoff)) notFound();
 
   const cfg = parseScoring(access.league.scoringConfig);
 
@@ -59,6 +59,12 @@ export default async function GamePage({
         {game.match.team1Score}–{game.match.team2Score}
         {game.patch && <> · patch {game.patch}</>}
       </p>
+      {view.showsLiveProgress && (
+        <p className="card live-data-note">
+          <b>Live provisional data</b>
+          <span className="muted small">This completed game is included immediately, even if the series or week is still underway. Fantasy roster totals can change as later games arrive; Crystal Ball is preview-only and is not settled.</span>
+        </p>
+      )}
 
       {game.draftActions.length > 0 && (
         <section>
