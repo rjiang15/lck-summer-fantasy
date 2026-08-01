@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import { parseScoring, round1, weeklyFantasyLines } from "./fantasy";
 import { pickemPoints } from "./scoring";
+import { advancedScoreAvailability } from "./advanced-stat-coverage";
 import { resolveRosterWeekContribution } from "./roster-fallback";
 import {
   effectiveFantasyRosterPlayerId,
@@ -48,7 +49,14 @@ export async function validateLeagueWeek(leagueWeekId: number) {
         include: {
           matches: {
             include: {
-              games: { include: { playerStats: true, teamStats: true, draftActions: true } },
+              games: {
+                include: {
+                  playerStats: true,
+                  playerTimeline: { where: { minute: 15 } },
+                  teamStats: true,
+                  draftActions: true,
+                },
+              },
             },
           },
         },
@@ -63,7 +71,16 @@ export async function validateWeekData(weekId: number) {
     where: { id: weekId },
     include: {
       matches: {
-        include: { games: { include: { playerStats: true, teamStats: true, draftActions: true } } },
+        include: {
+          games: {
+            include: {
+              playerStats: true,
+              playerTimeline: { where: { minute: 15 } },
+              teamStats: true,
+              draftActions: true,
+            },
+          },
+        },
       },
     },
   });
@@ -73,7 +90,31 @@ export async function validateWeekData(weekId: number) {
 function validateLoadedWeek(lw: {
   matches: Array<{
     team1: string; team2: string; winner: string | null; team1Score: number | null; team2Score: number | null;
-    games: Array<{ id: string; winner: string | null; playerStats: unknown[]; teamStats: unknown[]; draftActions: unknown[] }>;
+    games: Array<{
+      id: string;
+      winner: string | null;
+      playerStats: Array<{
+        playerId: string;
+        role: string | null;
+        damageShare: number | null;
+        goldShare: number | null;
+        wardsKilled: number | null;
+        controlWardsBought: number | null;
+        damageToTowers: number | null;
+        damageMitigated: number | null;
+        tripleKills: number | null;
+        quadraKills: number | null;
+        pentakills: number | null;
+      }>;
+      playerTimeline: Array<{
+        playerId: string;
+        csDiff: number | null;
+        goldDiff: number | null;
+        xpDiff: number | null;
+      }>;
+      teamStats: unknown[];
+      draftActions: unknown[];
+    }>;
   }>;
 }) {
   const errors: string[] = [];
@@ -92,6 +133,19 @@ function validateLoadedWeek(lw: {
       if (game.teamStats.length !== 2) errors.push(`${game.id}: expected 2 team rows, found ${game.teamStats.length}`);
       if (game.draftActions.length !== 20) errors.push(`${game.id}: expected 20 draft actions, found ${game.draftActions.length}`);
       if (!game.winner) errors.push(`${game.id}: missing game winner`);
+      const missingAdvanced = new Set<string>();
+      for (const player of game.playerStats) {
+        const laneAt15 = game.playerTimeline.find((timeline) => timeline.playerId === player.playerId);
+        const availability = advancedScoreAvailability(player, laneAt15);
+        if (!availability.efficiency) missingAdvanced.add("efficiency inputs");
+        if (!availability.laneImpact) missingAdvanced.add("lane @15");
+        if (!availability.towerPressure) missingAdvanced.add("tower damage");
+        if (!availability.durability) missingAdvanced.add("damage mitigated");
+        if (!availability.multikill) missingAdvanced.add("triple/quadra/penta counts");
+      }
+      if (missingAdvanced.size > 0) {
+        errors.push(`${game.id}: missing advanced scoring inputs (${[...missingAdvanced].join(", ")})`);
+      }
     }
   }
   return {

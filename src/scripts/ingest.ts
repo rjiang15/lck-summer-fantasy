@@ -9,6 +9,10 @@ import { assertSequentialIngest } from "../lib/ingest-order";
 import { encodeIngestionProgress } from "../lib/ingestion-progress";
 import { setCurrentTournament } from "../lib/tournaments";
 import { createWriteCounts, writeIfChanged, type WriteCounts } from "../lib/change-aware-write";
+import {
+  pendingScoreboardMatches,
+  type PendingScoreboardMatch,
+} from "../lib/ingest-completeness";
 
 const int = (s: string | undefined) => {
   const n = parseInt(s ?? "", 10);
@@ -47,6 +51,7 @@ export interface LeaguepediaIngestCounts {
   rosterPlayers: number;
   playerStats: number;
   draftActions: number;
+  pendingScoreboards: PendingScoreboardMatch[];
   writes: WriteCounts;
 }
 
@@ -321,6 +326,7 @@ async function ingestTournament(
       rosterPlayers: new Set(rosterPlayers.map((row) => row.Player).filter(Boolean)).size,
       playerStats: 0,
       draftActions: 0,
+      pendingScoreboards: [],
       writes,
     };
     console.log("Done:", counts);
@@ -445,7 +451,16 @@ async function ingestTournament(
   });
   const selectedGameIds = new Set(games.map((g) => g.GameId));
   const playerRows = weekNumber === null ? allPlayerRows : allPlayerRows.filter((p) => selectedGameIds.has(p.GameId));
+  const pendingScoreboards = pendingScoreboardMatches(schedule, games, playerRows);
   console.log(`  player game lines: ${playerRows.length}`);
+  if (pendingScoreboards.length > 0) {
+    for (const pending of pendingScoreboards) {
+      console.warn(
+        `  ! source pending for ${pending.label}: ${pending.gamesFound}/${pending.expectedGames} games, ` +
+        `${pending.playerLinesFound}/${pending.expectedPlayerLines} player lines`,
+      );
+    }
+  }
 
   const damageByGameTeam = new Map<string, number>();
   const playerByGameTeamChampion = new Map<string, string>();
@@ -630,6 +645,7 @@ async function ingestTournament(
     draftActions: await prisma.draftAction.count({
       where: { game: { match: matchScope } },
     }),
+    pendingScoreboards,
     writes,
   };
 
