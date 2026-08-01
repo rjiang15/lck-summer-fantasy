@@ -111,7 +111,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </div>
         <p className="small muted">
           Leaguepedia schedule and result pulls are available from the <a href="/commissioner">Commissioner data pipeline</a>.
-          Oracle&apos;s Elixir enrichment remains an optional advanced import: <code>npm run ingest:oe -- &lt;csv&gt; &quot;&lt;split&gt;&quot; --week=1</code>.
+          Oracle&apos;s Elixir enrichment supplies the advanced inputs required for complete v5 scoring: <code>npm run ingest:oe -- &lt;csv&gt; &quot;&lt;split&gt;&quot; --week=1</code>.
         </p>
       </div>
 

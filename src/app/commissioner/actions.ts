@@ -120,6 +120,7 @@ async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean, live =
     rosterPlayers: await prisma.tournamentPlayer.count({ where: { tournamentId: league.tournamentId } }),
     playerStats: await prisma.playerGameStat.count({ where: { game: { match: { weekId: week!.id } } } }),
     draftActions: await prisma.draftAction.count({ where: { game: { match: { weekId: week!.id } } } }),
+    pendingScoreboards: [],
     writes: { created: 0, updated: 0, unchanged: 0 },
   } : await runLeaguepediaIngest({ overviewPage: league.tournamentId, weekNumber, scheduleOnly, live });
   week = await prisma.week.findUniqueOrThrow({ where: { tournamentId_number: { tournamentId: league.tournamentId, number: weekNumber } } });
@@ -181,9 +182,15 @@ export async function refreshLiveWeek(formData: FormData) {
     commissionerRedirect("error", error instanceof Error ? error.message : String(error));
   }
   const writes = result.counts.writes;
+  const pending = result.counts.pendingScoreboards;
+  const sourceStatus = pending.length > 0
+    ? ` Source pending: ${pending.slice(0, 2).map((match) =>
+      `${match.label} (${match.gamesFound}/${match.expectedGames} games, ${match.playerLinesFound}/${match.expectedPlayerLines} player lines)`,
+    ).join("; ")}${pending.length > 2 ? `; +${pending.length - 2} more` : ""}. Refresh again after Leaguepedia publishes the scoreboards.`
+    : " All completed match scoreboards currently published by Leaguepedia are loaded.";
   commissionerRedirect(
     "notice",
-    `Week ${result.weekNumber} live view refreshed: ${result.counts.games} completed games and ${result.counts.playerStats} player lines. Wrote ${writes.created + writes.updated} changed rows; skipped ${writes.unchanged} unchanged rows. Crystal Ball remains provisional.`,
+    `Week ${result.weekNumber} live view refreshed: ${result.counts.games} games and ${result.counts.playerStats} player lines. Wrote ${writes.created + writes.updated} changed rows; skipped ${writes.unchanged} unchanged rows.${sourceStatus} Crystal Ball remains provisional.`,
   );
 }
 

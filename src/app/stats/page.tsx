@@ -4,6 +4,7 @@ import { getDataViewState } from "@/lib/view";
 import { ChampionLabel, TeamLabel } from "@/components/GameIdentity";
 import { parseScoring, round1 } from "@/lib/fantasy";
 import { playerGameScore } from "@/lib/scoring";
+import { advancedScoreAvailability, type AdvancedScoreAvailability } from "@/lib/advanced-stat-coverage";
 import DeepPlayerTable, { type DeepPlayerRow } from "./DeepPlayerTable";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,7 @@ type PlayerAggregate = {
   champions: Map<string, number>;
   sums: Record<string, number>;
   samples: Record<string, number>;
+  advancedSamples: Record<keyof AdvancedScoreAvailability, number>;
 };
 
 const addMetric = (row: PlayerAggregate, key: string, value: number | null | undefined) => {
@@ -85,6 +87,14 @@ export default async function StatsPage() {
   const scoring = parseScoring(league?.scoringConfig);
 
   const players = new Map<string, PlayerAggregate>();
+  const advancedCoverage: Record<keyof AdvancedScoreAvailability, number> = {
+    efficiency: 0,
+    laneImpact: 0,
+    towerPressure: 0,
+    durability: 0,
+    multikill: 0,
+  };
+  let playerLineCount = 0;
   const champions = new Map<string, { picks: number; wins: number; bans: number }>();
   const teams = new Map<string, {
     games: number; wins: number; kills: number; towers: number; dragons: number;
@@ -94,6 +104,12 @@ export default async function StatsPage() {
 
   for (const game of games) {
     for (const stat of game.playerStats) {
+      const laneAt15 = game.playerTimeline.find((timeline) => timeline.playerId === stat.playerId);
+      const availability = advancedScoreAvailability(stat, laneAt15);
+      playerLineCount++;
+      for (const key of Object.keys(availability) as Array<keyof AdvancedScoreAvailability>) {
+        if (availability[key]) advancedCoverage[key]++;
+      }
       const row = players.get(stat.playerId) ?? {
         id: stat.playerId,
         name: stat.player.name,
@@ -122,13 +138,14 @@ export default async function StatsPage() {
         champions: new Map<string, number>(),
         sums: {},
         samples: {},
+        advancedSamples: { efficiency: 0, laneImpact: 0, towerPressure: 0, durability: 0, multikill: 0 },
       };
       row.games++;
       row.wins += stat.won ? 1 : 0;
       const score = playerGameScore(stat, scoring, {
         lengthSec: game.lengthSec,
         teamObjectives: game.teamStats.find((team) => team.teamId === stat.teamId),
-        laneAt15: game.playerTimeline.find((row) => row.playerId === stat.playerId),
+        laneAt15,
       });
       row.fantasyPoints += score.total;
       row.combatPoints += score.combat;
@@ -142,6 +159,9 @@ export default async function StatsPage() {
       row.towerPressurePoints += score.towerPressure;
       row.durabilityPoints += score.durability;
       row.multikillPoints += score.multikill;
+      for (const key of Object.keys(availability) as Array<keyof AdvancedScoreAvailability>) {
+        if (availability[key]) row.advancedSamples[key]++;
+      }
       row.kills += stat.kills;
       row.deaths += stat.deaths;
       row.assists += stat.assists;
@@ -201,6 +221,8 @@ export default async function StatsPage() {
   const playerRows: DeepPlayerRow[] = [...players.values()].map((row) => {
     const mostPlayedChampion = [...row.champions.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0]?.[0] ?? "Unknown";
     const fantasyPoints = round1(row.fantasyPoints);
+    const completeAdvancedAverage = (key: keyof AdvancedScoreAvailability, points: number) =>
+      row.advancedSamples[key] === row.games ? points / row.games : null;
     return {
       id: row.id,
       name: row.name,
@@ -213,12 +235,12 @@ export default async function StatsPage() {
       visionPointsPerGame: row.visionPoints / row.games,
       winPointsPerGame: row.winPoints / row.games,
       killParticipationPointsPerGame: row.killParticipationPoints / row.games,
-      efficiencyPointsPerGame: row.efficiencyPoints / row.games,
+      efficiencyPointsPerGame: completeAdvancedAverage("efficiency", row.efficiencyPoints),
       jungleObjectivePointsPerGame: row.jungleObjectivePoints / row.games,
-      laneImpactPointsPerGame: row.laneImpactPoints / row.games,
-      towerPressurePointsPerGame: row.towerPressurePoints / row.games,
-      durabilityPointsPerGame: row.durabilityPoints / row.games,
-      multikillPointsPerGame: row.multikillPoints / row.games,
+      laneImpactPointsPerGame: completeAdvancedAverage("laneImpact", row.laneImpactPoints),
+      towerPressurePointsPerGame: completeAdvancedAverage("towerPressure", row.towerPressurePoints),
+      durabilityPointsPerGame: completeAdvancedAverage("durability", row.durabilityPoints),
+      multikillPointsPerGame: completeAdvancedAverage("multikill", row.multikillPoints),
       games: row.games,
       wins: row.wins,
       winRate: row.wins / row.games,
@@ -273,6 +295,7 @@ export default async function StatsPage() {
     (a, b) => b[1].picks + b[1].bans - (a[1].picks + a[1].bans),
   );
   const teamRows = [...teams.entries()].sort((a, b) => b[1].wins - a[1].wins);
+  const advancedCoverageComplete = playerLineCount > 0 && Object.values(advancedCoverage).every((count) => count === playerLineCount);
 
   return <>
     <h1>Deep stats</h1>
@@ -283,7 +306,11 @@ export default async function StatsPage() {
     <div className="card">
       <b>Fantasy scoring v{scoring.version}</b>
       <p className="small muted" style={{ marginBottom: 0 }}>
-        Pts/G is the official player value: total game scores divided by games played. Standard KP awards {scoring.player.kpLowBonus}/{scoring.player.kpMidBonus}/{scoring.player.kpHighBonus} points at {scoring.player.kpLowThreshold * 100}%/{scoring.player.kpMidThreshold * 100}%/{scoring.player.kpHighThreshold * 100}%; Top uses role-calibrated {scoring.player.topKpLowThreshold * 100}%/{scoring.player.topKpMidThreshold * 100}%/{scoring.player.topKpHighThreshold * 100}% tiers. Carry efficiency compares damage share with gold share; support efficiency rewards normalized vision denial. The formula also scores a combined CSD/GD/XPD lane-impact result, role-relative tower pressure and damage mitigation, multikills, and Jungle team objectives. All rate stats normalize to a 30-minute game.
+        Once source coverage is complete, Pts/G is the official player value: total game scores divided by games played. Standard KP awards {scoring.player.kpLowBonus}/{scoring.player.kpMidBonus}/{scoring.player.kpHighBonus} points at {scoring.player.kpLowThreshold * 100}%/{scoring.player.kpMidThreshold * 100}%/{scoring.player.kpHighThreshold * 100}%; Top uses role-calibrated {scoring.player.topKpLowThreshold * 100}%/{scoring.player.topKpMidThreshold * 100}%/{scoring.player.topKpHighThreshold * 100}% tiers. Carry efficiency compares damage share with gold share; support efficiency rewards normalized vision denial. The formula also scores a combined CSD/GD/XPD lane-impact result, role-relative tower pressure and damage mitigation, multikills, and Jungle team objectives. All rate stats normalize to a 30-minute game.
+      </p>
+      <p className={advancedCoverageComplete ? "small muted" : "notice small"} style={{ marginBottom: 0 }}>
+        Advanced input coverage: efficiency {advancedCoverage.efficiency}/{playerLineCount} · lane {advancedCoverage.laneImpact}/{playerLineCount} · tower {advancedCoverage.towerPressure}/{playerLineCount} · durability {advancedCoverage.durability}/{playerLineCount} · multikill {advancedCoverage.multikill}/{playerLineCount} player-games.
+        {!advancedCoverageComplete && <> Breakdown columns show — until every game for that player has the required source data. Total Pts/G is provisional while missing advanced inputs contribute zero.</>}
       </p>
     </div>
 

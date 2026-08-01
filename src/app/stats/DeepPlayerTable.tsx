@@ -15,12 +15,12 @@ export type DeepPlayerRow = {
   visionPointsPerGame: number;
   winPointsPerGame: number;
   killParticipationPointsPerGame: number;
-  efficiencyPointsPerGame: number;
+  efficiencyPointsPerGame: number | null;
   jungleObjectivePointsPerGame: number;
-  laneImpactPointsPerGame: number;
-  towerPressurePointsPerGame: number;
-  durabilityPointsPerGame: number;
-  multikillPointsPerGame: number;
+  laneImpactPointsPerGame: number | null;
+  towerPressurePointsPerGame: number | null;
+  durabilityPointsPerGame: number | null;
+  multikillPointsPerGame: number | null;
   games: number;
   wins: number;
   winRate: number;

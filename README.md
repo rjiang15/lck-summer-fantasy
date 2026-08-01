@@ -74,8 +74,10 @@ Week 1 is published, the league advances to Week 1 and accepts Week 2 picks.
    Crystal Ball for the whole season.
 3. During Week 1, use **Refresh in-progress Week 1** after each series or day.
    The button is safe to repeat because unchanged source rows are skipped.
-4. After Week 1 ends, use **Finalize complete Week 1 results** and optionally
-   run the matching Oracle's Elixir enrichment.
+4. After Week 1 ends, refresh until every Leaguepedia scoreboard is present,
+   run the matching Oracle's Elixir enrichment, then use **Finalize complete
+   Week 1 results**. Final validation blocks scoring when advanced v5 inputs
+   are still missing.
 5. On `/commissioner`, run **Validate + score**, then publish. Public standings
    read only this immutable published snapshot; the league is now at Week 1.
 6. Get the Week 2 schedule from the Commissioner UI. It opens automatically for roster changes
@@ -202,6 +204,14 @@ After migrating an existing database, recompute every statistic that can be deri
 ```bash
 npm run backfill:stats
 ```
+
+This derived-data backfill repairs team totals, KP, damage/gold share, and
+reconstructed draft picks. It cannot invent lane-at-15, tower damage, damage
+mitigation, warding, or multikill data that the stored Leaguepedia rows never
+contained. Run `npm run ingest:oe -- <csv> "<split>" [tournament-id]
+--week=N` against the matching Oracle's Elixir CSV to backfill those source
+metrics. The deep-stats page reports coverage explicitly and leaves an advanced
+score component blank until all of that player's games have the required input.
 
 ## Statistics model
 
