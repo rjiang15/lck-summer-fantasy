@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   golStatInt,
   golStatRatio,
+  golSeriesResultForMatch,
   isGolSeriesComplete,
   normalizeGolIdentity,
   parseGolFullStats,
@@ -40,6 +41,22 @@ test("Gol match-list parsing retains score-side order and rejects an unfinished 
   });
   assert.equal(isGolSeriesComplete(rows[0]), false);
   assert.equal(isGolSeriesComplete(rows[1]), true);
+});
+
+test("Gol series results align to the canonical schedule even when source sides are reversed", () => {
+  assert.deepEqual(golSeriesResultForMatch({
+    team1: "Dplus KIA",
+    team2: "Gen.G",
+    team1Score: 2,
+    team2Score: 1,
+  }, {
+    team1: "Gen.G",
+    team2: "Dplus Kia",
+  }), {
+    team1Score: 1,
+    team2Score: 2,
+    winner: "Dplus Kia",
+  });
 });
 
 test("Gol summary parsing uses explicit game links rather than assuming consecutive ids", () => {

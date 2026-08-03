@@ -170,6 +170,28 @@ export function isGolSeriesComplete(series: Pick<GolSeries, "team1Score" | "team
   return Math.max(series.team1Score, series.team2Score) >= winsRequired;
 }
 
+export function golSeriesResultForMatch(
+  series: Pick<GolSeries, "team1" | "team2" | "team1Score" | "team2Score">,
+  match: { team1: string; team2: string },
+) {
+  const sourceTeam1 = normalizeGolIdentity(series.team1);
+  const sourceTeam2 = normalizeGolIdentity(series.team2);
+  const canonicalTeam1 = normalizeGolIdentity(match.team1);
+  const canonicalTeam2 = normalizeGolIdentity(match.team2);
+  const sameOrder = sourceTeam1 === canonicalTeam1 && sourceTeam2 === canonicalTeam2;
+  const reverseOrder = sourceTeam1 === canonicalTeam2 && sourceTeam2 === canonicalTeam1;
+  if (!sameOrder && !reverseOrder) {
+    throw new Error(`Could not map Games of Legends series ${series.team1} vs ${series.team2} to ${match.team1} vs ${match.team2}`);
+  }
+  const team1Score = sameOrder ? series.team1Score : series.team2Score;
+  const team2Score = sameOrder ? series.team2Score : series.team1Score;
+  return {
+    team1Score,
+    team2Score,
+    winner: team1Score > team2Score ? match.team1 : match.team2,
+  };
+}
+
 export function parseGolMatchList(html: string): GolSeries[] {
   const table = extractTable(html, "table_list");
   if (!table) throw new Error("Games of Legends match-list table was not found");

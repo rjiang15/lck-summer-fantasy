@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { effectiveFantasyRosterPlayerId } from "@/lib/roster-trade-exceptions";
 import { addRosterSlot, updateRosterSlot } from "../actions";
 import Link from "next/link";
+import { canManageFutureRosters } from "@/lib/week-progression";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,12 @@ export default async function RostersPage({ searchParams }: { searchParams: Prom
     include: { fantasyTeams: { orderBy: { id: "asc" }, include: { user: true, roster: { include: { player: true } } } } },
   });
   if (!league) return <p>No league exists.</p>;
-  if (league.currentWeek === 0) return <><h1>Future rosters</h1><p className="card">Initial rosters are built through the commissioner-run <Link href="/commissioner/draft">Week 0 snake draft</Link>. Manual roster changes begin after Week 1.</p></>;
+  const latestOpened = await prisma.leagueWeek.findFirst({
+    where: { leagueId: league.id, picksOpenAt: { not: null } },
+    orderBy: { week: { number: "desc" } },
+    select: { week: { select: { number: true } } },
+  });
+  if (!canManageFutureRosters(league.currentWeek, latestOpened?.week.number ?? null)) return <><h1>Future rosters</h1><p className="card">Initial rosters are built through the commissioner-run <Link href="/commissioner/draft">Week 0 snake draft</Link>. Manual roster changes begin when Week 2 Pick&apos;ems open.</p></>;
   const eligibleRows = await prisma.tournamentPlayer.findMany({
     where: { tournamentId: league.tournamentId }, include: { player: true }, orderBy: [{ role: "asc" }, { player: { name: "asc" } }],
   });

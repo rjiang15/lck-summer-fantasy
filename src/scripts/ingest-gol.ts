@@ -11,6 +11,7 @@ import type { PendingScoreboardMatch } from "../lib/ingest-completeness";
 import {
   fetchGolHtml,
   golGameUrl,
+  golSeriesResultForMatch,
   golStatInt,
   golStatRatio,
   golTournamentMatchListUrl,
@@ -85,6 +86,27 @@ function pendingSeries(
     gamesFound,
     expectedPlayerLines: winsRequired * 10,
     playerLinesFound: 0,
+  };
+}
+
+function pendingDetailedStats(
+  match: { id: string; team1: string; team2: string; games: Array<{ playerStats: unknown[] }> },
+  series: GolSeries,
+  gamesFound: number,
+  playerLinesFound: number,
+  error: unknown,
+): PendingScoreboardMatch {
+  const detail = error instanceof Error ? error.message : String(error);
+  return {
+    matchId: match.id,
+    label: `${match.team1} vs ${match.team2} (${series.team1Score}-${series.team2Score}; detailed stats pending: ${detail.slice(0, 120)})`,
+    expectedGames: series.team1Score + series.team2Score,
+    gamesFound: Math.max(gamesFound, match.games.length),
+    expectedPlayerLines: (series.team1Score + series.team2Score) * 10,
+    playerLinesFound: Math.max(
+      playerLinesFound,
+      match.games.reduce((total, game) => total + game.playerStats.length, 0),
+    ),
   };
 }
 
@@ -247,6 +269,23 @@ async function ingestTournament({
     `Found ${completed.length} completed series; ${pendingScoreboards.length} not yet complete`,
   );
 
+  // A final series score is enough to close that Pick'em slate, even when Gol's
+  // individual game pages or all-stats tables are still catching up. Persist
+  // every completed match-list result before attempting the detailed import so
+  // commissioners can open the next week's picks without freezing incomplete
+  // fantasy scores.
+  for (const { match, series } of completed) {
+    const matchData = golSeriesResultForMatch(series, match);
+    const key = { id: match.id };
+    await writeIfChanged({
+      existing: match,
+      incoming: matchData,
+      counts: writes,
+      create: async () => { throw new Error(`Canonical match disappeared: ${match.id}`); },
+      update: () => prisma.match.update({ where: key, data: matchData }),
+    });
+  }
+
   const knownPlayers = await prisma.proPlayer.findMany();
   const playerIdByIdentity = new Map<string, string>();
   const playerById = new Map(knownPlayers.map((player) => [player.id, player]));
@@ -263,46 +302,59 @@ async function ingestTournament({
       7 + (seriesIndex / Math.max(completed.length, 1)) * 84,
       `Reading ${match.team1} vs ${match.team2} series summary…`,
     );
-    const gameLinks = parseGolSeriesGames(await fetchGolHtml(series.summaryUrl));
-    const expectedGames = series.team1Score + series.team2Score;
-    if (gameLinks.length !== expectedGames) {
-      throw new Error(
-        `${match.team1} vs ${match.team2} is scored ${series.team1Score}-${series.team2Score}, ` +
-        `but Games of Legends links ${gameLinks.length}/${expectedGames} games`,
-      );
-    }
-
+    let gameLinks: GolSeriesGame[] = [];
     const parsedGames: ParsedGame[] = [];
-    for (const [gameIndex, link] of gameLinks.entries()) {
-      const progress = 7 + ((seriesIndex + gameIndex / gameLinks.length) / Math.max(completed.length, 1)) * 84;
-      await reportProgress(
-        runId,
-        progress,
-        `Reading ${match.team1} vs ${match.team2}, game ${link.gameNumber} overview…`,
-      );
-      const overview = parseGolGameOverview(
-        await fetchGolHtml(golGameUrl(link.gameId, "game")),
-        link.gameId,
-      );
-      await reportProgress(
-        runId,
-        progress + 1,
-        `Reading ${match.team1} vs ${match.team2}, game ${link.gameNumber} all stats…`,
-      );
-      const players = parseGolFullStats(
-        await fetchGolHtml(golGameUrl(link.gameId, "fullstats")),
-        link.gameId,
-      );
-      const parsed = { link, overview, players };
-      assertParsedGameComplete(parsed);
-      if (overview.date !== series.date) {
-        throw new Error(`Games of Legends game ${link.gameId} date does not match its series`);
+    try {
+      gameLinks = parseGolSeriesGames(await fetchGolHtml(series.summaryUrl));
+      const expectedGames = series.team1Score + series.team2Score;
+      if (gameLinks.length !== expectedGames) {
+        throw new Error(
+          `${match.team1} vs ${match.team2} is scored ${series.team1Score}-${series.team2Score}, ` +
+          `but Games of Legends links ${gameLinks.length}/${expectedGames} games`,
+        );
       }
-      const overviewTeamSet = teamSetKey(overview.teams[0].sourceName, overview.teams[1].sourceName);
-      if (overviewTeamSet !== teamSetKey(match.team1, match.team2)) {
-        throw new Error(`Games of Legends game ${link.gameId} teams do not match the canonical series`);
+
+      for (const [gameIndex, link] of gameLinks.entries()) {
+        const progress = 7 + ((seriesIndex + gameIndex / gameLinks.length) / Math.max(completed.length, 1)) * 84;
+        await reportProgress(
+          runId,
+          progress,
+          `Reading ${match.team1} vs ${match.team2}, game ${link.gameNumber} overview…`,
+        );
+        const overview = parseGolGameOverview(
+          await fetchGolHtml(golGameUrl(link.gameId, "game")),
+          link.gameId,
+        );
+        await reportProgress(
+          runId,
+          progress + 1,
+          `Reading ${match.team1} vs ${match.team2}, game ${link.gameNumber} all stats…`,
+        );
+        const players = parseGolFullStats(
+          await fetchGolHtml(golGameUrl(link.gameId, "fullstats")),
+          link.gameId,
+        );
+        const parsed = { link, overview, players };
+        assertParsedGameComplete(parsed);
+        if (overview.date !== series.date) {
+          throw new Error(`Games of Legends game ${link.gameId} date does not match its series`);
+        }
+        const overviewTeamSet = teamSetKey(overview.teams[0].sourceName, overview.teams[1].sourceName);
+        if (overviewTeamSet !== teamSetKey(match.team1, match.team2)) {
+          throw new Error(`Games of Legends game ${link.gameId} teams do not match the canonical series`);
+        }
+        parsedGames.push(parsed);
       }
-      parsedGames.push(parsed);
+    } catch (error) {
+      if (mode !== "LIVE" || error instanceof IngestionCancelledError) throw error;
+      pendingScoreboards.push(pendingDetailedStats(
+        match,
+        series,
+        gameLinks.length,
+        parsedGames.length * 10,
+        error,
+      ));
+      continue;
     }
 
     // Only write after every game page and all-stats table in the series has
@@ -572,18 +624,6 @@ async function ingestTournament({
       }
     }
 
-    const canonicalSourceTeam1 = canonicalTeam(series.team1, match.team1, match.team2);
-    const team1Score = canonicalSourceTeam1 === match.team1 ? series.team1Score : series.team2Score;
-    const team2Score = canonicalSourceTeam1 === match.team1 ? series.team2Score : series.team1Score;
-    const winner = team1Score > team2Score ? match.team1 : match.team2;
-    const matchData = { winner, team1Score, team2Score };
-    await writeIfChanged({
-      existing: match,
-      incoming: matchData,
-      counts: writes,
-      create: async () => { throw new Error(`Canonical match disappeared: ${match.id}`); },
-      update: () => prisma.match.update({ where: { id: match.id }, data: matchData }),
-    });
   }
 
   await reportProgress(runId, 94, "Verifying imported Games of Legends rows…");
