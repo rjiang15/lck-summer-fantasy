@@ -218,7 +218,7 @@ export default async function ParticipantPage({
 
       {substituteAdjustments.length > 0 && <div className="card substitute-rule-note">
         <b>Substitute points adjustment</b>
-        <span className="muted small">When a rostered player logs zero games and a same-team, same-role substitute plays, the credited Pts/G is the lower of that professional team&apos;s weekly player average and the substitute&apos;s individual performance.</span>
+        <span className="muted small">When a rostered player—or the post-trade portion of a one-time assignment—logs zero games and a same-team, same-role substitute plays, the credited Pts/G is the lower of that professional team&apos;s player average and the substitute&apos;s individual performance.</span>
         <div className="substitute-calculations">
           {substituteAdjustments.map(({ weekNumber, provisional, row, fallback }) => (
             <div key={`${weekNumber}:${row.effectivePlayerId}:${fallback.substitutePlayerIds.join(":")}`}>
@@ -227,6 +227,9 @@ export default async function ParticipantPage({
                 {(fallback.substitutePlayerIds.map((playerId) => substituteNames.get(playerId) ?? playerId)).join(" / ")}:
                 {" "}min(team avg {round1(fallback.teamAveragePointsPerGame)}, substitute {round1(fallback.substitutePointsPerGame)}) = <b>{round1(fallback.creditedPoints)} Pts/G</b>
               </span>
+              {row.rosterException && Math.abs(row.creditedPoints - fallback.creditedPoints) >= 0.05 && <span className="muted small">
+                Combined with the games before the trade ruling, the Week {weekNumber} roster credit is <b>{round1(row.creditedPoints)} Pts/G</b>.
+              </span>}
             </div>
           ))}
         </div>
@@ -307,7 +310,7 @@ export default async function ParticipantPage({
 
       <h2>Weekly roster scoring</h2>
       <p className="muted small">
-        This is the frozen roster used for each published week plus any live provisional week. A highlighted substitute credit means the drafted player logged zero games and received the lower of the same-role substitute&apos;s production or that professional team&apos;s weekly player average.
+        This is the frozen roster used for each published week plus any live provisional week. A highlighted substitute credit means the applicable roster assignment logged zero games and received the lower of the same-role substitute&apos;s production or that professional team&apos;s player average.
       </p>
       {weeklyRosterAudits.length === 0 ? <p className="card muted">No published or live weekly roster scores yet.</p> : <div className="tablewrap weekly-roster-audit">
         <table>
@@ -342,6 +345,9 @@ export default async function ParticipantPage({
                     <span className="fallback-credit-badge">{row.rosterException ? "Trade-exception substitute credit" : "Substitute credit applied"}</span>
                     <small>
                       {row.fallback.substitutePlayerIds.map((playerId) => substituteNames.get(playerId) ?? playerId).join(", ")}: {round1(row.fallback.substitutePointsPerGame)} Pts/G · team average: {round1(row.fallback.teamAveragePointsPerGame)} · min = {round1(row.fallback.creditedPoints)} credited
+                      {row.rosterException && Math.abs(row.creditedPoints - row.fallback.creditedPoints) >= 0.05
+                        ? ` · blended weekly credit across the trade date: ${round1(row.creditedPoints)}`
+                        : ""}
                     </small>
                   </> : row.gamesPlayed > 0 ? <span className="muted small">{row.rosterException ? "Trade exception · played normally · no penalty" : "Played normally"}</span> : <>
                     <span className="badge loss">No games · 0 points</span>
