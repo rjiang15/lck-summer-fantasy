@@ -10,10 +10,15 @@ export default async function PicksPage() {
   const fantasyTeam = await prisma.fantasyTeam.findUnique({ where: { leagueId_userId: { leagueId: league.id, userId: user.id } } });
   if (!fantasyTeam) return <><h1>Picks</h1><p>You need a fantasy team in this league before submitting pick&apos;ems.</p></>;
   const leagueWeek = await prisma.leagueWeek.findFirst({
-    where: { leagueId: league.id, week: { number: league.currentWeek + 1 } },
+    where: {
+      leagueId: league.id,
+      picksOpenAt: { not: null },
+      status: { in: ["OPEN", "LOCKED", "RESULTS_IMPORTED", "SCORED"] },
+    },
+    orderBy: { week: { number: "desc" } },
     include: { week: { include: { matches: { orderBy: { scheduledAt: "asc" } } } } },
   });
-  if (!leagueWeek || leagueWeek.status === "UPCOMING") return <><h1>Picks</h1><p>No slate is open yet. During Week {league.currentWeek}, the commissioner must pull and open Week {league.currentWeek + 1} before predictions can be submitted.</p></>;
+  if (!leagueWeek) return <><h1>Picks</h1><p>No Pick&apos;em slate is currently available. The commissioner can open the next week after the prior week&apos;s series results are final.</p></>;
   const picks = await prisma.pickem.findMany({ where: { leagueId: league.id, userId: user.id, match: { weekId: leagueWeek.weekId } } });
   const now = new Date();
   const picksLocked = Boolean(leagueWeek.picksLockedAt) || leagueWeek.status !== "OPEN";

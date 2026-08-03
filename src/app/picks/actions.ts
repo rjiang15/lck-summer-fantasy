@@ -19,7 +19,7 @@ export async function savePicks(_previous: PickSaveState, formData: FormData): P
       where: { id: leagueWeekId },
       include: { week: { include: { matches: { orderBy: { scheduledAt: "asc" } } } } },
     });
-    if (!leagueWeek || leagueWeek.leagueId !== leagueId || leagueWeek.status !== "OPEN" || leagueWeek.picksLockedAt || leagueWeek.week.number !== league.currentWeek + 1) {
+    if (!leagueWeek || leagueWeek.leagueId !== leagueId || leagueWeek.status !== "OPEN" || leagueWeek.picksLockedAt) {
       throw new Error("Picks are locked for this week");
     }
     const now = new Date();

@@ -20,6 +20,11 @@ import {
 import { IngestButton } from "./IngestButton";
 import { parseResolutionEvidence } from "@/lib/crystal-ball";
 import { parseScoring } from "@/lib/fantasy";
+import {
+  areWeekSeriesResultsComplete,
+  canOpenWeekPicks,
+  canUnlockWeekPicks,
+} from "@/lib/week-progression";
 
 export const dynamic = "force-dynamic";
 // Weekly Gol.gg imports fit inside Vercel Hobby's five-minute Fluid Compute ceiling.
@@ -38,7 +43,23 @@ export default async function CommissionerPage({
   const weeks = await prisma.leagueWeek.findMany({
     where: { leagueId: league.id },
     orderBy: { week: { number: "asc" } },
-    include: { week: true, weeklyScores: true },
+    include: {
+      week: {
+        include: {
+          matches: {
+            select: {
+              bestOf: true,
+              team1: true,
+              team2: true,
+              winner: true,
+              team1Score: true,
+              team2Score: true,
+            },
+          },
+        },
+      },
+      weeklyScores: true,
+    },
   });
   const runs = await prisma.ingestionRun.findMany({
     where: { tournamentId: league.tournamentId },
@@ -47,21 +68,25 @@ export default async function CommissionerPage({
   });
   const targetWeek = league.currentWeek + 1;
   const target = weeks.find((week) => week.week.number === targetWeek);
+  const latestPickWeek = [...weeks].reverse().find((week) =>
+    week.picksOpenAt !== null && ["OPEN", "LOCKED", "RESULTS_IMPORTED", "SCORED"].includes(week.status),
+  ) ?? null;
+  const pickTarget = latestPickWeek ?? target;
   const fantasyTeams = await prisma.fantasyTeam.findMany({
     where: { leagueId: league.id },
     include: { user: true },
     orderBy: { id: "asc" },
   });
-  const targetMatchCount = target ? await prisma.match.count({ where: { weekId: target.weekId } }) : 0;
-  const submittedPicks = target ? await prisma.pickem.findMany({
-    where: { leagueId: league.id, match: { weekId: target.weekId } },
+  const pickTargetMatchCount = pickTarget?.week.matches.length ?? 0;
+  const submittedPicks = pickTarget ? await prisma.pickem.findMany({
+    where: { leagueId: league.id, match: { weekId: pickTarget.weekId } },
     select: { userId: true },
   }) : [];
   const submittedByUser = submittedPicks.reduce((counts, pick) => {
     counts.set(pick.userId, (counts.get(pick.userId) ?? 0) + 1);
     return counts;
   }, new Map<number, number>());
-  const crystalAnswers = target?.week.number === 1 && league.cbQuestions.length > 0
+  const crystalAnswers = pickTarget?.week.number === 1 && league.cbQuestions.length > 0
     ? await prisma.crystalBallAnswer.findMany({
       where: {
         questionId: { in: league.cbQuestions.map((question) => question.id) },
@@ -74,8 +99,8 @@ export default async function CommissionerPage({
     counts.set(answer.userId, (counts.get(answer.userId) ?? 0) + 1);
     return counts;
   }, new Map<number, number>());
-  const targetIncompletePicks = fantasyTeams.filter((team) => (submittedByUser.get(team.userId) ?? 0) !== targetMatchCount);
-  const targetIncompleteCrystalBall = target?.week.number === 1 && league.cbQuestions.length > 0
+  const pickTargetIncompletePicks = fantasyTeams.filter((team) => (submittedByUser.get(team.userId) ?? 0) !== pickTargetMatchCount);
+  const pickTargetIncompleteCrystalBall = pickTarget?.week.number === 1 && league.cbQuestions.length > 0
     ? fantasyTeams.filter((team) => (crystalAnswersByUser.get(team.userId) ?? 0) !== league.cbQuestions.length)
     : [];
   const activeTargetRun = runs.find(
@@ -108,8 +133,9 @@ export default async function CommissionerPage({
       {feedback.error && <p className="error card" role="alert">Couldn&apos;t complete that action: {feedback.error}</p>}
       <p>
         Season: <span className="badge pending">{league.seasonStatus}</span>{" "}
-        Current week: <b>{league.currentWeek}{league.currentWeek === 0 ? " (preseason)" : ""}</b>{" · "}
-        Picks for: <b>{target ? target.week.number : "none"}</b>{" · "}
+        Published through: <b>Week {league.currentWeek}</b>{" · "}
+        Data pipeline: <b>{target ? `Week ${target.week.number}` : "complete"}</b>{" · "}
+        Pick&apos;em slate: <b>{latestPickWeek ? `Week ${latestPickWeek.week.number} ${latestPickWeek.status === "OPEN" ? "open" : "locked"}` : "none open"}</b>{" · "}
         Crystal Ball: <b>{league.crystalBallLockedAt ? "locked" : "open"}</b>{" · "}
         Roster editing: <b>{league.rostersLockedAt ? "locked" : "open"}</b>
       </p>
@@ -128,7 +154,7 @@ export default async function CommissionerPage({
           ) : (
             <LeagueAction action={league.rostersLockedAt ? unlockRosters : lockRosters} leagueId={league.id} label={`${league.rostersLockedAt ? "Unlock" : "Lock"} roster editing`} />
           )}
-          {league.currentWeek > 0 && <Link href="/commissioner/rosters">Manage current rosters →</Link>}
+          {(league.currentWeek > 0 || (latestPickWeek?.week.number ?? 0) > 1) && <Link href="/commissioner/rosters">Manage current rosters →</Link>}
         </div>
       </section>
       <section className="card stack">
@@ -137,7 +163,7 @@ export default async function CommissionerPage({
           <p className="muted small" style={{ marginBottom: 0 }}>
             {league.isSimulation
               ? "The full historical schedule and player pool are already loaded. Lock the next week's picks and roster snapshot, then reveal only that week's stored results. No API request is made."
-              : "Imports are restricted to the next unpublished week. After picks and the scoring roster are frozen, live refreshes add completed games without advancing the week; finalization validates the complete slate."}
+              : "Series scores and detailed stats advance independently. Once every series has a final result, the next Pick'em slate can open; this data pipeline remains on the unpublished week until its missing game stats are backfilled, validated, scored, and published."}
           </p>
         </div>
         <div className="inline-form">
@@ -219,9 +245,9 @@ export default async function CommissionerPage({
       {weeks.length === 0 && (
         <p className="muted">No weekly slate has been imported yet. The schedule button above creates and opens it automatically.</p>
       )}
-      {target && targetMatchCount > 0 && (
+      {pickTarget && pickTargetMatchCount > 0 && (
         <section className="card">
-          <h2 style={{ marginTop: 0 }}>Week {target.week.number} pick&apos;em progress</h2>
+          <h2 style={{ marginTop: 0 }}>Week {pickTarget.week.number} pick&apos;em progress</h2>
           <p className="muted small">Only completion counts are shown here. Everyone&apos;s actual selections stay private until you lock the picks.</p>
           <div className="tablewrap">
             <table>
@@ -229,11 +255,11 @@ export default async function CommissionerPage({
               <tbody>
                 {fantasyTeams.map((team) => {
                   const submitted = submittedByUser.get(team.userId) ?? 0;
-                  const complete = submitted === targetMatchCount;
+                  const complete = submitted === pickTargetMatchCount;
                   return <tr key={team.id}>
                     <td>{team.user.username}</td>
                     <td>{team.name}</td>
-                    <td><span className={`submission-status ${complete ? "complete" : "incomplete"}`}>{submitted} / {targetMatchCount} — {complete ? "complete" : "incomplete"}</span></td>
+                    <td><span className={`submission-status ${complete ? "complete" : "incomplete"}`}>{submitted} / {pickTargetMatchCount} — {complete ? "complete" : "incomplete"}</span></td>
                   </tr>;
                 })}
               </tbody>
@@ -245,41 +271,62 @@ export default async function CommissionerPage({
         <table>
           <thead><tr><th>Week</th><th>Data status</th><th>Pick&apos;ems</th><th>Scoring roster</th><th>Checks / next step</th></tr></thead>
           <tbody>
-            {weeks.map((lw) => (
-              <tr key={lw.id}>
+            {weeks.map((lw, index) => {
+              const previous = index > 0 ? weeks[index - 1] : null;
+              const next = index + 1 < weeks.length ? weeks[index + 1] : null;
+              const resultsComplete = !league.isSimulation && areWeekSeriesResultsComplete(lw.week.matches);
+              const laterWeekOpened = weeks.some(
+                (candidate) => candidate.week.number > lw.week.number && candidate.picksOpenAt !== null,
+              );
+              const canOpen = canOpenWeekPicks(lw, previous)
+                && (!league.isSimulation || previous?.status === "PUBLISHED");
+              const picksCanChange = lw.status === "OPEN" || canUnlockWeekPicks({
+                status: lw.status,
+                picksLockedAt: lw.picksLockedAt,
+                matches: resultsComplete ? lw.week.matches : [],
+              }, laterWeekOpened);
+              return <tr key={lw.id}>
                 <td>{lw.week.number}{lw.week.sourceLabel && lw.week.sourceLabel !== `Week ${lw.week.number}` ? <><br /><span className="muted small">LCK {lw.week.sourceLabel}</span></> : null}</td>
-                <td><span className="badge pending">{lw.status}</span></td>
+                <td>
+                  <span className="badge pending">{lw.status}</span>
+                  {resultsComplete && lw.status !== "PUBLISHED" && <><br /><span className="badge win">SERIES RESULTS FINAL</span></>}
+                </td>
                 <td>
                   <LockControl
                     available={lw.status !== "UPCOMING"}
                     locked={Boolean(lw.picksLockedAt)}
-                    canChange={["OPEN", "LOCKED"].includes(lw.status)}
+                    canChange={picksCanChange}
                     lockAction={lockPicks}
                     unlockAction={unlockPicks}
                     id={lw.id}
                     noun="picks"
                     importRunning={runs.some((run) => run.weekNumber === lw.week.number && run.status === "RUNNING")}
-                    incompletePicks={target?.id === lw.id ? targetIncompletePicks.length : 0}
-                    incompleteCrystalBall={target?.id === lw.id ? targetIncompleteCrystalBall.length : 0}
+                    incompletePicks={pickTarget?.id === lw.id ? pickTargetIncompletePicks.length : 0}
+                    incompleteCrystalBall={pickTarget?.id === lw.id ? pickTargetIncompleteCrystalBall.length : 0}
                   />
+                  {lw.picksLockedAt && !picksCanChange && <span className="muted small"> immutable</span>}
                 </td>
                 <td>
                   <span className={`badge ${lw.rosterLockedAt ? "pending" : "win"}`}>{lw.rosterLockedAt ? "FROZEN" : "NOT FROZEN"}</span>
                 </td>
                 <td>
-                  {lw.status === "UPCOMING" && (lw.week.number === targetWeek
-                    ? <Action action={openWeek} id={lw.id} label="Open week" />
-                    : <span className="muted small">opens after Week {lw.week.number - 1}</span>)}
+                  {lw.status === "UPCOMING" && (canOpen
+                    ? <Action action={openWeek} id={lw.id} label={`Open Week ${lw.week.number} Pick'ems`} />
+                    : <span className="muted small">opens after Week {lw.week.number - 1} picks are locked and every series result is final</span>)}
                   {lw.status === "OPEN" && <span className="muted small">Lock picks when the deadline arrives.</span>}
-                  {lw.status === "LOCKED" && <span className="muted small">refresh live above; finalize after the week</span>}
+                  {lw.status === "LOCKED" && <span className="muted small">{resultsComplete ? "results final; detailed stats can still be backfilled above" : "refresh live above; final series results will unlock the next slate"}</span>}
                   {lw.status === "RESULTS_IMPORTED" && <Action action={validateAndScoreWeek} id={lw.id} label="Validate + score" />}
-                  {lw.status === "SCORED" && <Action action={publishWeek} id={lw.id} label="Publish + open next" />}
+                  {lw.status === "SCORED" && <Action
+                    action={publishWeek}
+                    id={lw.id}
+                    label={next?.status === "UPCOMING" ? "Publish + open next" : "Publish week"}
+                  />}
                   {lw.status === "PUBLISHED" && <span className="muted small">published</span>}
                   {lw.validationError && <span className="error small"> {lw.validationError}</span>}
                   {!lw.validationError && lw.validationJson && <span className="muted small"> data validated</span>}
                 </td>
-              </tr>
-            ))}
+              </tr>;
+            })}
           </tbody>
         </table>
       </div>
