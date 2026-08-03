@@ -2,6 +2,7 @@ export type WeeklyFantasyLine = {
   gameId?: string;
   playerId: string;
   teamId: string;
+  role?: string | null;
   points: number;
   playedAt?: Date | null;
 };
@@ -41,6 +42,27 @@ const average = (values: readonly number[]) => values.length > 0
   ? values.reduce((sum, value) => sum + value, 0) / values.length
   : 0;
 
+/**
+ * Leaguepedia and Gol.gg can identify the same nameplate with different casing
+ * or with a disambiguating real-name suffix (for example `Deokdam`/`deokdam`
+ * and `Peter`/`Peter (Jeong Yoon-su)`). Fantasy ownership follows the
+ * nameplate, so those source variants must not trigger substitute scoring.
+ */
+export function playerNameplateKey(value: string) {
+  return value
+    .replace(/\s*\([^)]*\)\s*$/u, "")
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+const samePlayerNameplate = (left: string, right: string) =>
+  playerNameplateKey(left) === playerNameplateKey(right);
+
+const roleKey = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
+const lineMatchesRole = (line: WeeklyFantasyLine, role: string) =>
+  !line.role || roleKey(line.role) === roleKey(role);
+
 type AssignmentSegmentContribution = {
   contribution: RosterWeekContribution;
   creditedGames: number;
@@ -65,7 +87,11 @@ function resolveAssignmentSegment(
   roster: readonly TournamentRosterIdentity[],
   lines: readonly WeeklyFantasyLine[],
 ): AssignmentSegmentContribution {
-  const ownLines = lines.filter((line) => line.playerId === playerId && line.teamId === teamId);
+  const ownLines = lines.filter((line) =>
+    samePlayerNameplate(line.playerId, playerId)
+      && line.teamId === teamId
+      && lineMatchesRole(line, role),
+  );
   const rawPoints = ownLines.reduce((sum, line) => sum + line.points, 0);
   const pointsPerGame = average(ownLines.map((line) => line.points));
   if (ownLines.length > 0) {
@@ -81,11 +107,13 @@ function resolveAssignmentSegment(
     };
   }
 
-  const substituteIds = new Set(roster
-    .filter((player) => player.playerId !== playerId && player.teamId === teamId && player.role === role)
-    .map((player) => player.playerId));
+  const substituteNameplates = new Set(roster
+    .filter((player) => !samePlayerNameplate(player.playerId, playerId) && player.teamId === teamId && player.role === role)
+    .map((player) => playerNameplateKey(player.playerId)));
   const substituteLines = lines.filter((line) =>
-    line.teamId === teamId && substituteIds.has(line.playerId),
+    line.teamId === teamId
+      && lineMatchesRole(line, role)
+      && substituteNameplates.has(playerNameplateKey(line.playerId)),
   );
   const teamLines = lines.filter((line) => line.teamId === teamId);
   if (substituteLines.length === 0 || teamLines.length === 0) {
@@ -131,7 +159,7 @@ export function resolveRosterWeekContribution(
   assignmentException: RosterAssignmentException | null = null,
 ): RosterWeekContribution {
   const ownLines = lines.filter((line) => {
-    if (!assignmentException) return line.playerId === playerId;
+    if (!assignmentException) return samePlayerNameplate(line.playerId, playerId);
     const playedAt = line.playedAt?.getTime();
     const beforeEffective = playedAt !== undefined
       && playedAt !== null
@@ -142,7 +170,7 @@ export function resolveRosterWeekContribution(
     const effectiveTeamId = beforeEffective
       ? assignmentException.previousTeamId
       : assignmentException.currentTeamId;
-    return line.playerId === effectivePlayerId && line.teamId === effectiveTeamId;
+    return samePlayerNameplate(line.playerId, effectivePlayerId) && line.teamId === effectiveTeamId;
   });
   const rawPoints = ownLines.reduce((sum, line) => sum + line.points, 0);
   const pointsPerGame = average(ownLines.map((line) => line.points));
@@ -190,7 +218,8 @@ export function resolveRosterWeekContribution(
     return { gamesPlayed: ownLines.length, rawPoints, pointsPerGame, creditedPoints: pointsPerGame, fallback: null };
   }
 
-  const identity = roster.find((player) => player.playerId === playerId);
+  const identity = roster.find((player) => player.playerId === playerId)
+    ?? roster.find((player) => samePlayerNameplate(player.playerId, playerId));
   const currentTeamId = assignmentException?.currentTeamId ?? identity?.teamId;
   const role = assignmentException?.role ?? identity?.role;
   if (!currentTeamId || !role) {
@@ -208,7 +237,7 @@ export function resolveRosterWeekContribution(
   const eligibleTeams = assignmentException
     ? [assignmentException.previousTeamId, assignmentException.currentTeamId]
     : [currentTeamId];
-  const substituteIdsByTeam = new Map(eligibleTeams.map((teamId) => [
+  const substituteNameplatesByTeam = new Map(eligibleTeams.map((teamId) => [
     teamId,
     new Set(roster
       .filter((player) => {
@@ -216,15 +245,17 @@ export function resolveRosterWeekContribution(
           && teamId === assignmentException.previousTeamId
           ? assignmentException.previousPlayerId
           : playerId;
-        return player.playerId !== assignedPlayerId
+        return !samePlayerNameplate(player.playerId, assignedPlayerId)
           && player.teamId === teamId
           && player.role === role;
       })
-      .map((player) => player.playerId)),
+      .map((player) => playerNameplateKey(player.playerId))),
   ]));
   const substituteLines = lines.filter((line) => {
     const targetTeam = targetTeamForLine(line);
-    return line.teamId === targetTeam && Boolean(substituteIdsByTeam.get(targetTeam)?.has(line.playerId));
+    return line.teamId === targetTeam
+      && lineMatchesRole(line, role)
+      && Boolean(substituteNameplatesByTeam.get(targetTeam)?.has(playerNameplateKey(line.playerId)));
   });
   const teamLines = lines.filter((line) => line.teamId === targetTeamForLine(line));
   if (substituteLines.length === 0 || teamLines.length === 0) {

@@ -19,6 +19,40 @@ test("a player who played keeps their own points without substitute assistance",
   });
 });
 
+test("Gol casing differences do not turn rostered Deokdam into his own substitute", () => {
+  const result = resolveRosterWeekContribution("Deokdam", [
+    { playerId: "Deokdam", teamId: "DN SOOPers", role: "Bot" },
+    { playerId: "deokdam", teamId: "DN SOOPers", role: "Bot" },
+    { playerId: "dns-top", teamId: "DN SOOPers", role: "Top" },
+  ], [
+    { gameId: "dns-1", playerId: "deokdam", teamId: "DN SOOPers", role: "Bot", points: 28 },
+    { gameId: "dns-1", playerId: "dns-top", teamId: "DN SOOPers", role: "Top", points: 12 },
+    { gameId: "dns-2", playerId: "deokdam", teamId: "DN SOOPers", role: "Bot", points: 32 },
+    { gameId: "dns-2", playerId: "dns-top", teamId: "DN SOOPers", role: "Top", points: 18 },
+  ]);
+
+  assert.equal(result.gamesPlayed, 2);
+  assert.equal(result.rawPoints, 60);
+  assert.equal(result.creditedPoints, 30);
+  assert.equal(result.fallback, null);
+});
+
+test("Leaguepedia real-name suffixes do not turn rostered Peter into his own substitute", () => {
+  const result = resolveRosterWeekContribution("Peter", [
+    { playerId: "Peter", teamId: "DN SOOPers", role: "Support" },
+    { playerId: "Peter (Jeong Yoon-su)", teamId: "DN SOOPers", role: "Support" },
+    { playerId: "Life", teamId: "DN SOOPers", role: "Support" },
+  ], [
+    { gameId: "dns-1", playerId: "Peter (Jeong Yoon-su)", teamId: "DN SOOPers", role: "Support", points: 19 },
+    { gameId: "dns-2", playerId: "Peter (Jeong Yoon-su)", teamId: "DN SOOPers", role: "Support", points: 23 },
+  ]);
+
+  assert.equal(result.gamesPlayed, 2);
+  assert.equal(result.rawPoints, 42);
+  assert.equal(result.creditedPoints, 21);
+  assert.equal(result.fallback, null);
+});
+
 test("a zero-game player receives the lower of shared-slot production and team average", () => {
   const lines: WeeklyFantasyLine[] = [
     { playerId: "sub", teamId: "DNS", points: 32 },
