@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getDataViewState } from "@/lib/view";
 import { ChampionMetaTable, TeamMacroTable } from "./MacroTables";
 import { TeamLabel } from "@/components/GameIdentity";
+import { gameDetailHref } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 
@@ -231,7 +232,7 @@ function RecordTable({
   mode: "time" | "kills";
 }) {
   return <div className="card macro-record-table"><h3>{title}</h3><ol>{games.map((game) => <li key={game.id}>
-    <span><Link href={`/games/${game.id}`} className="entity-matchup"><TeamLabel name={game.winner ?? game.team1} size="xs" /><em>vs</em><TeamLabel name={game.loser || game.team2} size="xs" className="subtle" /></Link><small>Game {game.id}</small></span>
+    <span><Link href={gameDetailHref(game.id)} className="entity-matchup"><TeamLabel name={game.winner ?? game.team1} size="xs" /><em>vs</em><TeamLabel name={game.loser || game.team2} size="xs" className="subtle" /></Link><small>Game {game.id}</small></span>
     <strong>{mode === "time" ? duration(game.lengthSec) : `${game.kills} kills`}</strong>
   </li>)}</ol></div>;
 }
