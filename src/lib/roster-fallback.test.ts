@@ -127,3 +127,37 @@ test("a replacement ownership slot keeps outgoing results before the effective d
   assert.equal(result.creditedPoints, 27);
   assert.equal(result.fallback, null);
 });
+
+test("a pre-trade starter line does not suppress the post-trade substitute credit", () => {
+  const effectiveAt = new Date("2026-07-30T00:00:00.000Z");
+  const result = resolveRosterWeekContribution("Jiwoo", [
+    { playerId: "LazyFeel", teamId: "Kiwoom DRX", role: "Bot" },
+    { playerId: "Jiwoo", teamId: "KT Rolster", role: "Bot" },
+    { playerId: "FenRir (Park Kang-jun)", teamId: "KT Rolster", role: "Bot" },
+    { playerId: "kt-top", teamId: "KT Rolster", role: "Top" },
+  ], [
+    { gameId: "krx-1", playerId: "LazyFeel", teamId: "Kiwoom DRX", points: 20, playedAt: new Date("2026-07-29T08:00:00.000Z") },
+    { gameId: "krx-2", playerId: "LazyFeel", teamId: "Kiwoom DRX", points: 30, playedAt: new Date("2026-07-29T09:00:00.000Z") },
+    { gameId: "kt-1", playerId: "FenRir (Park Kang-jun)", teamId: "KT Rolster", points: 30, playedAt: new Date("2026-08-02T08:00:00.000Z") },
+    { gameId: "kt-1", playerId: "kt-top", teamId: "KT Rolster", points: 10, playedAt: new Date("2026-08-02T08:00:00.000Z") },
+    { gameId: "kt-2", playerId: "FenRir (Park Kang-jun)", teamId: "KT Rolster", points: 30, playedAt: new Date("2026-08-02T09:00:00.000Z") },
+    { gameId: "kt-2", playerId: "kt-top", teamId: "KT Rolster", points: 10, playedAt: new Date("2026-08-02T09:00:00.000Z") },
+    { gameId: "kt-3", playerId: "FenRir (Park Kang-jun)", teamId: "KT Rolster", points: 30, playedAt: new Date("2026-08-02T10:00:00.000Z") },
+    { gameId: "kt-3", playerId: "kt-top", teamId: "KT Rolster", points: 10, playedAt: new Date("2026-08-02T10:00:00.000Z") },
+  ], {
+    id: "jiwoo-replaces-lazyfeel",
+    effectiveAt,
+    previousPlayerId: "LazyFeel",
+    previousTeamId: "Kiwoom DRX",
+    currentTeamId: "KT Rolster",
+    role: "Bot",
+  });
+
+  assert.equal(result.gamesPlayed, 2);
+  assert.equal(result.pointsPerGame, 25);
+  assert.deepEqual(result.fallback?.substitutePlayerIds, ["FenRir (Park Kang-jun)"]);
+  assert.equal(result.fallback?.substitutePointsPerGame, 30);
+  assert.equal(result.fallback?.teamAveragePointsPerGame, 20);
+  assert.equal(result.fallback?.creditedPoints, 20);
+  assert.equal(result.creditedPoints, 22);
+});

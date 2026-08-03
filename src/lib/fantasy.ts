@@ -134,6 +134,7 @@ export async function loadWeeks(tournamentId: string) {
 
 export function weeklyFantasyLines(matches: WeekBundle["matches"], config: ScoringConfig): WeeklyFantasyLine[] {
   return matches.flatMap((match) => match.games.flatMap((game) => game.playerStats.map((stat) => ({
+    gameId: game.id,
     playerId: stat.playerId,
     teamId: stat.teamId,
     points: playerGamePoints(stat, config, {

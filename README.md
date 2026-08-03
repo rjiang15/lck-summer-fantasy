@@ -138,6 +138,9 @@ KT. Starting July 30, a zero-game Aiming uses KRX's Bot substitute fallback and
 a zero-game Jiwoo uses KT's Bot substitute fallback. Current and future roster
 views resolve Ryan's former LazyFeel slot to Jiwoo; earlier match lines retain
 the prior assignment, and existing published score snapshots are never rewritten.
+If a scoring week spans July 30, pre-ruling starter Pts/G and post-ruling
+starter-or-substitute Pts/G are blended by games played so an earlier LazyFeel
+line cannot suppress Jiwoo's later FenRir substitute credit.
 
 Leaguepedia roster omissions needed for drafting are kept in a small,
 idempotent tournament override list. `npm run roster:sync` applies those
