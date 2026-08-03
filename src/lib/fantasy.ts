@@ -137,6 +137,7 @@ export function weeklyFantasyLines(matches: WeekBundle["matches"], config: Scori
     gameId: game.id,
     playerId: stat.playerId,
     teamId: stat.teamId,
+    role: stat.role,
     points: playerGamePoints(stat, config, {
       lengthSec: game.lengthSec,
       teamObjectives: game.teamStats.find((row) => row.teamId === stat.teamId),
