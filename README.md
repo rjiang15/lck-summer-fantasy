@@ -22,38 +22,50 @@ accounts.
 
 ## Data ingestion
 
-Leaguepedia is the primary source. Commissioners normally use the **Get Week X
-schedule + players** and **Get Week X results** buttons on `/commissioner`.
-The equivalent maintenance commands are:
+Leaguepedia is the schedule and eligible-roster source. Games of Legends is the
+authoritative source for completed series, games, player/team scoreboards, and
+drafts. Commissioners normally use the **Get Week X schedule + players** and
+**Get Week X results** buttons on `/commissioner`. The equivalent maintenance
+commands are:
 
 ```bash
 # Before predictions: roster pool + schedule, deliberately excluding results
 npm run ingest -- "LCK/2026 Season/Rounds 1-2" --week=1 --schedule-only
 
 # After that week is played and picks are locked: complete results and stats
-npm run ingest -- "LCK/2026 Season/Rounds 1-2" --week=1
+npm run ingest:gol -- "LCK/2026 Season/Rounds 1-2" --week=1
 
 # While a locked week is underway: import only newly completed/changed rows
-npm run ingest -- "LCK/2026 Season/Rounds 3-4" --week=1 --live
+npm run ingest:gol -- "LCK/2026 Season/Rounds 3-4" --week=1 --live
+
+# Backfill every imported tournament, oldest first
+npm run ingest:gol -- --all-tournaments
 ```
 
 The schedule-only pull imports tournament roster membership before any games
-exist and strips any historical results from the schedule. The full pull adds
-games, end-game scoreboards, builds, runes, pentakills, patches, typed
-objectives, and ordered champion picks/bans.
+exist and strips any historical results from the schedule. The Games of Legends
+pull first requires one side to have won the series (two wins in a BO3, three in
+a BO5), then follows the series summary into every game overview and all-stats
+table. An unfinished score such as `1-0` is reported and skipped without reading
+or writing any game pages. Completed series populate end-game scoreboards,
+advanced scoring inputs, typed objectives, and ordered champion picks/bans.
 
-Oracle's Elixir enriches the same canonical Leaguepedia games (it does not
-create a duplicate tournament):
+The legacy Oracle's Elixir CSV command remains available for historical
+diagnostics, but it is no longer part of the commissioner workflow:
 
 ```bash
 npm run ingest:oe -- /path/to/match-data.csv "Rounds 1-2" --week=3
 ```
 
-When present in the CSV, it additionally imports multikills, first objectives, warding, damage/gold shares, and player/team snapshots at 10, 15, 20, and 25 minutes. Every source row is also retained as JSON so newly added source columns are not lost.
+Games of Legends fills multikills, warding, damage/gold shares, tower damage,
+damage mitigation, and CSD/GD/XPD at 15 minutes. Every parsed source row is
+retained as JSON so newly added source columns are not lost.
 
-Both commands create an `IngestionRun` audit record. Per-game provenance records
-which fields came from Leaguepedia and which were enriched by Oracle's Elixir.
-Unmatched OE games are reported and never inserted as duplicate games.
+Both active commands create an `IngestionRun` audit record. Per-game provenance
+records which fields came from Leaguepedia and which came from Games of Legends.
+Gol.gg games map onto canonical matches by date, teams, and game number; existing
+game/player ids are preserved and missing games use a namespaced id, so the
+backfill cannot insert a duplicate copy of canonical history.
 
 Live refreshes are change-aware: existing source rows are compared before an
 update is issued, unchanged rows and provenance timestamps are left alone, and
@@ -74,10 +86,9 @@ Week 1 is published, the league advances to Week 1 and accepts Week 2 picks.
    Crystal Ball for the whole season.
 3. During Week 1, use **Refresh in-progress Week 1** after each series or day.
    The button is safe to repeat because unchanged source rows are skipped.
-4. After Week 1 ends, refresh until every Leaguepedia scoreboard is present,
-   run the matching Oracle's Elixir enrichment, then use **Finalize complete
-   Week 1 results**. Final validation blocks scoring when advanced v5 inputs
-   are still missing.
+4. After Week 1 ends, refresh until every Games of Legends series has a completed
+   score, then use **Finalize complete Week 1 results**. Final validation blocks
+   scoring when a series or advanced v5 input is still missing.
 5. On `/commissioner`, run **Validate + score**, then publish. Public standings
    read only this immutable published snapshot; the league is now at Week 1.
 6. Get the Week 2 schedule from the Commissioner UI. It opens automatically for roster changes
@@ -210,11 +221,10 @@ npm run backfill:stats
 
 This derived-data backfill repairs team totals, KP, damage/gold share, and
 reconstructed draft picks. It cannot invent lane-at-15, tower damage, damage
-mitigation, warding, or multikill data that the stored Leaguepedia rows never
-contained. Run `npm run ingest:oe -- <csv> "<split>" [tournament-id]
---week=N` against the matching Oracle's Elixir CSV to backfill those source
-metrics. The deep-stats page reports coverage explicitly and leaves an advanced
-score component blank until all of that player's games have the required input.
+mitigation, warding, or multikill data that old source rows never contained.
+Use `npm run ingest:gol -- --all-tournaments` to backfill those source metrics.
+The deep-stats page reports coverage explicitly and leaves an advanced score
+component blank until all of that player's games have the required input.
 
 ## Statistics model
 

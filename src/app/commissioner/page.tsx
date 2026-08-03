@@ -22,8 +22,7 @@ import { parseResolutionEvidence } from "@/lib/crystal-ball";
 import { parseScoring } from "@/lib/fantasy";
 
 export const dynamic = "force-dynamic";
-// The largest existing full-split import took 138 seconds. Weekly imports fit
-// inside Vercel Hobby's five-minute Fluid Compute ceiling.
+// Weekly Gol.gg imports fit inside Vercel Hobby's five-minute Fluid Compute ceiling.
 export const maxDuration = 300;
 
 export default async function CommissionerPage({
@@ -88,10 +87,10 @@ export default async function CommissionerPage({
     (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.source === "LEAGUEPEDIA_SCHEDULE" && run.status === "RUNNING",
   );
   const resultsRunning = runs.some(
-    (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.source === "LEAGUEPEDIA" && run.status === "RUNNING",
+    (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.source === "GAMES_OF_LEGENDS" && run.status === "RUNNING",
   );
   const liveRefreshRunning = runs.some(
-    (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.source === "LEAGUEPEDIA_LIVE" && run.status === "RUNNING",
+    (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.source === "GAMES_OF_LEGENDS_LIVE" && run.status === "RUNNING",
   );
   const scheduleAllowed = !league.isSimulation && league.seasonStatus !== "FINAL" && (
     !target || target.status === "UPCOMING" || (target.status === "OPEN" && !target.picksLockedAt)
@@ -167,7 +166,7 @@ export default async function CommissionerPage({
                 running={liveRefreshRunning}
                 leagueId={league.id}
                 weekNumber={targetWeek}
-                source="LEAGUEPEDIA_LIVE"
+                source="GAMES_OF_LEGENDS_LIVE"
                 label={`Refresh in-progress Week ${targetWeek}`}
               />
             </form>
@@ -183,7 +182,7 @@ export default async function CommissionerPage({
                   running={resultsRunning}
                   leagueId={league.id}
                   weekNumber={targetWeek}
-                  source="LEAGUEPEDIA"
+                  source="GAMES_OF_LEGENDS"
                   label={target?.status === "RESULTS_IMPORTED" ? `Recheck final Week ${targetWeek} results` : `Finalize complete Week ${targetWeek} results`}
                 />
               )}
