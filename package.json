@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "ingest": "tsx src/scripts/ingest.ts",
+    "ingest:gol": "tsx src/scripts/ingest-gol.ts",
     "ingest:oe": "tsx src/scripts/enrich-oe.ts",
     "ingest:timeline": "tsx src/scripts/ingest-timeline.ts",
     "backfill:stats": "tsx src/scripts/backfill-stats.ts",

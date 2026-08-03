@@ -9,6 +9,7 @@ import { calculateWeeklyScores, ensureLeagueWeeks, snapshotWeeklyRosters, valida
 import { DEFAULT_SCORING } from "@/lib/scoring";
 import { settleCrystalBall } from "@/lib/crystal-ball";
 import { runLeaguepediaIngest } from "@/scripts/ingest";
+import { runGamesOfLegendsIngest } from "@/scripts/ingest-gol";
 import { rosterLockError } from "@/lib/roster-readiness";
 
 async function authorizedWeek(id: number) {
@@ -122,7 +123,9 @@ async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean, live =
     draftActions: await prisma.draftAction.count({ where: { game: { match: { weekId: week!.id } } } }),
     pendingScoreboards: [],
     writes: { created: 0, updated: 0, unchanged: 0 },
-  } : await runLeaguepediaIngest({ overviewPage: league.tournamentId, weekNumber, scheduleOnly, live });
+  } : scheduleOnly
+    ? await runLeaguepediaIngest({ overviewPage: league.tournamentId, weekNumber, scheduleOnly: true })
+    : await runGamesOfLegendsIngest({ tournamentId: league.tournamentId, weekNumber, live });
   week = await prisma.week.findUniqueOrThrow({ where: { tournamentId_number: { tournamentId: league.tournamentId, number: weekNumber } } });
   if (live) {
     // Live refreshes leave lifecycle, persistent scores, and Crystal Ball
@@ -186,11 +189,11 @@ export async function refreshLiveWeek(formData: FormData) {
   const sourceStatus = pending.length > 0
     ? ` Source pending: ${pending.slice(0, 2).map((match) =>
       `${match.label} (${match.gamesFound}/${match.expectedGames} games, ${match.playerLinesFound}/${match.expectedPlayerLines} player lines)`,
-    ).join("; ")}${pending.length > 2 ? `; +${pending.length - 2} more` : ""}. Refresh again after Leaguepedia publishes the scoreboards.`
-    : " All completed match scoreboards currently published by Leaguepedia are loaded.";
+    ).join("; ")}${pending.length > 2 ? `; +${pending.length - 2} more` : ""}. Refresh again after Games of Legends publishes a completed series score.`
+    : " All completed series currently published by Games of Legends are loaded.";
   commissionerRedirect(
     "notice",
-    `Week ${result.weekNumber} live view refreshed: ${result.counts.games} games and ${result.counts.playerStats} player lines. Wrote ${writes.created + writes.updated} changed rows; skipped ${writes.unchanged} unchanged rows.${sourceStatus} Crystal Ball remains provisional.`,
+    `Week ${result.weekNumber} Games of Legends view refreshed: ${result.counts.games} games and ${result.counts.playerStats} player lines. Wrote ${writes.created + writes.updated} changed rows; skipped ${writes.unchanged} unchanged rows.${sourceStatus} Crystal Ball remains provisional.`,
   );
 }
 
