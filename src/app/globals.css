@@ -390,6 +390,17 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .num > .fallback-credit-badge { display: flex; margin: 0.2rem 0 0 auto; }
 .weekly-roster-audit tr.roster-fallback-row td { background: color-mix(in srgb, #e39b32 8%, var(--card)); }
 .weekly-roster-audit tr.roster-fallback-row td:first-child { border-left: 3px solid #e39b32; }
+.roster-schedule-cell { min-width: 23rem; white-space: normal; }
+.roster-series-list { display: grid; gap: 0.55rem; }
+.roster-series { display: grid; gap: 0.3rem; }
+.roster-series + .roster-series { padding-top: 0.5rem; border-top: 1px solid var(--border); }
+.roster-series-heading { display: flex; align-items: center; gap: 0.25rem; color: var(--muted); font-size: 0.75rem; }
+.roster-game-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.roster-game-chip { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.22rem 0.42rem; color: var(--text); border: 1px solid var(--border); border-radius: 5px; background: var(--bg); font-size: 0.75rem; text-decoration: none; cursor: help; }
+.roster-game-chip:hover { border-color: var(--accent); }
+.roster-game-chip em { color: #f1aa42; font-size: 0.62rem; font-style: normal; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.roster-game-chip.substitute { color: #f1aa42; border-color: color-mix(in srgb, #e39b32 70%, var(--border)); background: color-mix(in srgb, #e39b32 12%, var(--card)); }
+.roster-game-chip.other-player { border-style: dashed; color: var(--muted); }
 .roster-trade-exception-note { display: grid; gap: 0.65rem; margin: 1rem 0; }
 .roster-trade-exception-note h2 { margin: 0.35rem 0 0; }
 .roster-trade-exception-note p { margin: 0; }

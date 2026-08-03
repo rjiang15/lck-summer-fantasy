@@ -8,6 +8,7 @@ import {
   fmtDate,
   round1,
   SLOT_ORDER,
+  weeklyFantasyLines,
 } from "@/lib/fantasy";
 import { pickemPoints } from "@/lib/scoring";
 import { getViewState, isFinished } from "@/lib/view";
@@ -21,6 +22,7 @@ import {
   rosterPlayerMatchesTradeException,
 } from "@/lib/roster-trade-exceptions";
 import RosterTradeExceptionNotice from "@/components/RosterTradeExceptionNotice";
+import { buildRosterGameAudits, type RosterAuditMatch } from "@/lib/roster-game-audit";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +72,53 @@ export default async function ParticipantPage({
   });
   const standings = await computeStandings(cutoff, ft.leagueId);
   const mine = standings?.standings.find((s) => s.fantasyTeamId === ft.id);
+  const auditWeekNumbers = [...new Set((mine?.weekly ?? []).map((week) => week.weekNumber))];
+  const auditWeeks = auditWeekNumbers.length > 0
+    ? await prisma.week.findMany({
+        where: { tournamentId: ft.league.tournamentId, number: { in: auditWeekNumbers } },
+        orderBy: { number: "asc" },
+        include: {
+          matches: {
+            orderBy: { scheduledAt: "asc" },
+            include: {
+              games: {
+                orderBy: { gameNumber: "asc" },
+                include: {
+                  playerStats: { include: { player: { select: { name: true } } } },
+                  teamStats: true,
+                  playerTimeline: { where: { minute: 15 } },
+                },
+              },
+            },
+          },
+        },
+      })
+    : [];
+  const auditMatchesByWeek = new Map(auditWeeks.map((week) => {
+    const pointLines = weeklyFantasyLines(week.matches, cfg);
+    const pointsByGamePlayer = new Map(pointLines.map((line) => [`${line.gameId}\u0000${line.playerId}`, line.points]));
+    const matches: RosterAuditMatch[] = week.matches.map((match) => ({
+      id: match.id,
+      team1: match.team1,
+      team2: match.team2,
+      scheduledAt: match.scheduledAt,
+      games: match.games
+        .filter((game) => game.winner !== null && (cutoff === null || (game.playedAt ?? match.scheduledAt) < cutoff))
+        .map((game) => ({
+          id: game.id,
+          gameNumber: game.gameNumber,
+          playedAt: game.playedAt ?? match.scheduledAt,
+          lines: game.playerStats.map((stat) => ({
+            playerId: stat.playerId,
+            playerName: stat.player.name,
+            teamId: stat.teamId,
+            role: stat.role,
+            points: pointsByGamePlayer.get(`${game.id}\u0000${stat.playerId}`) ?? 0,
+          })),
+        })),
+    }));
+    return [week.number, matches] as const;
+  }));
 
   const publicPickWeekIds = new Set(
     ft.league.leagueWeeks.filter(areWeeklyPicksPublic).map((week) => week.weekId),
@@ -81,7 +130,7 @@ export default async function ParticipantPage({
     );
     if (!leagueWeek) return [];
     const rows = leagueWeek.weeklyRosters
-      .filter((row) => row.fantasyTeamId === ft.id && row.slot !== "BENCH")
+      .filter((row) => row.fantasyTeamId === ft.id)
       .sort((left, right) => SLOT_ORDER.indexOf(left.slot) - SLOT_ORDER.indexOf(right.slot))
       .map((row) => {
         const exception = fantasyRosterTradeExceptionForRosterPlayer(
@@ -107,11 +156,37 @@ export default async function ParticipantPage({
           rosterException: contribution?.rosterException ?? null,
         };
       });
+    const gameAudits = buildRosterGameAudits(rows.map((row) => {
+      const tournamentIdentity = row.player.tournamentRosters[0];
+      const exception = fantasyRosterTradeExceptionForRosterPlayer(
+        ft.league.tournamentId,
+        ft.user.username,
+        row.playerId,
+      );
+      return {
+        id: row.id,
+        playerId: row.effectivePlayerId,
+        playerName: row.effectivePlayerName,
+        slot: row.slot,
+        teamId: exception?.currentTeamId ?? tournamentIdentity?.teamId ?? row.player.teamId,
+        role: exception?.role ?? tournamentIdentity?.role ?? row.player.role,
+        creditedPoints: row.creditedPoints,
+        fallback: row.fallback,
+        assignmentException: exception ? {
+          effectiveAt: new Date(exception.effectiveAt),
+          previousPlayerId: exception.replacesPlayerId,
+          previousTeamId: exception.previousTeamId,
+          currentTeamId: exception.currentTeamId,
+          role: exception.role,
+        } : null,
+      };
+    }), auditMatchesByWeek.get(leagueWeek.week.number) ?? []);
+    const gameAuditBySlot = new Map(gameAudits.map((audit) => [audit.slotId, audit]));
     return [{
       leagueWeekId: leagueWeek.id,
       weekNumber: leagueWeek.week.number,
       provisional: weekScore.provisional,
-      rows,
+      rows: rows.map((row) => ({ ...row, gameAudit: gameAuditBySlot.get(row.id)! })),
     }];
   });
 
@@ -310,7 +385,7 @@ export default async function ParticipantPage({
 
       <h2>Weekly roster scoring</h2>
       <p className="muted small">
-        This is the frozen roster used for each published week plus any live provisional week. A highlighted substitute credit means the applicable roster assignment logged zero games and received the lower of the same-role substitute&apos;s production or that professional team&apos;s player average.
+        All ten frozen roster slots are shown for each published week plus any live provisional week. Game chips show raw per-game fantasy points; bench points are informational only. An orange chip means a different nameplate filled that team/role and substitute credit was awarded—hover it to see who played and how the weekly credit was calculated.
       </p>
       {weeklyRosterAudits.length === 0 ? <p className="card muted">No published or live weekly roster scores yet.</p> : <div className="tablewrap weekly-roster-audit">
         <table>
@@ -322,6 +397,7 @@ export default async function ParticipantPage({
               <th>Pro team</th>
               <th className="num">Games</th>
               <th className="num">Own Pts/G</th>
+              <th>Schedule / game points</th>
               <th className="num">Credited</th>
               <th>Scoring status</th>
             </tr>
@@ -339,9 +415,44 @@ export default async function ParticipantPage({
                 <td>{teamId ? <TeamLabel name={teamId} size="xs" /> : "?"}</td>
                 <td className="num">{row.gamesPlayed}</td>
                 <td className="num">{round1(row.pointsPerGame)}</td>
-                <td className="num"><b>{round1(row.creditedPoints)}</b></td>
+                <td className="roster-schedule-cell">
+                  {row.gameAudit.series.length === 0 ? <span className="muted small">No scheduled series</span> : (
+                    <div className="roster-series-list">
+                      {row.gameAudit.series.map((series) => (
+                        <div className="roster-series" key={series.matchId}>
+                          <span className="roster-series-heading">
+                            {fmtDate(series.scheduledAt)} · vs <TeamLabel name={series.opponent} size="xs" />
+                          </span>
+                          <span className="roster-game-chips">
+                            {series.games.length === 0 ? <span className="badge pending">awaiting completed series</span> : series.games.map((game) => {
+                              const points = game.points === null ? "—" : round1(game.points);
+                              const substituteCredit = game.status === "SUBSTITUTE_CREDIT";
+                              const title = substituteCredit
+                                ? `${game.actualPlayerName ?? game.actualPlayerId} played ${row.fallback?.role ?? "this role"} instead of ${row.effectivePlayerName}. Raw Game ${game.gameNumber} score: ${points}. Weekly fallback credit: ${round1(game.fallbackCredit ?? 0)} Pts/G (min of substitute ${round1(row.fallback?.substitutePointsPerGame ?? 0)} and team average ${round1(row.fallback?.teamAveragePointsPerGame ?? 0)}).`
+                                : game.status === "OWN"
+                                  ? `${row.effectivePlayerName} scored ${points} fantasy points in Game ${game.gameNumber}.`
+                                  : game.status === "OTHER_PLAYER"
+                                    ? `${game.actualPlayerName ?? game.actualPlayerId} played this team/role in Game ${game.gameNumber}; this roster slot received no substitute credit for the game.`
+                                    : `No player line is available for Game ${game.gameNumber}.`;
+                              return <Link
+                                className={`roster-game-chip${substituteCredit ? " substitute" : game.status === "OTHER_PLAYER" ? " other-player" : ""}`}
+                                href={`/games/${game.gameId}`}
+                                key={game.gameId}
+                                title={title}
+                                aria-label={title}
+                              >
+                                <b>G{game.gameNumber}</b> {points}{substituteCredit && <em>sub</em>}
+                              </Link>;
+                            })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </td>
+                <td className="num">{row.slot === "BENCH" ? <span className="muted">—</span> : <b>{round1(row.creditedPoints)}</b>}</td>
                 <td className="weekly-roster-status">
-                  {row.fallback ? <>
+                  {row.slot === "BENCH" ? <span className="muted small">Bench · game points shown for reference, not credited</span> : row.fallback ? <>
                     <span className="fallback-credit-badge">{row.rosterException ? "Trade-exception substitute credit" : "Substitute credit applied"}</span>
                     <small>
                       {row.fallback.substitutePlayerIds.map((playerId) => substituteNames.get(playerId) ?? playerId).join(", ")}: {round1(row.fallback.substitutePointsPerGame)} Pts/G · team average: {round1(row.fallback.teamAveragePointsPerGame)} · min = {round1(row.fallback.creditedPoints)} credited
