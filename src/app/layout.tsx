@@ -27,6 +27,12 @@ export default async function RootLayout({
     where: { userId: user.id }, include: { league: true }, orderBy: { joinedAt: "asc" },
   }) : [];
   const activeMembership = view ? memberships.find((row) => row.leagueId === view.leagueId) : undefined;
+  const myFantasyTeam = user && view
+    ? await prisma.fantasyTeam.findUnique({
+        where: { leagueId_userId: { leagueId: view.leagueId, userId: user.id } },
+        select: { id: true },
+      })
+    : null;
   const researchTournaments = view ? await listResearchTournaments(view.leagueTournamentId) : [];
   return (
     <html lang="en">
@@ -54,6 +60,7 @@ export default async function RootLayout({
                 />
               )}
               {user ? (<>
+                {myFantasyTeam && <Link href={`/participants/${myFantasyTeam.id}`} className="button-link">My roster</Link>}
                 <Link href="/leagues" className="nav-signin">My leagues</Link>
                 <form action={logout} className="nav-auth">
                   <span className="muted small">{user.username}</span>
