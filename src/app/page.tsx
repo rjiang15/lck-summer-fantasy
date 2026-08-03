@@ -7,6 +7,7 @@ import { getDataViewState, isFinished, isGameFinished } from "@/lib/view";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { TeamLabel } from "@/components/GameIdentity";
+import { gameDetailHref } from "@/lib/routes";
 import { areWeeklyPicksPublic } from "@/lib/pick-privacy";
 import { pickemPoints } from "@/lib/scoring";
 
@@ -121,7 +122,7 @@ export default async function GamesPage() {
                             <Link
                               key={g.id}
                               className="gamechip"
-                              href={`/games/${encodeURIComponent(g.id)}`}
+                              href={gameDetailHref(g.id)}
                             >
                               G{g.gameNumber} · {fmtLength(g.lengthSec)}
                             </Link>

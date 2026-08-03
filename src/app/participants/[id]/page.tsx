@@ -23,6 +23,7 @@ import {
 } from "@/lib/roster-trade-exceptions";
 import RosterTradeExceptionNotice from "@/components/RosterTradeExceptionNotice";
 import { buildRosterGameAudits, type RosterAuditMatch } from "@/lib/roster-game-audit";
+import { gameDetailHref } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 
@@ -436,7 +437,7 @@ export default async function ParticipantPage({
                                     : `No player line is available for Game ${game.gameNumber}.`;
                               return <Link
                                 className={`roster-game-chip${substituteCredit ? " substitute" : game.status === "OTHER_PLAYER" ? " other-player" : ""}`}
-                                href={`/games/${game.gameId}`}
+                                href={gameDetailHref(game.gameId)}
                                 key={game.gameId}
                                 title={title}
                                 aria-label={title}
