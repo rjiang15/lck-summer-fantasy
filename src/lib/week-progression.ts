@@ -74,3 +74,16 @@ export function latestRefreshableWeekNumber(weeks: ReadonlyArray<{
     return latest === null ? week.week.number : Math.max(latest, week.week.number);
   }, null);
 }
+
+export function provisionalScoringWeeks<T extends {
+  status: string;
+  weeklyRosters: readonly unknown[];
+  week: { number: number };
+}>(weeks: readonly T[]) {
+  return weeks
+    .filter((week) =>
+      ["LOCKED", "RESULTS_IMPORTED", "SCORED"].includes(week.status) &&
+      week.weeklyRosters.length > 0,
+    )
+    .sort((left, right) => left.week.number - right.week.number);
+}

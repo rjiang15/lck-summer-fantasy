@@ -68,6 +68,14 @@ export default async function LeaderboardPage() {
       ),
   );
   const hasProvisional = result?.standings.some((standing) => standing.hasProvisional) ?? false;
+  const provisionalWeekNumbers = [...new Set(
+    result?.standings.flatMap((standing) =>
+      standing.weekly.filter((week) => week.provisional).map((week) => week.weekNumber),
+    ) ?? [],
+  )].sort((left, right) => left - right);
+  const provisionalWeekLabel = provisionalWeekNumbers.length === 1
+    ? `Week ${provisionalWeekNumbers[0]}`
+    : `Weeks ${provisionalWeekNumbers.join(" and ")}`;
   const substitutePlayerIds = [...new Set(
     result?.standings.flatMap((standing) =>
       standing.weekly.flatMap((week) =>
@@ -96,7 +104,7 @@ export default async function LeaderboardPage() {
 
     {hasProvisional ? <div className="card live-data-note">
       <b>Live standings · provisional</b>
-      <span className="muted small">Totals include completed games from Week {result?.standings.find((standing) => standing.provisionalWeek)?.provisionalWeek}. They update after each refresh and become official only when the commissioner validates and publishes the week. Crystal Ball points remain unawarded.</span>
+      <span className="muted small">Totals include completed games from {provisionalWeekLabel}. They update after each refresh and become official only when the commissioner validates and publishes each week. Crystal Ball points remain unawarded.</span>
     </div> : view.completedWeek !== null && <p className="muted small">
       Fantasy totals include commissioner-published weeks only. Detailed pro-player scoring and performance metrics are available under Deep Stats.
     </p>}

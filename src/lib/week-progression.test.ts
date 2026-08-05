@@ -6,6 +6,7 @@ import {
   canOpenWeekPicks,
   canUnlockWeekPicks,
   latestRefreshableWeekNumber,
+  provisionalScoringWeeks,
   shouldOpenNextWeekOnPublication,
   type SeriesResult,
 } from "./week-progression";
@@ -85,4 +86,16 @@ test("live data refresh follows the newest locked slate, not the oldest unpublis
     { status: "LOCKED", picksLockedAt: lockedAt, rosterLockedAt: lockedAt, week: { number: 1 } },
     { status: "OPEN", picksLockedAt: null, rosterLockedAt: null, week: { number: 2 } },
   ]), 1);
+});
+
+test("standings include every unpublished scoring week with a frozen roster", () => {
+  const weeks = provisionalScoringWeeks([
+    { status: "PUBLISHED", weeklyRosters: [{}], week: { number: 0 } },
+    { status: "LOCKED", weeklyRosters: [{}], week: { number: 2 } },
+    { status: "RESULTS_IMPORTED", weeklyRosters: [{}], week: { number: 1 } },
+    { status: "SCORED", weeklyRosters: [], week: { number: 3 } },
+    { status: "OPEN", weeklyRosters: [{}], week: { number: 4 } },
+  ]);
+
+  assert.deepEqual(weeks.map((week) => week.week.number), [1, 2]);
 });
