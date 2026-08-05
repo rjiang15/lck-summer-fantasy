@@ -6,6 +6,7 @@ import { prisma } from "../lib/db";
 import { mergeTournamentRosterOverrides } from "../lib/tournament-roster-overrides";
 import { validateWeekData } from "../lib/season";
 import { assertSequentialIngest } from "../lib/ingest-order";
+import { areWeekSeriesResultsComplete } from "../lib/week-progression";
 import { encodeIngestionProgress } from "../lib/ingestion-progress";
 import { setCurrentTournament } from "../lib/tournaments";
 import { createWriteCounts, writeIfChanged, type WriteCounts } from "../lib/change-aware-write";
@@ -664,10 +665,30 @@ async function validateIngestRequest(
   }
 
   if (weekNumber !== null) {
-    const weeks = await prisma.week.findMany({ where: { tournamentId: overviewPage }, orderBy: { number: "asc" } });
+    const weeks = await prisma.week.findMany({
+      where: { tournamentId: overviewPage },
+      orderBy: { number: "asc" },
+      include: {
+        matches: {
+          select: {
+            bestOf: true,
+            team1: true,
+            team2: true,
+            winner: true,
+            team1Score: true,
+            team2Score: true,
+          },
+        },
+      },
+    });
     const target = weeks.find((week) => week.number === weekNumber);
     const published = !scheduleOnly && target ? await prisma.leagueWeek.count({ where: { weekId: target.id, status: "PUBLISHED" } }) : 0;
-    assertSequentialIngest(weekNumber, scheduleOnly, weeks.map((week) => ({ number: week.number, scheduleReady: Boolean(week.scheduleImportedAt), resultsReady: Boolean(week.resultsImportedAt) })), published > 0);
+    assertSequentialIngest(weekNumber, scheduleOnly, weeks.map((week) => ({
+      number: week.number,
+      scheduleReady: Boolean(week.scheduleImportedAt),
+      resultsReady: Boolean(week.resultsImportedAt),
+      seriesResultsReady: areWeekSeriesResultsComplete(week.matches),
+    })), published > 0);
   }
 }
 

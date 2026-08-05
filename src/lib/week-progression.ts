@@ -58,3 +58,19 @@ export function shouldOpenNextWeekOnPublication(status: string) {
 export function canManageFutureRosters(currentWeek: number, latestOpenedWeek: number | null) {
   return currentWeek > 0 || (latestOpenedWeek ?? 0) > 1;
 }
+
+export function latestRefreshableWeekNumber(weeks: ReadonlyArray<{
+  status: string;
+  picksLockedAt: Date | null;
+  rosterLockedAt: Date | null;
+  week: { number: number };
+}>) {
+  return weeks.reduce<number | null>((latest, week) => {
+    const refreshable =
+      week.picksLockedAt !== null &&
+      week.rosterLockedAt !== null &&
+      ["LOCKED", "RESULTS_IMPORTED"].includes(week.status);
+    if (!refreshable) return latest;
+    return latest === null ? week.week.number : Math.max(latest, week.week.number);
+  }, null);
+}

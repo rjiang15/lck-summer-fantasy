@@ -7,8 +7,14 @@ test("allows the next shared schedule and idempotent refresh", () => {
   assert.doesNotThrow(() => assertSequentialIngest(1, true, [{ number: 1, scheduleReady: true, resultsReady: false }]));
 });
 
-test("requires prior results before importing the next schedule", () => {
+test("requires prior final series results, not detailed stats, before importing the next schedule", () => {
   assert.throws(() => assertSequentialIngest(2, true, [{ number: 1, scheduleReady: true, resultsReady: false }]), /Week 1 results/);
+  assert.doesNotThrow(() => assertSequentialIngest(2, true, [{
+    number: 1,
+    scheduleReady: true,
+    resultsReady: false,
+    seriesResultsReady: true,
+  }]));
   assert.doesNotThrow(() => assertSequentialIngest(2, true, [{ number: 1, scheduleReady: true, resultsReady: true }]));
   assert.throws(() => assertSequentialIngest(3, true, [{ number: 1, scheduleReady: true, resultsReady: true }]), /Week 2 schedule/);
 });
