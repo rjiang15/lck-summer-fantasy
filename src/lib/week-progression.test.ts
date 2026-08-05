@@ -5,6 +5,7 @@ import {
   canManageFutureRosters,
   canOpenWeekPicks,
   canUnlockWeekPicks,
+  latestRefreshableWeekNumber,
   shouldOpenNextWeekOnPublication,
   type SeriesResult,
 } from "./week-progression";
@@ -72,4 +73,16 @@ test("opening Week 2 enables future-roster management before Week 1 stats publis
   assert.equal(canManageFutureRosters(0, 1), false);
   assert.equal(canManageFutureRosters(0, 2), true);
   assert.equal(canManageFutureRosters(1, null), true);
+});
+
+test("live data refresh follows the newest locked slate, not the oldest unpublished week", () => {
+  const lockedAt = new Date("2026-08-05T12:00:00.000Z");
+  assert.equal(latestRefreshableWeekNumber([
+    { status: "LOCKED", picksLockedAt: lockedAt, rosterLockedAt: lockedAt, week: { number: 1 } },
+    { status: "LOCKED", picksLockedAt: lockedAt, rosterLockedAt: lockedAt, week: { number: 2 } },
+  ]), 2);
+  assert.equal(latestRefreshableWeekNumber([
+    { status: "LOCKED", picksLockedAt: lockedAt, rosterLockedAt: lockedAt, week: { number: 1 } },
+    { status: "OPEN", picksLockedAt: null, rosterLockedAt: null, week: { number: 2 } },
+  ]), 1);
 });

@@ -1,6 +1,7 @@
 // Import completed match results and scoreboards from Games of Legends.
 // Leaguepedia remains the canonical schedule/roster source; Gol.gg is
-// authoritative for completed series, game, player, team, and draft stats.
+// authoritative for completed series, game, player, team, and draft stats,
+// except for the narrow audited exceptions in gol-data-quality.ts.
 
 import { prisma } from "../lib/db";
 import { validateWeekData } from "../lib/season";
@@ -8,6 +9,11 @@ import { assertSequentialIngest } from "../lib/ingest-order";
 import { encodeIngestionProgress } from "../lib/ingestion-progress";
 import { createWriteCounts, writeIfChanged, type WriteCounts } from "../lib/change-aware-write";
 import type { PendingScoreboardMatch } from "../lib/ingest-completeness";
+import {
+  golSeriesQualityOverride,
+  isGloballyDisabledChampionBan,
+  type GolSeriesQualityOverride,
+} from "../lib/gol-data-quality";
 import {
   fetchGolHtml,
   golGameUrl,
@@ -107,6 +113,21 @@ function pendingDetailedStats(
       playerLinesFound,
       match.games.reduce((total, game) => total + game.playerStats.length, 0),
     ),
+  };
+}
+
+function quarantinedDetailedStats(
+  match: { id: string; team1: string; team2: string; games: Array<{ playerStats: unknown[] }> },
+  expectedGames: number,
+  reason: string,
+): PendingScoreboardMatch {
+  return {
+    matchId: match.id,
+    label: `${match.team1} vs ${match.team2} (verified result stored; detailed stats quarantined: ${reason.slice(0, 160)})`,
+    expectedGames,
+    gamesFound: match.games.length,
+    expectedPlayerLines: expectedGames * 10,
+    playerLinesFound: match.games.reduce((total, game) => total + game.playerStats.length, 0),
   };
 }
 
@@ -252,16 +273,33 @@ async function ingestTournament({
   );
   const matchedSourceIds = new Set<string>();
   const pendingScoreboards: PendingScoreboardMatch[] = [];
-  const completed: Array<{ match: (typeof matches)[number]; series: GolSeries }> = [];
+  const completed: Array<{
+    match: (typeof matches)[number];
+    series: GolSeries;
+    result: { winner: string; team1Score: number; team2Score: number };
+    qualityOverride: GolSeriesQualityOverride | null;
+  }> = [];
   for (const match of matches) {
     const key = `${dateKey(match.scheduledAt)}|${teamSetKey(match.team1, match.team2)}`;
     const series = sourceByKey.get(key) ?? null;
-    if (!series || !isGolSeriesComplete(series, match.bestOf)) {
+    const qualityOverride = series ? golSeriesQualityOverride({
+      tournamentId,
+      date: series.date,
+      summaryGameId: series.summaryGameId,
+      team1: match.team1,
+      team2: match.team2,
+    }) : null;
+    if (!series || (!qualityOverride && !isGolSeriesComplete(series, match.bestOf))) {
       pendingScoreboards.push(pendingSeries(match, series));
       continue;
     }
     matchedSourceIds.add(series.summaryGameId);
-    completed.push({ match, series });
+    completed.push({
+      match,
+      series,
+      result: qualityOverride ?? golSeriesResultForMatch(series, match),
+      qualityOverride,
+    });
   }
   await reportProgress(
     runId,
@@ -274,8 +312,7 @@ async function ingestTournament({
   // every completed match-list result before attempting the detailed import so
   // commissioners can open the next week's picks without freezing incomplete
   // fantasy scores.
-  for (const { match, series } of completed) {
-    const matchData = golSeriesResultForMatch(series, match);
+  for (const { match, result: matchData } of completed) {
     const key = { id: match.id };
     await writeIfChanged({
       existing: match,
@@ -296,7 +333,7 @@ async function ingestTournament({
   }
   const sourcePlayerNames = new Set<string>();
 
-  for (const [seriesIndex, { match, series }] of completed.entries()) {
+  for (const [seriesIndex, { match, series, result, qualityOverride }] of completed.entries()) {
     await reportProgress(
       runId,
       7 + (seriesIndex / Math.max(completed.length, 1)) * 84,
@@ -304,6 +341,14 @@ async function ingestTournament({
     );
     let gameLinks: GolSeriesGame[] = [];
     const parsedGames: ParsedGame[] = [];
+    if (qualityOverride?.quarantineDetailedStats) {
+      pendingScoreboards.push(quarantinedDetailedStats(
+        match,
+        result.team1Score + result.team2Score,
+        qualityOverride.reason,
+      ));
+      continue;
+    }
     try {
       gameLinks = parseGolSeriesGames(await fetchGolHtml(series.summaryUrl));
       const expectedGames = series.team1Score + series.team2Score;
@@ -594,13 +639,18 @@ async function ingestTournament({
           const champions = action === "BAN" ? draft.bans : draft.picks;
           for (const [index, champion] of champions.entries()) {
             const sequence = index + 1;
+            const storedAction = action === "BAN" && isGloballyDisabledChampionBan({
+              tournamentId,
+              date: parsed.overview.date,
+              champion,
+            }) ? "GLOBAL_BAN" : action;
             const draftedPlayer = parsed.players.find(
               (player) => player.side === draft.side && player.champion === champion,
             );
             const data = {
               teamId,
               side: draft.side,
-              action,
+              action: storedAction,
               sequence,
               champion,
               role: action === "PICK" ? draftedPlayer?.role ?? null : null,
@@ -608,16 +658,18 @@ async function ingestTournament({
                 ? playerIdBySideChampion.get(`${draft.side}\u0000${champion}`) ?? null
                 : null,
             };
-            const key = { gameId_teamId_action_sequence: { gameId, teamId, action, sequence } };
             const existing = existingGame?.draftActions.find(
-              (row) => row.teamId === teamId && row.action === action && row.sequence === sequence,
+              (row) => row.teamId === teamId && row.sequence === sequence && (
+                row.action === storedAction ||
+                (action === "BAN" && ["BAN", "GLOBAL_BAN"].includes(row.action))
+              ),
             ) ?? null;
             await writeIfChanged({
               existing,
               incoming: data,
               counts: writes,
               create: () => prisma.draftAction.create({ data: { gameId, ...data } }),
-              update: () => prisma.draftAction.update({ where: key, data }),
+              update: () => prisma.draftAction.update({ where: { id: existing!.id }, data }),
             });
           }
         }

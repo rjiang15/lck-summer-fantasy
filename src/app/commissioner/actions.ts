@@ -126,11 +126,18 @@ async function handleExpectedActionError(work: () => Promise<void>, path = "/com
   }
 }
 
-async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean, live = false) {
+async function runWeekIngest(
+  leagueId: number,
+  weekNumber: number,
+  scheduleOnly: boolean,
+  live = false,
+) {
   await requireLeagueManager(leagueId);
+  if (!Number.isInteger(weekNumber) || weekNumber < 1) {
+    throw new Error("The data-refresh week must be a positive whole number");
+  }
   const league = await prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
   if (league.seasonStatus === "FINAL") throw new Error("The season is already final");
-  const weekNumber = league.currentWeek + 1;
   if (live && league.isSimulation) {
     throw new Error("Historical simulations do not contact the live data source");
   }
@@ -185,9 +192,13 @@ async function runNextWeekIngest(leagueId: number, scheduleOnly: boolean, live =
 }
 
 export async function fetchNextWeekSchedule(formData: FormData) {
-  let result: Awaited<ReturnType<typeof runNextWeekIngest>>;
+  let result: Awaited<ReturnType<typeof runWeekIngest>>;
   try {
-    result = await runNextWeekIngest(Number(formData.get("leagueId")), true);
+    result = await runWeekIngest(
+      Number(formData.get("leagueId")),
+      Number(formData.get("weekNumber")),
+      true,
+    );
   } catch (error) {
     unstable_rethrow(error);
     commissionerRedirect("error", error instanceof Error ? error.message : String(error));
@@ -199,9 +210,13 @@ export async function fetchNextWeekSchedule(formData: FormData) {
 }
 
 export async function fetchNextWeekResults(formData: FormData) {
-  let result: Awaited<ReturnType<typeof runNextWeekIngest>>;
+  let result: Awaited<ReturnType<typeof runWeekIngest>>;
   try {
-    result = await runNextWeekIngest(Number(formData.get("leagueId")), false);
+    result = await runWeekIngest(
+      Number(formData.get("leagueId")),
+      Number(formData.get("weekNumber")),
+      false,
+    );
   } catch (error) {
     unstable_rethrow(error);
     commissionerRedirect("error", error instanceof Error ? error.message : String(error));
@@ -213,9 +228,14 @@ export async function fetchNextWeekResults(formData: FormData) {
 }
 
 export async function refreshLiveWeek(formData: FormData) {
-  let result: Awaited<ReturnType<typeof runNextWeekIngest>>;
+  let result: Awaited<ReturnType<typeof runWeekIngest>>;
   try {
-    result = await runNextWeekIngest(Number(formData.get("leagueId")), false, true);
+    result = await runWeekIngest(
+      Number(formData.get("leagueId")),
+      Number(formData.get("weekNumber")),
+      false,
+      true,
+    );
   } catch (error) {
     unstable_rethrow(error);
     commissionerRedirect("error", error instanceof Error ? error.message : String(error));
@@ -225,7 +245,7 @@ export async function refreshLiveWeek(formData: FormData) {
   const sourceStatus = pending.length > 0
     ? ` Source pending: ${pending.slice(0, 2).map((match) =>
       `${match.label} (${match.gamesFound}/${match.expectedGames} games, ${match.playerLinesFound}/${match.expectedPlayerLines} player lines)`,
-    ).join("; ")}${pending.length > 2 ? `; +${pending.length - 2} more` : ""}. Refresh again after Games of Legends publishes a completed series score.`
+    ).join("; ")}${pending.length > 2 ? `; +${pending.length - 2} more` : ""}. Refresh again when the source becomes complete; quarantined series remain available for a trusted manual backfill.`
     : " All completed series currently published by Games of Legends are loaded.";
   commissionerRedirect(
     "notice",

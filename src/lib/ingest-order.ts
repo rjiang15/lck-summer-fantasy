@@ -2,6 +2,8 @@ export interface SharedWeekState {
   number: number;
   scheduleReady: boolean;
   resultsReady: boolean;
+  /** Final series winners/scores may be ready before detailed game stats. */
+  seriesResultsReady?: boolean;
 }
 
 /** Enforce one canonical, chronological LCK dataset independent of fantasy leagues. */
@@ -17,7 +19,8 @@ export function assertSequentialIngest(
     const ready = weeks.filter((week) => week.scheduleReady).map((week) => week.number);
     const next = ready.length ? Math.max(...ready) + 1 : 1;
     if (!target?.scheduleReady && requestedWeek !== next) throw new Error(`Week ${next} schedule must be fetched next`);
-    if (requestedWeek > 1 && !weeks.find((week) => week.number === requestedWeek - 1)?.resultsReady) {
+    const previous = weeks.find((week) => week.number === requestedWeek - 1);
+    if (requestedWeek > 1 && !previous?.resultsReady && !previous?.seriesResultsReady) {
       throw new Error(`Import Week ${requestedWeek - 1} results before fetching Week ${requestedWeek}`);
     }
     return;

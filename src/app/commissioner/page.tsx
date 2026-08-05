@@ -24,6 +24,7 @@ import {
   areWeekSeriesResultsComplete,
   canOpenWeekPicks,
   canUnlockWeekPicks,
+  latestRefreshableWeekNumber,
 } from "@/lib/week-progression";
 
 export const dynamic = "force-dynamic";
@@ -68,10 +69,24 @@ export default async function CommissionerPage({
   });
   const targetWeek = league.currentWeek + 1;
   const target = weeks.find((week) => week.week.number === targetWeek);
+  const importedScheduleNumbers = weeks
+    .filter((week) => week.week.scheduleImportedAt !== null)
+    .map((week) => week.week.number);
+  const scheduleWeekNumber = importedScheduleNumbers.length > 0
+    ? Math.max(...importedScheduleNumbers) + 1
+    : 1;
+  const scheduleTarget = weeks.find((week) => week.week.number === scheduleWeekNumber) ?? null;
+  const schedulePrevious = weeks.find((week) => week.week.number === scheduleWeekNumber - 1) ?? null;
   const latestPickWeek = [...weeks].reverse().find((week) =>
     week.picksOpenAt !== null && ["OPEN", "LOCKED", "RESULTS_IMPORTED", "SCORED"].includes(week.status),
   ) ?? null;
   const pickTarget = latestPickWeek ?? target;
+  // Detailed backfill stays on the oldest unpublished week, while live Gol
+  // refreshes follow the newest locked slate. This lets Week 2 accumulate
+  // games even if a quarantined Week 1 series still lacks complete stats.
+  const refreshTargetNumber = latestRefreshableWeekNumber(weeks);
+  const refreshTarget = weeks.find((week) => week.week.number === refreshTargetNumber) ?? target;
+  const refreshWeekNumber = refreshTarget?.week.number ?? targetWeek;
   const fantasyTeams = await prisma.fantasyTeam.findMany({
     where: { leagueId: league.id },
     include: { user: true },
@@ -106,26 +121,47 @@ export default async function CommissionerPage({
   const activeTargetRun = runs.find(
     (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.status === "RUNNING",
   );
-  const importRunning = Boolean(activeTargetRun);
-  const staleTargetRun = activeTargetRun && isIngestionRunStale(activeTargetRun) ? activeTargetRun : null;
+  const activeRefreshRun = runs.find(
+    (run) => run.tournamentId === league.tournamentId && run.weekNumber === refreshWeekNumber && run.status === "RUNNING",
+  );
+  const activeScheduleRun = runs.find(
+    (run) => run.tournamentId === league.tournamentId && run.weekNumber === scheduleWeekNumber && run.status === "RUNNING",
+  );
+  const targetImportRunning = Boolean(activeTargetRun);
+  const refreshImportRunning = Boolean(activeRefreshRun);
+  const scheduleImportRunning = Boolean(activeScheduleRun);
+  const activePanelRun = activeRefreshRun ?? activeTargetRun ?? activeScheduleRun;
+  const staleTargetRun = activePanelRun && isIngestionRunStale(activePanelRun) ? activePanelRun : null;
   const scheduleRunning = runs.some(
-    (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.source === "LEAGUEPEDIA_SCHEDULE" && run.status === "RUNNING",
+    (run) => run.tournamentId === league.tournamentId && run.weekNumber === scheduleWeekNumber && run.source === "LEAGUEPEDIA_SCHEDULE" && run.status === "RUNNING",
   );
   const resultsRunning = runs.some(
     (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.source === "GAMES_OF_LEGENDS" && run.status === "RUNNING",
   );
   const liveRefreshRunning = runs.some(
-    (run) => run.tournamentId === league.tournamentId && run.weekNumber === targetWeek && run.source === "GAMES_OF_LEGENDS_LIVE" && run.status === "RUNNING",
+    (run) => run.tournamentId === league.tournamentId && run.weekNumber === refreshWeekNumber && run.source === "GAMES_OF_LEGENDS_LIVE" && run.status === "RUNNING",
   );
-  const scheduleAllowed = !league.isSimulation && league.seasonStatus !== "FINAL" && (
-    !target || target.status === "UPCOMING" || (target.status === "OPEN" && !target.picksLockedAt)
+  const priorScheduleResultReady = scheduleWeekNumber === 1 || Boolean(
+    schedulePrevious && (
+      schedulePrevious.status === "PUBLISHED" ||
+      areWeekSeriesResultsComplete(schedulePrevious.week.matches)
+    ),
   );
+  const scheduleAllowed =
+    !league.isSimulation &&
+    league.seasonStatus !== "FINAL" &&
+    priorScheduleResultReady && (
+      !scheduleTarget ||
+      scheduleTarget.status === "UPCOMING" ||
+      (scheduleTarget.status === "OPEN" && !scheduleTarget.picksLockedAt)
+    );
   const resultsAllowed =
     league.seasonStatus !== "FINAL" && !!target && ["LOCKED", "RESULTS_IMPORTED"].includes(target.status);
   const liveRefreshAllowed =
     !league.isSimulation &&
     league.seasonStatus !== "FINAL" &&
-    target?.status === "LOCKED";
+    !!refreshTarget &&
+    ["LOCKED", "RESULTS_IMPORTED"].includes(refreshTarget.status);
   return (
     <>
       <h1>Commissioner — {league.name}</h1>
@@ -159,11 +195,11 @@ export default async function CommissionerPage({
       </section>
       <section className="card stack">
         <div>
-          <h2 style={{ margin: 0 }}>Week {targetWeek} data pipeline</h2>
+          <h2 style={{ margin: 0 }}>Weekly data pipelines</h2>
           <p className="muted small" style={{ marginBottom: 0 }}>
             {league.isSimulation
               ? "The full historical schedule and player pool are already loaded. Lock the next week's picks and roster snapshot, then reveal only that week's stored results. No API request is made."
-              : "Series scores and detailed stats advance independently. Once every series has a final result, the next Pick'em slate can open; this data pipeline remains on the unpublished week until its missing game stats are backfilled, validated, scored, and published."}
+              : `Finalization remains on Week ${targetWeek}, while live refresh follows the newest locked slate${refreshTarget ? ` (Week ${refreshWeekNumber})` : ""}. A missing older scoreboard no longer blocks newer games.`}
           </p>
         </div>
         <div className="inline-form">
@@ -172,39 +208,46 @@ export default async function CommissionerPage({
           ) : scheduleAllowed ? (
             <form action={fetchNextWeekSchedule}>
               <input type="hidden" name="leagueId" value={league.id} />
+              <input type="hidden" name="weekNumber" value={scheduleWeekNumber} />
               <IngestButton
-                disabled={importRunning}
+                disabled={scheduleImportRunning}
                 running={scheduleRunning}
                 leagueId={league.id}
-                weekNumber={targetWeek}
+                weekNumber={scheduleWeekNumber}
                 source="LEAGUEPEDIA_SCHEDULE"
-                label={target ? `Refresh Week ${targetWeek} schedule + players` : `Get Week ${targetWeek} schedule + players`}
+                label={scheduleTarget ? `Refresh Week ${scheduleWeekNumber} schedule + players` : `Get Week ${scheduleWeekNumber} schedule + players`}
               />
             </form>
           ) : (
-            <span className="muted small">Week {targetWeek} schedule is locked.</span>
+            <span className="muted small">
+              {priorScheduleResultReady
+                ? `Week ${scheduleWeekNumber} schedule is locked.`
+                : `Week ${scheduleWeekNumber} schedule unlocks when every Week ${scheduleWeekNumber - 1} series result is final.`}
+            </span>
           )}
           {liveRefreshAllowed && (
             <form action={refreshLiveWeek}>
               <input type="hidden" name="leagueId" value={league.id} />
+              <input type="hidden" name="weekNumber" value={refreshWeekNumber} />
               <IngestButton
-                disabled={importRunning}
+                disabled={refreshImportRunning}
                 running={liveRefreshRunning}
                 leagueId={league.id}
-                weekNumber={targetWeek}
+                weekNumber={refreshWeekNumber}
                 source="GAMES_OF_LEGENDS_LIVE"
-                label={`Refresh in-progress Week ${targetWeek}`}
+                label={`Refresh in-progress Week ${refreshWeekNumber}`}
               />
             </form>
           )}
           {resultsAllowed && (
             <form action={fetchNextWeekResults}>
               <input type="hidden" name="leagueId" value={league.id} />
+              <input type="hidden" name="weekNumber" value={targetWeek} />
               {league.isSimulation ? (
                 <button type="submit">{target?.status === "RESULTS_IMPORTED" ? `Re-read stored Week ${targetWeek} results` : `Reveal stored Week ${targetWeek} results`}</button>
               ) : (
                 <IngestButton
-                  disabled={importRunning}
+                  disabled={targetImportRunning}
                   running={resultsRunning}
                   leagueId={league.id}
                   weekNumber={targetWeek}
@@ -214,7 +257,7 @@ export default async function CommissionerPage({
               )}
             </form>
           )}
-          {liveRefreshAllowed && !importRunning && (
+          {liveRefreshAllowed && !refreshImportRunning && (
             <span className="muted small">Safe to repeat after each series: unchanged rows are skipped, live points are provisional, and Crystal Ball is not settled.</span>
           )}
           {staleTargetRun ? (
@@ -225,7 +268,7 @@ export default async function CommissionerPage({
               <button type="submit">Recover stale import</button>
               <span className="muted small">This closes the abandoned run without deleting partial rows, so retrying remains safe.</span>
             </form>
-          ) : importRunning ? (
+          ) : activePanelRun ? (
             <span className="muted small">An import is already running. Progress and backend heartbeat are shown above.</span>
           ) : null}
           {target?.status === "OPEN" && <span className="muted small">Lock picks to freeze predictions and the scoring roster before results can be fetched.</span>}
