@@ -10,6 +10,7 @@ import {
   rosterPlayerMatchesTradeException,
 } from "@/lib/roster-trade-exceptions";
 import RosterTradeExceptionNotice from "@/components/RosterTradeExceptionNotice";
+import { buildRosterSeriesRemaining } from "@/lib/roster-series-remaining";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,22 @@ export default async function LeaderboardPage() {
       include: {
         fantasyTeams: { include: { user: true, roster: { select: { playerId: true } } }, orderBy: { id: "asc" } },
         cbQuestions: { include: { answers: true }, orderBy: { id: "asc" } },
+        leagueWeeks: {
+          orderBy: { week: { number: "asc" } },
+          include: {
+            weeklyRosters: { select: { fantasyTeamId: true, playerId: true } },
+            week: {
+              include: {
+                matches: {
+                  orderBy: { scheduledAt: "asc" },
+                  include: {
+                    games: { select: { playerStats: { select: { teamId: true } } } },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     }),
     loadCrystalBallSnapshot(view.tournamentId, view.cutoff),
@@ -57,6 +74,25 @@ export default async function LeaderboardPage() {
     name: row.player.name,
     team: row.teamId ?? row.player.teamId,
   }]));
+  const throughWeekNumber = view.completedWeek === null
+    ? view.maxWeek
+    : view.showsLiveProgress
+      ? view.openWeek ?? view.completedWeek
+      : view.completedWeek;
+  const seriesRemainingByTeam = new Map(buildRosterSeriesRemaining({
+    tournamentId: view.tournamentId,
+    throughWeekNumber,
+    fantasyTeams: league.fantasyTeams.map((team) => ({
+      id: team.id,
+      username: team.user.username,
+    })),
+    rosterIdentities: rosterPlayers.map((row) => ({
+      playerId: row.playerId,
+      playerName: row.player.name,
+      teamId: row.teamId ?? row.player.teamId,
+    })),
+    leagueWeeks: league.leagueWeeks,
+  }).map((remaining) => [remaining.fantasyTeamId, remaining]));
   const revealPredictions = crystalBallPredictionsPublic(league);
   const rosterTradeExceptions = league.fantasyTeams.flatMap((team) =>
     fantasyRosterTradeExceptionsForOwners(view.tournamentId, [team.user.username])
@@ -117,18 +153,30 @@ export default async function LeaderboardPage() {
 
     {result && <section>
       <h2>Fantasy standings {hasProvisional && <span className="badge win">live</span>}</h2>
+      <p className="muted small">Series left counts one player–series for each frozen roster assignment whose pro series through Week {throughWeekNumber} is upcoming, underway, or awaiting complete detailed stats.</p>
       <div className="tablewrap">
         <table>
-          <thead><tr><th>#</th><th>Participant</th><th>Team name</th><th className="num">Roster</th><th className="num">Pickems</th><th className="num">Crystal Ball</th><th className="num">Total</th></tr></thead>
-          <tbody>{result.standings.map((standing, index) => <tr key={standing.fantasyTeamId}>
-            <td>{index + 1}</td>
-            <td>{standing.username}</td>
-            <td><Link href={`/participants/${standing.fantasyTeamId}`}>{standing.teamName}</Link></td>
-            <td className="num">{standing.rosterTotal}</td>
-            <td className="num">{standing.pickemTotal}</td>
-            <td className="num">{league.seasonStatus === "FINAL" ? standing.crystalBallTotal : <span className="muted" title="Not awarded until season settlement">—</span>}</td>
-            <td className="num"><b>{standing.total}</b></td>
-          </tr>)}</tbody>
+          <thead><tr><th>#</th><th>Participant</th><th>Team name</th><th className="num">Roster</th><th className="num">Pickems</th><th className="num">Crystal Ball</th><th className="num">Total</th><th className="num" title="One count per frozen roster player and incomplete pro series">Series left</th><th>Outstanding roster series</th></tr></thead>
+          <tbody>{result.standings.map((standing, index) => {
+            const remaining = seriesRemainingByTeam.get(standing.fantasyTeamId);
+            return <tr key={standing.fantasyTeamId}>
+              <td>{index + 1}</td>
+              <td>{standing.username}</td>
+              <td><Link href={`/participants/${standing.fantasyTeamId}`}>{standing.teamName}</Link></td>
+              <td className="num">{standing.rosterTotal}</td>
+              <td className="num">{standing.pickemTotal}</td>
+              <td className="num">{league.seasonStatus === "FINAL" ? standing.crystalBallTotal : <span className="muted" title="Not awarded until season settlement">—</span>}</td>
+              <td className="num"><b>{standing.total}</b></td>
+              <td className="num"><b>{remaining?.count ?? 0}</b></td>
+              <td className="leaderboard-series-left">{remaining && remaining.series.length > 0
+                ? <div className="leaderboard-series-left-list">{remaining.series.map((series) => <span className="leaderboard-series-left-item" key={series.matchId}>
+                    <b>W{series.weekNumber} · {series.players.map((player) => shortPlayerName(player.playerName)).join(", ")}</b>
+                    <small>{series.team1} vs {series.team2}</small>
+                  </span>)}</div>
+                : <span className="muted small">All caught up</span>}
+              </td>
+            </tr>;
+          })}</tbody>
         </table>
       </div>
     </section>}
@@ -155,6 +203,10 @@ export default async function LeaderboardPage() {
       </div>
     </section>
   </div>;
+}
+
+function shortPlayerName(value: string) {
+  return value.replace(/\s*\([^)]*\)\s*$/, "");
 }
 
 function AnswerKeyCard({
