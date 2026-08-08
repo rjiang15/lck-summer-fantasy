@@ -56,6 +56,37 @@ type FantasyTeamRoster = {
   username: string;
 };
 
+type PopulatedRosterWeek = {
+  weeklyRosters: readonly unknown[];
+  week: {
+    number: number;
+    matches: ReadonlyArray<Pick<SeriesMatch, "winner" | "team1Score" | "team2Score" | "games">>;
+  };
+};
+
+/**
+ * Live leagues can move into a newer week while an older, incomplete series
+ * prevents the commissioner cursor from advancing. Treat a frozen-roster week
+ * as populated once any actual result or game row exists; schedule-only future
+ * weeks must not move the leaderboard window forward.
+ */
+export function latestPopulatedRosterWeekNumber(
+  leagueWeeks: readonly PopulatedRosterWeek[],
+) {
+  return leagueWeeks.reduce<number | null>((latest, leagueWeek) => {
+    const hasSeriesData = leagueWeek.week.matches.some((match) =>
+      match.winner !== null
+      || match.team1Score !== null
+      || match.team2Score !== null
+      || match.games.length > 0,
+    );
+    if (leagueWeek.weeklyRosters.length === 0 || !hasSeriesData) return latest;
+    return latest === null
+      ? leagueWeek.week.number
+      : Math.max(latest, leagueWeek.week.number);
+  }, null);
+}
+
 function seriesDetailsComplete(match: SeriesMatch) {
   if (!match.winner || match.team1Score === null || match.team2Score === null) return false;
   const expectedGames = match.team1Score + match.team2Score;

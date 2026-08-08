@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildRosterSeriesRemaining } from "./roster-series-remaining";
+import {
+  buildRosterSeriesRemaining,
+  latestPopulatedRosterWeekNumber,
+} from "./roster-series-remaining";
 
 const completeGame = (team1: string, team2: string) => ({
   playerStats: [
@@ -130,4 +133,26 @@ test("does not expose frozen roster weeks after the selected cursor", () => {
 
   assert.equal(remaining.count, 0);
   assert.deepEqual(remaining.series, []);
+});
+
+test("uses the latest populated frozen-roster week even when an older week is unresolved", () => {
+  const week = (number: number, options: { frozen?: boolean; populated?: boolean } = {}) => ({
+    weeklyRosters: options.frozen === false ? [] : [{}],
+    week: {
+      number,
+      matches: [{
+        winner: options.populated ? "T1" : null,
+        team1Score: options.populated ? 2 : null,
+        team2Score: options.populated ? 0 : null,
+        games: [],
+      }],
+    },
+  });
+
+  assert.equal(latestPopulatedRosterWeekNumber([
+    week(1, { populated: true }),
+    week(2, { populated: true }),
+    week(3),
+    week(4, { frozen: false, populated: true }),
+  ]), 2);
 });
