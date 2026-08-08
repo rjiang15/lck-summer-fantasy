@@ -10,7 +10,10 @@ import {
   rosterPlayerMatchesTradeException,
 } from "@/lib/roster-trade-exceptions";
 import RosterTradeExceptionNotice from "@/components/RosterTradeExceptionNotice";
-import { buildRosterSeriesRemaining } from "@/lib/roster-series-remaining";
+import {
+  buildRosterSeriesRemaining,
+  latestPopulatedRosterWeekNumber,
+} from "@/lib/roster-series-remaining";
 
 export const dynamic = "force-dynamic";
 
@@ -74,11 +77,15 @@ export default async function LeaderboardPage() {
     name: row.player.name,
     team: row.teamId ?? row.player.teamId,
   }]));
-  const throughWeekNumber = view.completedWeek === null
+  const cursorWeekNumber = view.completedWeek === null
     ? view.maxWeek
     : view.showsLiveProgress
       ? view.openWeek ?? view.completedWeek
       : view.completedWeek;
+  const latestPopulatedWeekNumber = latestPopulatedRosterWeekNumber(league.leagueWeeks);
+  const throughWeekNumber = view.showsLiveProgress && latestPopulatedWeekNumber !== null
+    ? Math.max(cursorWeekNumber, latestPopulatedWeekNumber)
+    : cursorWeekNumber;
   const seriesRemainingByTeam = new Map(buildRosterSeriesRemaining({
     tournamentId: view.tournamentId,
     throughWeekNumber,
