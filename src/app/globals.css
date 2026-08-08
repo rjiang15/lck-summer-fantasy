@@ -491,6 +491,12 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .macro-answer-card > small { margin-top: auto; padding-top: 0.55rem; line-height: 1.35; }
 .leaderboard-page { display: grid; gap: 1rem; }
 .leaderboard-page > section > h2 { margin-top: 0.5rem; }
+.leaderboard-series-left { min-width: 21rem; white-space: normal; }
+.leaderboard-series-left-list { display: grid; gap: 0.3rem; }
+.leaderboard-series-left-item { display: grid; gap: 0.05rem; line-height: 1.2; }
+.leaderboard-series-left-item + .leaderboard-series-left-item { padding-top: 0.3rem; border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.leaderboard-series-left-item b { font-size: 0.75rem; }
+.leaderboard-series-left-item small { color: var(--muted); font-size: 0.7rem; }
 .leaderboard-crystal-section { margin-top: 1rem; }
 .leaderboard-answer-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.55rem; }
 .leaderboard-answer-card { min-height: 0; padding: 0.7rem; }
