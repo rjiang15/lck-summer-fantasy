@@ -80,6 +80,12 @@ function teamGameCount(lines: readonly WeeklyFantasyLine[]) {
   return Math.max(0, ...linesByPlayer.values());
 }
 
+function lineGameKey(line: WeeklyFantasyLine) {
+  if (line.gameId) return `game:${line.gameId}`;
+  if (line.playedAt) return `time:${line.playedAt.getTime()}`;
+  return null;
+}
+
 function resolveAssignmentSegment(
   playerId: string,
   teamId: string,
@@ -94,9 +100,30 @@ function resolveAssignmentSegment(
   );
   const rawPoints = ownLines.reduce((sum, line) => sum + line.points, 0);
   const pointsPerGame = average(ownLines.map((line) => line.points));
-  if (ownLines.length > 0) {
+  const substituteNameplates = new Set(roster
+    .filter((player) => !samePlayerNameplate(player.playerId, playerId) && player.teamId === teamId && player.role === role)
+    .map((player) => playerNameplateKey(player.playerId)));
+  const ownGameKeys = new Set(ownLines.flatMap((line) => {
+    const key = lineGameKey(line);
+    return key ? [key] : [];
+  }));
+  const substituteLines = lines.filter((line) => {
+    if (
+      line.teamId !== teamId
+      || !lineMatchesRole(line, role)
+      || !substituteNameplates.has(playerNameplateKey(line.playerId))
+    ) return false;
+    const gameKey = lineGameKey(line);
+    // Production scoring lines always carry a game id. For older callers that
+    // do not identify games, preserve the conservative behavior: a player who
+    // has any own line is treated as having played instead of assuming that an
+    // undated same-role line came from a different game.
+    return gameKey ? !ownGameKeys.has(gameKey) : ownLines.length === 0;
+  });
+  const teamLines = lines.filter((line) => line.teamId === teamId);
+  if (substituteLines.length === 0) {
     return {
-      creditedGames: ownLines.length,
+      creditedGames: ownLines.length || teamGameCount(teamLines),
       contribution: {
         gamesPlayed: ownLines.length,
         rawPoints,
@@ -107,37 +134,19 @@ function resolveAssignmentSegment(
     };
   }
 
-  const substituteNameplates = new Set(roster
-    .filter((player) => !samePlayerNameplate(player.playerId, playerId) && player.teamId === teamId && player.role === role)
-    .map((player) => playerNameplateKey(player.playerId)));
-  const substituteLines = lines.filter((line) =>
-    line.teamId === teamId
-      && lineMatchesRole(line, role)
-      && substituteNameplates.has(playerNameplateKey(line.playerId)),
-  );
-  const teamLines = lines.filter((line) => line.teamId === teamId);
-  if (substituteLines.length === 0 || teamLines.length === 0) {
-    return {
-      creditedGames: teamGameCount(teamLines),
-      contribution: {
-        gamesPlayed: 0,
-        rawPoints: 0,
-        pointsPerGame: 0,
-        creditedPoints: 0,
-        fallback: null,
-      },
-    };
-  }
-
   const substitutePointsPerGame = average(substituteLines.map((line) => line.points));
   const teamAveragePointsPerGame = average(teamLines.map((line) => line.points));
-  const creditedPoints = Math.min(substitutePointsPerGame, teamAveragePointsPerGame);
+  const fallbackCredit = Math.min(substitutePointsPerGame, teamAveragePointsPerGame);
+  const creditedGames = ownLines.length + substituteLines.length;
+  const creditedPoints = creditedGames > 0
+    ? (rawPoints + fallbackCredit * substituteLines.length) / creditedGames
+    : 0;
   return {
-    creditedGames: substituteLines.length,
+    creditedGames,
     contribution: {
-      gamesPlayed: 0,
-      rawPoints: 0,
-      pointsPerGame: 0,
+      gamesPlayed: ownLines.length,
+      rawPoints,
+      pointsPerGame,
       creditedPoints,
       fallback: {
         reason: "DID_NOT_PLAY",
@@ -146,7 +155,7 @@ function resolveAssignmentSegment(
         substitutePlayerIds: [...new Set(substituteLines.map((line) => line.playerId))],
         substitutePointsPerGame,
         teamAveragePointsPerGame,
-        creditedPoints,
+        creditedPoints: fallbackCredit,
       },
     },
   };
@@ -158,126 +167,96 @@ export function resolveRosterWeekContribution(
   lines: readonly WeeklyFantasyLine[],
   assignmentException: RosterAssignmentException | null = null,
 ): RosterWeekContribution {
-  const ownLines = lines.filter((line) => {
-    if (!assignmentException) return samePlayerNameplate(line.playerId, playerId);
-    const playedAt = line.playedAt?.getTime();
-    const beforeEffective = playedAt !== undefined
-      && playedAt !== null
-      && playedAt < assignmentException.effectiveAt.getTime();
-    const effectivePlayerId = beforeEffective
-      ? assignmentException.previousPlayerId ?? playerId
-      : playerId;
-    const effectiveTeamId = beforeEffective
-      ? assignmentException.previousTeamId
-      : assignmentException.currentTeamId;
-    return samePlayerNameplate(line.playerId, effectivePlayerId) && line.teamId === effectiveTeamId;
-  });
-  const rawPoints = ownLines.reduce((sum, line) => sum + line.points, 0);
-  const pointsPerGame = average(ownLines.map((line) => line.points));
-  if (ownLines.length > 0) {
-    if (assignmentException) {
-      const isBeforeEffective = (line: WeeklyFantasyLine) => {
-        const playedAt = line.playedAt?.getTime();
-        return playedAt !== undefined
-          && playedAt !== null
-          && playedAt < assignmentException.effectiveAt.getTime();
-      };
-      const beforeLines = lines.filter(isBeforeEffective);
-      const afterLines = lines.filter((line) => !isBeforeEffective(line));
-      const before = resolveAssignmentSegment(
-        assignmentException.previousPlayerId ?? playerId,
-        assignmentException.previousTeamId,
-        assignmentException.role,
-        roster,
-        beforeLines,
-      );
-      const after = resolveAssignmentSegment(
-        playerId,
-        assignmentException.currentTeamId,
-        assignmentException.role,
-        roster,
-        afterLines,
-      );
-      const creditedGames = before.creditedGames + after.creditedGames;
-      const creditedPoints = creditedGames > 0
-        ? (
-            before.contribution.creditedPoints * before.creditedGames
-            + after.contribution.creditedPoints * after.creditedGames
-          ) / creditedGames
-        : 0;
-      const gamesPlayed = before.contribution.gamesPlayed + after.contribution.gamesPlayed;
-      const segmentRawPoints = before.contribution.rawPoints + after.contribution.rawPoints;
-      return {
-        gamesPlayed,
-        rawPoints: segmentRawPoints,
-        pointsPerGame: gamesPlayed > 0 ? segmentRawPoints / gamesPlayed : 0,
-        creditedPoints,
-        fallback: after.contribution.fallback ?? before.contribution.fallback,
-      };
-    }
-    return { gamesPlayed: ownLines.length, rawPoints, pointsPerGame, creditedPoints: pointsPerGame, fallback: null };
-  }
-
   const identity = roster.find((player) => player.playerId === playerId)
     ?? roster.find((player) => samePlayerNameplate(player.playerId, playerId));
   const currentTeamId = assignmentException?.currentTeamId ?? identity?.teamId;
   const role = assignmentException?.role ?? identity?.role;
   if (!currentTeamId || !role) {
-    return { gamesPlayed: 0, rawPoints: 0, pointsPerGame: 0, creditedPoints: 0, fallback: null };
+    const ownLines = lines.filter((line) => samePlayerNameplate(line.playerId, playerId));
+    const rawPoints = ownLines.reduce((sum, line) => sum + line.points, 0);
+    const pointsPerGame = average(ownLines.map((line) => line.points));
+    return {
+      gamesPlayed: ownLines.length,
+      rawPoints,
+      pointsPerGame,
+      creditedPoints: pointsPerGame,
+      fallback: null,
+    };
   }
-  const targetTeamForLine = (line: WeeklyFantasyLine) => {
-    if (!assignmentException) return currentTeamId;
+
+  if (!assignmentException) {
+    return resolveAssignmentSegment(playerId, currentTeamId, role, roster, lines).contribution;
+  }
+
+  const isBeforeEffective = (line: WeeklyFantasyLine) => {
     const playedAt = line.playedAt?.getTime();
     return playedAt !== undefined
       && playedAt !== null
-      && playedAt < assignmentException.effectiveAt.getTime()
-      ? assignmentException.previousTeamId
-      : assignmentException.currentTeamId;
+      && playedAt < assignmentException.effectiveAt.getTime();
   };
-  const eligibleTeams = assignmentException
-    ? [assignmentException.previousTeamId, assignmentException.currentTeamId]
-    : [currentTeamId];
-  const substituteNameplatesByTeam = new Map(eligibleTeams.map((teamId) => [
-    teamId,
-    new Set(roster
-      .filter((player) => {
-        const assignedPlayerId = assignmentException?.previousPlayerId
-          && teamId === assignmentException.previousTeamId
-          ? assignmentException.previousPlayerId
-          : playerId;
-        return !samePlayerNameplate(player.playerId, assignedPlayerId)
-          && player.teamId === teamId
-          && player.role === role;
-      })
-      .map((player) => playerNameplateKey(player.playerId))),
-  ]));
-  const substituteLines = lines.filter((line) => {
-    const targetTeam = targetTeamForLine(line);
-    return line.teamId === targetTeam
-      && lineMatchesRole(line, role)
-      && Boolean(substituteNameplatesByTeam.get(targetTeam)?.has(playerNameplateKey(line.playerId)));
-  });
-  const teamLines = lines.filter((line) => line.teamId === targetTeamForLine(line));
-  if (substituteLines.length === 0 || teamLines.length === 0) {
-    return { gamesPlayed: 0, rawPoints: 0, pointsPerGame: 0, creditedPoints: 0, fallback: null };
-  }
-
-  const substitutePointsPerGame = average(substituteLines.map((line) => line.points));
-  const teamAveragePointsPerGame = average(teamLines.map((line) => line.points));
-  const creditedPoints = Math.min(substitutePointsPerGame, teamAveragePointsPerGame);
-  return {
-    gamesPlayed: 0,
-    rawPoints: 0,
-    pointsPerGame: 0,
-    creditedPoints,
-    fallback: {
-      reason: "DID_NOT_PLAY",
-      teamId: currentTeamId,
-      role,
-      substitutePlayerIds: [...new Set(substituteLines.map((line) => line.playerId))],
-      substitutePointsPerGame,
-      teamAveragePointsPerGame,
+  const before = resolveAssignmentSegment(
+    assignmentException.previousPlayerId ?? playerId,
+    assignmentException.previousTeamId,
+    assignmentException.role,
+    roster,
+    lines.filter(isBeforeEffective),
+  );
+  const after = resolveAssignmentSegment(
+    playerId,
+    assignmentException.currentTeamId,
+    assignmentException.role,
+    roster,
+    lines.filter((line) => !isBeforeEffective(line)),
+  );
+  const gamesPlayed = before.contribution.gamesPlayed + after.contribution.gamesPlayed;
+  const rawPoints = before.contribution.rawPoints + after.contribution.rawPoints;
+  const fallbackSegments = [before, after].filter(
+    (segment): segment is AssignmentSegmentContribution & {
+      contribution: RosterWeekContribution & { fallback: NonNullable<RosterWeekContribution["fallback"]> };
+    } => Boolean(segment.contribution.fallback),
+  );
+  if (gamesPlayed === 0 && fallbackSegments.length > 0) {
+    const fallbackGames = fallbackSegments.reduce((sum, segment) => sum + segment.creditedGames, 0);
+    const weightedFallbackAverage = (field: "substitutePointsPerGame" | "teamAveragePointsPerGame") =>
+      fallbackGames > 0
+        ? fallbackSegments.reduce(
+            (sum, segment) => sum + segment.contribution.fallback[field] * segment.creditedGames,
+            0,
+          ) / fallbackGames
+        : 0;
+    const substitutePointsPerGame = weightedFallbackAverage("substitutePointsPerGame");
+    const teamAveragePointsPerGame = weightedFallbackAverage("teamAveragePointsPerGame");
+    const creditedPoints = Math.min(substitutePointsPerGame, teamAveragePointsPerGame);
+    return {
+      gamesPlayed: 0,
+      rawPoints: 0,
+      pointsPerGame: 0,
       creditedPoints,
-    },
+      fallback: {
+        reason: "DID_NOT_PLAY",
+        teamId: assignmentException.currentTeamId,
+        role: assignmentException.role,
+        substitutePlayerIds: [...new Set(fallbackSegments.flatMap(
+          (segment) => segment.contribution.fallback.substitutePlayerIds,
+        ))],
+        substitutePointsPerGame,
+        teamAveragePointsPerGame,
+        creditedPoints,
+      },
+    };
+  }
+  const creditedGames = before.creditedGames + after.creditedGames;
+  const creditedPoints = creditedGames > 0
+    ? (
+        before.contribution.creditedPoints * before.creditedGames
+        + after.contribution.creditedPoints * after.creditedGames
+      ) / creditedGames
+    : 0;
+  return {
+    gamesPlayed,
+    rawPoints,
+    pointsPerGame: gamesPlayed > 0 ? rawPoints / gamesPlayed : 0,
+    creditedPoints,
+    fallback: after.contribution.fallback ?? before.contribution.fallback,
   };
 }

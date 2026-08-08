@@ -19,6 +19,34 @@ test("a player who played keeps their own points without substitute assistance",
   });
 });
 
+test("a mid-week substitute applies fallback only to the games the starter missed", () => {
+  const result = resolveRosterWeekContribution("Oner", [
+    { playerId: "Oner", teamId: "T1", role: "Jungle" },
+    { playerId: "Painter", teamId: "T1", role: "Jungle" },
+    { playerId: "Doran", teamId: "T1", role: "Top" },
+  ], [
+    { gameId: "t1-dk-1", playerId: "Oner", teamId: "T1", role: "Jungle", points: 30 },
+    { gameId: "t1-dk-1", playerId: "Doran", teamId: "T1", role: "Top", points: 20 },
+    { gameId: "t1-dk-2", playerId: "Oner", teamId: "T1", role: "Jungle", points: 20 },
+    { gameId: "t1-dk-2", playerId: "Doran", teamId: "T1", role: "Top", points: 20 },
+    { gameId: "t1-hle-1", playerId: "Painter", teamId: "T1", role: "Jungle", points: 12 },
+    { gameId: "t1-hle-1", playerId: "Doran", teamId: "T1", role: "Top", points: 20 },
+    { gameId: "t1-hle-2", playerId: "Painter", teamId: "T1", role: "Jungle", points: 18 },
+    { gameId: "t1-hle-2", playerId: "Doran", teamId: "T1", role: "Top", points: 20 },
+    { gameId: "t1-hle-3", playerId: "Painter", teamId: "T1", role: "Jungle", points: 24 },
+    { gameId: "t1-hle-3", playerId: "Doran", teamId: "T1", role: "Top", points: 20 },
+  ]);
+
+  assert.equal(result.gamesPlayed, 2);
+  assert.equal(result.rawPoints, 50);
+  assert.equal(result.pointsPerGame, 25);
+  assert.deepEqual(result.fallback?.substitutePlayerIds, ["Painter"]);
+  assert.equal(result.fallback?.substitutePointsPerGame, 18);
+  assert.equal(result.fallback?.teamAveragePointsPerGame, 20.4);
+  assert.equal(result.fallback?.creditedPoints, 18);
+  assert.equal(result.creditedPoints, 20.8);
+});
+
 test("Gol casing differences do not turn rostered Deokdam into his own substitute", () => {
   const result = resolveRosterWeekContribution("Deokdam", [
     { playerId: "Deokdam", teamId: "DN SOOPers", role: "Bot" },
