@@ -23,8 +23,11 @@ export type RosterWeekContribution = {
     teamId: string;
     role: string;
     substitutePlayerIds: string[];
+    /** Raw substitute average across the games in which fallback applied. */
     substitutePointsPerGame: number;
+    /** Average of the professional team's player-line average in those games. */
     teamAveragePointsPerGame: number;
+    /** Average replacement credit after independently capping every game. */
     creditedPoints: number;
   };
 };
@@ -66,6 +69,7 @@ const lineMatchesRole = (line: WeeklyFantasyLine, role: string) =>
 type AssignmentSegmentContribution = {
   contribution: RosterWeekContribution;
   creditedGames: number;
+  fallbackGames: number;
 };
 
 function teamGameCount(lines: readonly WeeklyFantasyLine[]) {
@@ -84,6 +88,30 @@ function lineGameKey(line: WeeklyFantasyLine) {
   if (line.gameId) return `game:${line.gameId}`;
   if (line.playedAt) return `time:${line.playedAt.getTime()}`;
   return null;
+}
+
+function perGameFallbackCredits(
+  substituteLines: readonly WeeklyFantasyLine[],
+  teamLines: readonly WeeklyFantasyLine[],
+) {
+  const overallTeamAverage = average(teamLines.map((line) => line.points));
+  return substituteLines.map((line) => {
+    const gameKey = lineGameKey(line);
+    const gameTeamLines = gameKey
+      ? teamLines.filter((candidate) => lineGameKey(candidate) === gameKey)
+      : [];
+    // Production lines carry game ids, so each replacement is capped against
+    // its team's player-line average in that exact game. Keep a weekly-average
+    // fallback only for legacy/test callers that supply no game identity.
+    const teamAveragePoints = gameTeamLines.length > 0
+      ? average(gameTeamLines.map((candidate) => candidate.points))
+      : overallTeamAverage;
+    return {
+      substitutePoints: line.points,
+      teamAveragePoints,
+      creditedPoints: Math.min(line.points, teamAveragePoints),
+    };
+  });
 }
 
 function resolveAssignmentSegment(
@@ -124,6 +152,7 @@ function resolveAssignmentSegment(
   if (substituteLines.length === 0) {
     return {
       creditedGames: ownLines.length || teamGameCount(teamLines),
+      fallbackGames: 0,
       contribution: {
         gamesPlayed: ownLines.length,
         rawPoints,
@@ -134,15 +163,17 @@ function resolveAssignmentSegment(
     };
   }
 
-  const substitutePointsPerGame = average(substituteLines.map((line) => line.points));
-  const teamAveragePointsPerGame = average(teamLines.map((line) => line.points));
-  const fallbackCredit = Math.min(substitutePointsPerGame, teamAveragePointsPerGame);
+  const gameCredits = perGameFallbackCredits(substituteLines, teamLines);
+  const substitutePointsPerGame = average(gameCredits.map((game) => game.substitutePoints));
+  const teamAveragePointsPerGame = average(gameCredits.map((game) => game.teamAveragePoints));
+  const fallbackCredit = average(gameCredits.map((game) => game.creditedPoints));
   const creditedGames = ownLines.length + substituteLines.length;
   const creditedPoints = creditedGames > 0
-    ? (rawPoints + fallbackCredit * substituteLines.length) / creditedGames
+    ? (rawPoints + gameCredits.reduce((sum, game) => sum + game.creditedPoints, 0)) / creditedGames
     : 0;
   return {
     creditedGames,
+    fallbackGames: substituteLines.length,
     contribution: {
       gamesPlayed: ownLines.length,
       rawPoints,
@@ -215,36 +246,26 @@ export function resolveRosterWeekContribution(
       contribution: RosterWeekContribution & { fallback: NonNullable<RosterWeekContribution["fallback"]> };
     } => Boolean(segment.contribution.fallback),
   );
-  if (gamesPlayed === 0 && fallbackSegments.length > 0) {
-    const fallbackGames = fallbackSegments.reduce((sum, segment) => sum + segment.creditedGames, 0);
-    const weightedFallbackAverage = (field: "substitutePointsPerGame" | "teamAveragePointsPerGame") =>
-      fallbackGames > 0
-        ? fallbackSegments.reduce(
-            (sum, segment) => sum + segment.contribution.fallback[field] * segment.creditedGames,
-            0,
-          ) / fallbackGames
-        : 0;
-    const substitutePointsPerGame = weightedFallbackAverage("substitutePointsPerGame");
-    const teamAveragePointsPerGame = weightedFallbackAverage("teamAveragePointsPerGame");
-    const creditedPoints = Math.min(substitutePointsPerGame, teamAveragePointsPerGame);
-    return {
-      gamesPlayed: 0,
-      rawPoints: 0,
-      pointsPerGame: 0,
-      creditedPoints,
-      fallback: {
-        reason: "DID_NOT_PLAY",
-        teamId: assignmentException.currentTeamId,
-        role: assignmentException.role,
-        substitutePlayerIds: [...new Set(fallbackSegments.flatMap(
-          (segment) => segment.contribution.fallback.substitutePlayerIds,
-        ))],
-        substitutePointsPerGame,
-        teamAveragePointsPerGame,
-        creditedPoints,
-      },
-    };
-  }
+  const fallbackGames = fallbackSegments.reduce((sum, segment) => sum + segment.fallbackGames, 0);
+  const weightedFallbackAverage = (
+    field: "substitutePointsPerGame" | "teamAveragePointsPerGame" | "creditedPoints",
+  ) => fallbackGames > 0
+    ? fallbackSegments.reduce(
+        (sum, segment) => sum + segment.contribution.fallback[field] * segment.fallbackGames,
+        0,
+      ) / fallbackGames
+    : 0;
+  const fallback = fallbackGames > 0 ? {
+    reason: "DID_NOT_PLAY" as const,
+    teamId: assignmentException.currentTeamId,
+    role: assignmentException.role,
+    substitutePlayerIds: [...new Set(fallbackSegments.flatMap(
+      (segment) => segment.contribution.fallback.substitutePlayerIds,
+    ))],
+    substitutePointsPerGame: weightedFallbackAverage("substitutePointsPerGame"),
+    teamAveragePointsPerGame: weightedFallbackAverage("teamAveragePointsPerGame"),
+    creditedPoints: weightedFallbackAverage("creditedPoints"),
+  } : null;
   const creditedGames = before.creditedGames + after.creditedGames;
   const creditedPoints = creditedGames > 0
     ? (
@@ -257,6 +278,6 @@ export function resolveRosterWeekContribution(
     rawPoints,
     pointsPerGame: gamesPlayed > 0 ? rawPoints / gamesPlayed : 0,
     creditedPoints,
-    fallback: after.contribution.fallback ?? before.contribution.fallback,
+    fallback,
   };
 }

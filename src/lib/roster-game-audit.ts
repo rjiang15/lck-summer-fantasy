@@ -51,6 +51,7 @@ export type RosterGameAudit = {
       actualPlayerId: string | null;
       actualPlayerName: string | null;
       status: "OWN" | "SUBSTITUTE_CREDIT" | "OTHER_PLAYER" | "NO_DATA";
+      teamAveragePoints: number | null;
       fallbackCredit: number | null;
     }>;
   }>;
@@ -107,6 +108,7 @@ export function buildRosterGameAudits(
               actualPlayerId: null,
               actualPlayerName: null,
               status: "NO_DATA" as const,
+              teamAveragePoints: null,
               fallbackCredit: null,
             };
           }
@@ -118,11 +120,18 @@ export function buildRosterGameAudits(
               actualPlayerId: actual.playerId,
               actualPlayerName: actual.playerName,
               status: "OWN" as const,
+              teamAveragePoints: null,
               fallbackCredit: null,
             };
           }
           const fallbackApplied = slot.slot !== "BENCH"
             && Boolean(slot.fallback?.substitutePlayerIds.some((id) => samePlayer(id, actual.playerId)));
+          const teamLines = assignment.teamId
+            ? game.lines.filter((line) => line.teamId === assignment.teamId)
+            : [];
+          const teamAveragePoints = teamLines.length > 0
+            ? teamLines.reduce((sum, line) => sum + line.points, 0) / teamLines.length
+            : null;
           return {
             gameId: game.id,
             gameNumber: game.gameNumber,
@@ -130,7 +139,10 @@ export function buildRosterGameAudits(
             actualPlayerId: actual.playerId,
             actualPlayerName: actual.playerName,
             status: fallbackApplied ? "SUBSTITUTE_CREDIT" as const : "OTHER_PLAYER" as const,
-            fallbackCredit: fallbackApplied ? slot.fallback!.creditedPoints : null,
+            teamAveragePoints: fallbackApplied ? teamAveragePoints : null,
+            fallbackCredit: fallbackApplied && teamAveragePoints !== null
+              ? Math.min(actual.points, teamAveragePoints)
+              : null,
           };
         }),
       }];

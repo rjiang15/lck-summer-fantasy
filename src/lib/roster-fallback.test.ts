@@ -42,9 +42,9 @@ test("a mid-week substitute applies fallback only to the games the starter misse
   assert.equal(result.pointsPerGame, 25);
   assert.deepEqual(result.fallback?.substitutePlayerIds, ["Painter"]);
   assert.equal(result.fallback?.substitutePointsPerGame, 18);
-  assert.equal(result.fallback?.teamAveragePointsPerGame, 20.4);
-  assert.equal(result.fallback?.creditedPoints, 18);
-  assert.equal(result.creditedPoints, 20.8);
+  assert.equal(result.fallback?.teamAveragePointsPerGame, 19);
+  assert.equal(result.fallback?.creditedPoints, 52 / 3);
+  assert.equal(result.creditedPoints, 20.4);
 });
 
 test("Gol casing differences do not turn rostered Deokdam into his own substitute", () => {
@@ -144,7 +144,8 @@ test("an effective-dated trade exception preserves old-team lines and switches f
   assert.deepEqual(result.fallback?.substitutePlayerIds, ["FenRir", "LazyFeel"]);
   assert.equal(result.fallback?.substitutePointsPerGame, 30);
   assert.equal(result.fallback?.teamAveragePointsPerGame, 25);
-  assert.equal(result.creditedPoints, 25);
+  assert.equal(result.fallback?.creditedPoints, 20);
+  assert.equal(result.creditedPoints, 20);
   assert.equal(result.fallback?.teamId, "Kiwoom DRX");
 });
 
@@ -222,4 +223,28 @@ test("a pre-trade starter line does not suppress the post-trade substitute credi
   assert.equal(result.fallback?.teamAveragePointsPerGame, 20);
   assert.equal(result.fallback?.creditedPoints, 20);
   assert.equal(result.creditedPoints, 22);
+});
+
+test("each substitute game is capped before the weekly average is calculated", () => {
+  const result = resolveRosterWeekContribution("Delight", [
+    { playerId: "Delight", teamId: "HLE", role: "Support" },
+    { playerId: "Bluffing", teamId: "HLE", role: "Support" },
+  ], [
+    { gameId: "hle-gen-1", playerId: "Delight", teamId: "HLE", role: "Support", points: 28.3 },
+    { gameId: "hle-gen-1", playerId: "teammate", teamId: "HLE", role: "Top", points: 20 },
+    { gameId: "hle-gen-2", playerId: "Delight", teamId: "HLE", role: "Support", points: 28.2 },
+    { gameId: "hle-gen-2", playerId: "teammate", teamId: "HLE", role: "Top", points: 20 },
+    { gameId: "hle-kt-1", playerId: "Bluffing", teamId: "HLE", role: "Support", points: 17.81 },
+    { gameId: "hle-kt-1", playerId: "teammate", teamId: "HLE", role: "Top", points: 14.258 },
+    { gameId: "hle-kt-2", playerId: "Bluffing", teamId: "HLE", role: "Support", points: 34.6 },
+    { gameId: "hle-kt-2", playerId: "teammate", teamId: "HLE", role: "Top", points: 24.616 },
+    { gameId: "hle-kt-3", playerId: "Bluffing", teamId: "HLE", role: "Support", points: 20.59 },
+    { gameId: "hle-kt-3", playerId: "teammate", teamId: "HLE", role: "Top", points: 33.894 },
+  ]);
+
+  assert.equal(result.gamesPlayed, 2);
+  assert.ok(Math.abs((result.fallback?.substitutePointsPerGame ?? 0) - 24.333333333333332) < 1e-9);
+  assert.ok(Math.abs((result.fallback?.teamAveragePointsPerGame ?? 0) - 24.294666666666668) < 1e-9);
+  assert.ok(Math.abs((result.fallback?.creditedPoints ?? 0) - 22.077333333333332) < 1e-9);
+  assert.ok(Math.abs(result.creditedPoints - 24.5464) < 1e-9);
 });

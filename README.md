@@ -96,10 +96,11 @@ Week 1 is published, the league advances to Week 1 and accepts Week 2 picks.
 7. After the last imported week is published, explicitly finish the season in
    the Commissioner UI to settle Crystal Ball points.
 
-If a frozen starter records zero games while a same-team, same-role substitute
+For every game a frozen starter misses while a same-team, same-role substitute
 plays, the roster slot receives the lower of (a) that professional team&apos;s
-weekly player-line average and (b) the substitute&apos;s own PPG. The participant
-roster page shows the detected substitute, both inputs, and the awarded value.
+player-line average in that game and (b) the substitute&apos;s raw game score. The
+weekly roster PPG averages the starter&apos;s own games with those capped replacement
+games. The participant roster page shows both per-game inputs and the award.
 This applies automatically to cases such as Frog playing DRX Top or Fenir
 playing KT Bot; no player-specific exception is hard-coded.
 
@@ -135,10 +136,10 @@ the current team unable to afford a safe completion of its remaining slots.
 The hard budget and structural safeguards cannot be disabled. The live board
 supports card and group-colored table views with shared group, role, and
 "draftable only" filters. Players who share the same professional team and role
-are explicitly marked. If a drafted player records zero games in a week, their
-roster credit is the lower of that team-role substitute's fantasy points per
-game and the professional team's player-line average for the week; if no
-same-role teammate plays, the credit remains zero. Published weekly score
+are explicitly marked. For each game a drafted player misses, their replacement
+credit is the lower of that team-role substitute's raw fantasy points and the
+professional team's player-line average in that game; if no same-role teammate
+plays, the credit remains zero. Published weekly score
 snapshots preserve both the credit and its audit details.
 
 The July 30 Aiming/Jiwoo trade has one commissioner-approved exception, scoped

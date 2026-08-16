@@ -24,6 +24,7 @@ const matches: RosterAuditMatch[] = [{
     lines: [
       { playerId: "deokdam", playerName: "deokdam", teamId: "DN SOOPers", role: "Bot", points: 24 },
       { playerId: "Life", playerName: "Life", teamId: "DN SOOPers", role: "Support", points: 18 },
+      { playerId: "dns-top", playerName: "Top", teamId: "DN SOOPers", role: "Top", points: 6 },
     ],
   }],
 }];
@@ -40,6 +41,7 @@ test("game audit distinguishes matching nameplates, substitute credit, and bench
   assert.equal(deokdam.series[0].games[0].points, 24);
   assert.equal(peter.series[0].games[0].status, "SUBSTITUTE_CREDIT");
   assert.equal(peter.series[0].games[0].actualPlayerName, "Life");
+  assert.equal(peter.series[0].games[0].teamAveragePoints, 16);
   assert.equal(peter.series[0].games[0].fallbackCredit, 16);
   assert.equal(benchPeter.series[0].games[0].status, "OTHER_PLAYER");
 });
