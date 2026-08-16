@@ -153,7 +153,7 @@ export default async function LeaderboardPage() {
     </p>}
     {substituteNames.length > 0 && <div className="card substitute-rule-note">
       <b>Substitute scoring active · {substituteNames.join(", ")}</b>
-      <span className="muted small">For each affected roster slot, the credited Pts/G is the lower of that professional team&apos;s weekly player average and the same-team, same-role substitute&apos;s performance. Open a participant roster for the exact calculation.</span>
+      <span className="muted small">Each replacement game is capped at the lower of the same-team, same-role substitute&apos;s raw score and that professional team&apos;s player-line average for the game. Open a participant roster for the exact calculation.</span>
     </div>}
 
     <RosterTradeExceptionNotice exceptions={rosterTradeExceptions} />

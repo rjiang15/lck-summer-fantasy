@@ -332,7 +332,7 @@ export async function calculateWeeklyScores(
       }
       const breakdown = {
         scoringVersion: config.version,
-        rosterScoringVersion: 3,
+        rosterScoringVersion: 4,
         roster: playerContributions,
         ...(recalculationHistory.length > 0 ? { recalculationHistory } : {}),
       };

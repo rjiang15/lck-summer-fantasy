@@ -294,14 +294,14 @@ export default async function ParticipantPage({
 
       {substituteAdjustments.length > 0 && <div className="card substitute-rule-note">
         <b>Substitute points adjustment</b>
-        <span className="muted small">When a rostered player—or the post-trade portion of a one-time assignment—logs zero games and a same-team, same-role substitute plays, the credited Pts/G is the lower of that professional team&apos;s player average and the substitute&apos;s individual performance.</span>
+        <span className="muted small">When a same-team, same-role substitute fills a game, that game is capped at the lower of the substitute&apos;s raw fantasy score and the professional team&apos;s player-line average for that game. The weekly roster Pts/G then averages the starter&apos;s own games with those capped replacement games.</span>
         <div className="substitute-calculations">
           {substituteAdjustments.map(({ weekNumber, provisional, row, fallback }) => (
             <div key={`${weekNumber}:${row.effectivePlayerId}:${fallback.substitutePlayerIds.join(":")}`}>
               <span><b>{row.effectivePlayerName}</b> · Week {weekNumber}{provisional ? " live provisional" : ""} · {fallback.teamId} {fallback.role}</span>
               <span>
                 {(fallback.substitutePlayerIds.map((playerId) => substituteNames.get(playerId) ?? playerId)).join(" / ")}:
-                {" "}min(team avg {round1(fallback.teamAveragePointsPerGame)}, substitute {round1(fallback.substitutePointsPerGame)}) = <b>{round1(fallback.creditedPoints)} Pts/G</b>
+                {" "}{round1(fallback.substitutePointsPerGame)} raw Pts/G · average game-team line {round1(fallback.teamAveragePointsPerGame)} · after per-game caps = <b>{round1(fallback.creditedPoints)} Pts/G</b>
               </span>
               {row.rosterException && Math.abs(row.creditedPoints - fallback.creditedPoints) >= 0.05 && <span className="muted small">
                 Combined with the games before the trade ruling, the Week {weekNumber} roster credit is <b>{round1(row.creditedPoints)} Pts/G</b>.
@@ -386,7 +386,7 @@ export default async function ParticipantPage({
 
       <h2>Weekly roster scoring</h2>
       <p className="muted small">
-        All ten frozen roster slots are shown for each published week plus any live provisional week. Game chips show raw per-game fantasy points; bench points are informational only. An orange chip means a different nameplate filled that team/role and substitute credit was awarded—hover it to see who played and how the weekly credit was calculated.
+        All ten frozen roster slots are shown for each published week plus any live provisional week. Game chips show raw per-game fantasy points; an orange substitute chip also shows the capped credit after the arrow. Bench points are informational only.
       </p>
       {weeklyRosterAudits.length === 0 ? <p className="card muted">No published or live weekly roster scores yet.</p> : <div className="tablewrap weekly-roster-audit">
         <table>
@@ -429,7 +429,7 @@ export default async function ParticipantPage({
                               const points = game.points === null ? "—" : round1(game.points);
                               const substituteCredit = game.status === "SUBSTITUTE_CREDIT";
                               const title = substituteCredit
-                                ? `${game.actualPlayerName ?? game.actualPlayerId} played ${row.fallback?.role ?? "this role"} instead of ${row.effectivePlayerName}. Raw Game ${game.gameNumber} score: ${points}. Weekly fallback credit: ${round1(game.fallbackCredit ?? 0)} Pts/G (min of substitute ${round1(row.fallback?.substitutePointsPerGame ?? 0)} and team average ${round1(row.fallback?.teamAveragePointsPerGame ?? 0)}).`
+                                ? `${game.actualPlayerName ?? game.actualPlayerId} played ${row.fallback?.role ?? "this role"} instead of ${row.effectivePlayerName}. Raw Game ${game.gameNumber} score: ${points}. Game team average: ${round1(game.teamAveragePoints ?? 0)}. Credited: ${round1(game.fallbackCredit ?? 0)} (the lower of those two values).`
                                 : game.status === "OWN"
                                   ? `${row.effectivePlayerName} scored ${points} fantasy points in Game ${game.gameNumber}.`
                                   : game.status === "OTHER_PLAYER"
@@ -442,7 +442,7 @@ export default async function ParticipantPage({
                                 title={title}
                                 aria-label={title}
                               >
-                                <b>G{game.gameNumber}</b> {points}{substituteCredit && <em>sub</em>}
+                                <b>G{game.gameNumber}</b> {points}{substituteCredit && <> → <b>{round1(game.fallbackCredit ?? 0)}</b> <em>sub</em></>}
                               </Link>;
                             })}
                           </span>
@@ -456,7 +456,7 @@ export default async function ParticipantPage({
                   {row.slot === "BENCH" ? <span className="muted small">Bench · game points shown for reference, not credited</span> : row.fallback ? <>
                     <span className="fallback-credit-badge">{row.rosterException ? "Trade-exception substitute credit" : "Substitute credit applied"}</span>
                     <small>
-                      {row.fallback.substitutePlayerIds.map((playerId) => substituteNames.get(playerId) ?? playerId).join(", ")}: {round1(row.fallback.substitutePointsPerGame)} Pts/G · team average: {round1(row.fallback.teamAveragePointsPerGame)} · min = {round1(row.fallback.creditedPoints)} credited
+                      {row.fallback.substitutePlayerIds.map((playerId) => substituteNames.get(playerId) ?? playerId).join(", ")}: {round1(row.fallback.substitutePointsPerGame)} raw Pts/G · average game-team line: {round1(row.fallback.teamAveragePointsPerGame)} · after per-game caps: {round1(row.fallback.creditedPoints)} credited
                       {row.rosterException && Math.abs(row.creditedPoints - row.fallback.creditedPoints) >= 0.05
                         ? ` · blended weekly credit across the trade date: ${round1(row.creditedPoints)}`
                         : ""}
