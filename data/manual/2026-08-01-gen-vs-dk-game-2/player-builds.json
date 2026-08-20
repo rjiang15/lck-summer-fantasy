@@ -1,0 +1,3157 @@
+{
+  "Siwoo": {
+    "final": {
+      "spell1": "12",
+      "spell2": "4",
+      "item0": "2504",
+      "item1": "6662",
+      "item2": "1057",
+      "item3": "3047",
+      "item4": "1120",
+      "item5": "0",
+      "item6": "3363",
+      "perkprimarystyle": "8400",
+      "perksubstyle": "8300",
+      "perk0": "8437",
+      "perk1": "8401",
+      "perk2": "8444",
+      "perk3": "8242",
+      "perk4": "8345",
+      "perk5": "8347",
+      "statperk0": "5005",
+      "statperk1": "5001",
+      "statperk2": "5011",
+      "perk0var": "194;168;0",
+      "perk1var": "276;0;0",
+      "perk2var": "1113;0;0",
+      "perk3var": "141;0;0",
+      "perk4var": "3;0;223",
+      "perk5var": "0;0;0",
+      "skillorder": "1;3;1;2;1;4;1;2;1;2;4;2;2;3;3;4;3;",
+      "spell1Casts": "209",
+      "spell2Casts": "35",
+      "spell3Casts": "63",
+      "spell4Casts": "3",
+      "summoner1Casts": "4",
+      "summoner2Casts": "1"
+    },
+    "itemEvents": [
+      {
+        "build_time": "2",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "2",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1120"
+      },
+      {
+        "build_time": "2",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "160",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1033"
+      },
+      {
+        "build_time": "161",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "230",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "272",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1033"
+      },
+      {
+        "build_time": "272",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1057"
+      },
+      {
+        "build_time": "332",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2010"
+      },
+      {
+        "build_time": "332",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "368",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2010"
+      },
+      {
+        "build_time": "385",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2010"
+      },
+      {
+        "build_time": "444",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1033"
+      },
+      {
+        "build_time": "444",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "445",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1001"
+      },
+      {
+        "build_time": "446",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "581",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "645",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "645",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1033"
+      },
+      {
+        "build_time": "645",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3211"
+      },
+      {
+        "build_time": "646",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "646",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3363"
+      },
+      {
+        "build_time": "646",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "705",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "802",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1029"
+      },
+      {
+        "build_time": "802",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1057"
+      },
+      {
+        "build_time": "802",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3211"
+      },
+      {
+        "build_time": "802",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2504"
+      },
+      {
+        "build_time": "804",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "824",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "891",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1222"
+      },
+      {
+        "build_time": "936",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2001"
+      },
+      {
+        "build_time": "952",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2002"
+      },
+      {
+        "build_time": "953",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1029"
+      },
+      {
+        "build_time": "953",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1031"
+      },
+      {
+        "build_time": "955",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "975",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1180",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3057"
+      },
+      {
+        "build_time": "1182",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1286",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3057"
+      },
+      {
+        "build_time": "1286",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1286",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1031"
+      },
+      {
+        "build_time": "1286",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "6662"
+      },
+      {
+        "build_time": "1287",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1354",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1383",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1001"
+      },
+      {
+        "build_time": "1383",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3047"
+      },
+      {
+        "build_time": "1384",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1448",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1521",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1057"
+      },
+      {
+        "build_time": "1670",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2001"
+      }
+    ]
+  },
+  "Lucid": {
+    "final": {
+      "spell1": "11",
+      "spell2": "4",
+      "item0": "0",
+      "item1": "6610",
+      "item2": "3071",
+      "item3": "3155",
+      "item4": "3047",
+      "item5": "1036",
+      "item6": "3364",
+      "perkprimarystyle": "8000",
+      "perksubstyle": "8300",
+      "perk0": "8010",
+      "perk1": "9111",
+      "perk2": "9104",
+      "perk3": "8017",
+      "perk4": "8304",
+      "perk5": "8347",
+      "statperk0": "5005",
+      "statperk1": "5008",
+      "statperk2": "5011",
+      "perk0var": "197;0;0",
+      "perk1var": "610;120;0",
+      "perk2var": "15;0;0",
+      "perk3var": "1456;0;0",
+      "perk4var": "11;1;5",
+      "perk5var": "0;0;0",
+      "skillorder": "3;2;1;2;2;4;2;1;2;1;4;1;1;3;3;4;",
+      "spell1Casts": "100",
+      "spell2Casts": "160",
+      "spell3Casts": "0",
+      "spell4Casts": "4",
+      "summoner1Casts": "20",
+      "summoner2Casts": "2"
+    },
+    "itemEvents": [
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1101"
+      },
+      {
+        "build_time": "2",
+        "typeEvent": "ITEM_UNDO",
+        "itemId": "-1"
+      },
+      {
+        "build_time": "2",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "2",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1102"
+      },
+      {
+        "build_time": "3",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "167",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "218",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "218",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "219",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "219",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "219",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3364"
+      },
+      {
+        "build_time": "293",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "293",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "293",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2021"
+      },
+      {
+        "build_time": "347",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "398",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "399",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "618",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2021"
+      },
+      {
+        "build_time": "618",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "618",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "6610"
+      },
+      {
+        "build_time": "670",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "698",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1204"
+      },
+      {
+        "build_time": "698",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1102"
+      },
+      {
+        "build_time": "779",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2422"
+      },
+      {
+        "build_time": "779",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3047"
+      },
+      {
+        "build_time": "779",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "858",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "936",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3364"
+      },
+      {
+        "build_time": "936",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2001"
+      },
+      {
+        "build_time": "943",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2002"
+      },
+      {
+        "build_time": "945",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "945",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "946",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1038",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1038",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "1038",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3044"
+      },
+      {
+        "build_time": "1039",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1087",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1127",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3513"
+      },
+      {
+        "build_time": "1229",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1229",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1230",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1230",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3071"
+      },
+      {
+        "build_time": "1230",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3044"
+      },
+      {
+        "build_time": "1277",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1419",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1487",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1487",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1487",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1033"
+      },
+      {
+        "build_time": "1487",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "1564",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "1564",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1033"
+      },
+      {
+        "build_time": "1564",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3155"
+      },
+      {
+        "build_time": "1564",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "1623",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1648",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1670",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2001"
+      }
+    ]
+  },
+  "ShowMaker": {
+    "final": {
+      "spell1": "12",
+      "spell2": "4",
+      "item0": "2503",
+      "item1": "6653",
+      "item2": "1082",
+      "item3": "3171",
+      "item4": "1058",
+      "item5": "1058",
+      "item6": "3363",
+      "perkprimarystyle": "8200",
+      "perksubstyle": "8000",
+      "perk0": "8992",
+      "perk1": "8226",
+      "perk2": "8234",
+      "perk3": "8237",
+      "perk4": "8017",
+      "perk5": "9105",
+      "statperk0": "5005",
+      "statperk1": "5010",
+      "statperk2": "5011",
+      "perk0var": "1443;0;0",
+      "perk1var": "250;1303;0",
+      "perk2var": "12746;0;0",
+      "perk3var": "790;0;0",
+      "perk4var": "1758;0;0",
+      "perk5var": "20;10;0",
+      "skillorder": "1;3;3;2;3;4;3;1;3;3;1;4;1;1;2;1;2;4;2;4;",
+      "spell1Casts": "113",
+      "spell2Casts": "15",
+      "spell3Casts": "111",
+      "spell4Casts": "25",
+      "summoner1Casts": "4",
+      "summoner2Casts": "3"
+    },
+    "itemEvents": [
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1056"
+      },
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "189",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "269",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "297",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3802"
+      },
+      {
+        "build_time": "359",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1001"
+      },
+      {
+        "build_time": "365",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "478",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1033"
+      },
+      {
+        "build_time": "479",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1033"
+      },
+      {
+        "build_time": "479",
+        "typeEvent": "ITEM_UNDO",
+        "itemId": "-1"
+      },
+      {
+        "build_time": "480",
+        "typeEvent": "ITEM_UNDO",
+        "itemId": "-1"
+      },
+      {
+        "build_time": "480",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1052"
+      },
+      {
+        "build_time": "587",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1001"
+      },
+      {
+        "build_time": "587",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3158"
+      },
+      {
+        "build_time": "725",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3158"
+      },
+      {
+        "build_time": "725",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1201"
+      },
+      {
+        "build_time": "735",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "808",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2503"
+      },
+      {
+        "build_time": "808",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3802"
+      },
+      {
+        "build_time": "808",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1052"
+      },
+      {
+        "build_time": "891",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "892",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1082"
+      },
+      {
+        "build_time": "898",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "898",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3363"
+      },
+      {
+        "build_time": "913",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "936",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2001"
+      },
+      {
+        "build_time": "1019",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2002"
+      },
+      {
+        "build_time": "1020",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1021",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1052"
+      },
+      {
+        "build_time": "1169",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1052"
+      },
+      {
+        "build_time": "1169",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3147"
+      },
+      {
+        "build_time": "1169",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1170",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1052"
+      },
+      {
+        "build_time": "1280",
+        "typeEvent": "ITEM_SOLD",
+        "itemId": "1056"
+      },
+      {
+        "build_time": "1281",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3147"
+      },
+      {
+        "build_time": "1281",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1052"
+      },
+      {
+        "build_time": "1281",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "6653"
+      },
+      {
+        "build_time": "1475",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1058"
+      },
+      {
+        "build_time": "1645",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1058"
+      },
+      {
+        "build_time": "1670",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2001"
+      }
+    ]
+  },
+  "Smash": {
+    "final": {
+      "spell1": "21",
+      "spell2": "4",
+      "item0": "1086",
+      "item1": "3031",
+      "item2": "6676",
+      "item3": "3033",
+      "item4": "3086",
+      "item5": "0",
+      "item6": "3363",
+      "perkprimarystyle": "8000",
+      "perksubstyle": "8400",
+      "perk0": "8008",
+      "perk1": "8009",
+      "perk2": "9103",
+      "perk3": "8017",
+      "perk4": "8473",
+      "perk5": "8446",
+      "statperk0": "5005",
+      "statperk1": "5008",
+      "statperk2": "5011",
+      "perk0var": "34;34;0",
+      "perk1var": "957;0;0",
+      "perk2var": "25;10;0",
+      "perk3var": "944;0;0",
+      "perk4var": "419;0;0",
+      "perk5var": "2916;0;0",
+      "skillorder": "1;2;3;1;1;4;1;2;1;2;4;2;2;3;3;4;",
+      "spell1Casts": "66",
+      "spell2Casts": "60",
+      "spell3Casts": "23",
+      "spell4Casts": "4",
+      "summoner1Casts": "2",
+      "summoner2Casts": "2"
+    },
+    "itemEvents": [
+      {
+        "build_time": "7",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1086"
+      },
+      {
+        "build_time": "8",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "8",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "8",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "134",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "198",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "268",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3134"
+      },
+      {
+        "build_time": "269",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2031"
+      },
+      {
+        "build_time": "416",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1037"
+      },
+      {
+        "build_time": "417",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "613",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1037"
+      },
+      {
+        "build_time": "613",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3134"
+      },
+      {
+        "build_time": "613",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "6676"
+      },
+      {
+        "build_time": "614",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1001"
+      },
+      {
+        "build_time": "614",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "656",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1202"
+      },
+      {
+        "build_time": "656",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1001"
+      },
+      {
+        "build_time": "656",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1207"
+      },
+      {
+        "build_time": "678",
+        "typeEvent": "ITEM_SOLD",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "679",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1038"
+      },
+      {
+        "build_time": "680",
+        "typeEvent": "ITEM_UNDO",
+        "itemId": "-1"
+      },
+      {
+        "build_time": "680",
+        "typeEvent": "ITEM_UNDO",
+        "itemId": "-1"
+      },
+      {
+        "build_time": "681",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1018"
+      },
+      {
+        "build_time": "681",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "681",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1001"
+      },
+      {
+        "build_time": "681",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3006"
+      },
+      {
+        "build_time": "787",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1038"
+      },
+      {
+        "build_time": "788",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "788",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3363"
+      },
+      {
+        "build_time": "808",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "960",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1037"
+      },
+      {
+        "build_time": "1023",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1038"
+      },
+      {
+        "build_time": "1023",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1037"
+      },
+      {
+        "build_time": "1023",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1018"
+      },
+      {
+        "build_time": "1023",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3031"
+      },
+      {
+        "build_time": "1024",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1045",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1172",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3035"
+      },
+      {
+        "build_time": "1173",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1372",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3035"
+      },
+      {
+        "build_time": "1372",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3033"
+      },
+      {
+        "build_time": "1373",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1417",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1452",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1474",
+        "typeEvent": "ITEM_SOLD",
+        "itemId": "2031"
+      },
+      {
+        "build_time": "1475",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3086"
+      },
+      {
+        "build_time": "1670",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2001"
+      }
+    ]
+  },
+  "Career": {
+    "final": {
+      "spell1": "7",
+      "spell2": "4",
+      "item0": "3190",
+      "item1": "3222",
+      "item2": "3877",
+      "item3": "3009",
+      "item4": "0",
+      "item5": "0",
+      "item6": "3364",
+      "perkprimarystyle": "8100",
+      "perksubstyle": "8300",
+      "perk0": "8112",
+      "perk1": "8126",
+      "perk2": "8141",
+      "perk3": "8105",
+      "perk4": "8304",
+      "perk5": "8347",
+      "statperk0": "5005",
+      "statperk1": "5010",
+      "statperk2": "5011",
+      "perk0var": "986;0;0",
+      "perk1var": "321;0;0",
+      "perk2var": "23;0;0",
+      "perk3var": "40;5;0",
+      "perk4var": "11;1;5",
+      "perk5var": "0;0;0",
+      "skillorder": "1;2;3;1;1;4;1;2;1;2;4;2;",
+      "spell1Casts": "43",
+      "spell2Casts": "72",
+      "spell3Casts": "22",
+      "spell4Casts": "6",
+      "summoner1Casts": "6",
+      "summoner2Casts": "3"
+    },
+    "itemEvents": [
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "2",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "4",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "4",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3364"
+      },
+      {
+        "build_time": "67",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "102",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "220",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "220",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "220",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1203"
+      },
+      {
+        "build_time": "220",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "221",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "293",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "369",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "409",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "409",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3067"
+      },
+      {
+        "build_time": "410",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "410",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1203"
+      },
+      {
+        "build_time": "410",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "412",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2031"
+      },
+      {
+        "build_time": "454",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3865"
+      },
+      {
+        "build_time": "477",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "528",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1029"
+      },
+      {
+        "build_time": "529",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "529",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "529",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1203"
+      },
+      {
+        "build_time": "530",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "608",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "612",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1033"
+      },
+      {
+        "build_time": "613",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "653",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "704",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "753",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3866"
+      },
+      {
+        "build_time": "753",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1203"
+      },
+      {
+        "build_time": "755",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3867"
+      },
+      {
+        "build_time": "776",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3067"
+      },
+      {
+        "build_time": "776",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3190"
+      },
+      {
+        "build_time": "776",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1033"
+      },
+      {
+        "build_time": "776",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1029"
+      },
+      {
+        "build_time": "777",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "777",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1208"
+      },
+      {
+        "build_time": "777",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "779",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "804",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "856",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "936",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2001"
+      },
+      {
+        "build_time": "945",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2002"
+      },
+      {
+        "build_time": "946",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3009"
+      },
+      {
+        "build_time": "946",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2422"
+      },
+      {
+        "build_time": "953",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "953",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1208"
+      },
+      {
+        "build_time": "953",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "975",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1025",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1025",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1208"
+      },
+      {
+        "build_time": "1025",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1025",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1095",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1116",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1169",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3067"
+      },
+      {
+        "build_time": "1170",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1170",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1208"
+      },
+      {
+        "build_time": "1170",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1172",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1004"
+      },
+      {
+        "build_time": "1192",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1215",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1215",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1208"
+      },
+      {
+        "build_time": "1215",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1216",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1351",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1363",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1004"
+      },
+      {
+        "build_time": "1363",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3114"
+      },
+      {
+        "build_time": "1364",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1396",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1408",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1477",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1477",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1477",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1208"
+      },
+      {
+        "build_time": "1477",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1495",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1545",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3067"
+      },
+      {
+        "build_time": "1545",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3114"
+      },
+      {
+        "build_time": "1545",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3222"
+      },
+      {
+        "build_time": "1547",
+        "typeEvent": "ITEM_SOLD",
+        "itemId": "2031"
+      },
+      {
+        "build_time": "1547",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1565",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1642",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1670",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2001"
+      }
+    ]
+  },
+  "Kiin": {
+    "final": {
+      "spell1": "12",
+      "spell2": "4",
+      "item0": "4645",
+      "item1": "4630",
+      "item2": "1026",
+      "item3": "0",
+      "item4": "6653",
+      "item5": "3009",
+      "item6": "3363",
+      "perkprimarystyle": "8300",
+      "perksubstyle": "8200",
+      "perk0": "8369",
+      "perk1": "8321",
+      "perk2": "8313",
+      "perk3": "8347",
+      "perk4": "8234",
+      "perk5": "8275",
+      "statperk0": "5007",
+      "statperk1": "5010",
+      "statperk2": "5011",
+      "perk0var": "520;540;0",
+      "perk1var": "465;0;0",
+      "perk2var": "3;0;0",
+      "perk3var": "0;0;0",
+      "perk4var": "12692;0;0",
+      "perk5var": "8;0;0",
+      "skillorder": "3;1;2;1;1;4;1;3;1;3;3;4;3;2;2;2;4;",
+      "spell1Casts": "128",
+      "spell2Casts": "146",
+      "spell3Casts": "186",
+      "spell4Casts": "5",
+      "summoner1Casts": "5",
+      "summoner2Casts": "3"
+    },
+    "itemEvents": [
+      {
+        "build_time": "2",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2022"
+      },
+      {
+        "build_time": "2",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2022"
+      },
+      {
+        "build_time": "10",
+        "typeEvent": "ITEM_UNDO",
+        "itemId": "-1"
+      },
+      {
+        "build_time": "10",
+        "typeEvent": "ITEM_UNDO",
+        "itemId": "-1"
+      },
+      {
+        "build_time": "10",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1056"
+      },
+      {
+        "build_time": "11",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "11",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "11",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "136",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2151"
+      },
+      {
+        "build_time": "302",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3009"
+      },
+      {
+        "build_time": "303",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1082"
+      },
+      {
+        "build_time": "303",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "332",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2152"
+      },
+      {
+        "build_time": "338",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "350",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "352",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "470",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2508"
+      },
+      {
+        "build_time": "472",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2031"
+      },
+      {
+        "build_time": "610",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1052"
+      },
+      {
+        "build_time": "772",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1052"
+      },
+      {
+        "build_time": "772",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3147"
+      },
+      {
+        "build_time": "866",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1222"
+      },
+      {
+        "build_time": "900",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3147"
+      },
+      {
+        "build_time": "900",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "6653"
+      },
+      {
+        "build_time": "900",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2508"
+      },
+      {
+        "build_time": "902",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1052"
+      },
+      {
+        "build_time": "903",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "903",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3363"
+      },
+      {
+        "build_time": "1024",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1052"
+      },
+      {
+        "build_time": "1024",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3145"
+      },
+      {
+        "build_time": "1217",
+        "typeEvent": "ITEM_SOLD",
+        "itemId": "1056"
+      },
+      {
+        "build_time": "1217",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1058"
+      },
+      {
+        "build_time": "1218",
+        "typeEvent": "ITEM_SOLD",
+        "itemId": "2031"
+      },
+      {
+        "build_time": "1219",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1237",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1372",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3145"
+      },
+      {
+        "build_time": "1372",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1058"
+      },
+      {
+        "build_time": "1372",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "4645"
+      },
+      {
+        "build_time": "1373",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1466",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1547",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "4630"
+      },
+      {
+        "build_time": "1549",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1659",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1683",
+        "typeEvent": "ITEM_SOLD",
+        "itemId": "1082"
+      },
+      {
+        "build_time": "1683",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1026"
+      }
+    ]
+  },
+  "Canyon": {
+    "final": {
+      "spell1": "11",
+      "spell2": "4",
+      "item0": "2055",
+      "item1": "1033",
+      "item2": "1036",
+      "item3": "6610",
+      "item4": "3071",
+      "item5": "3047",
+      "item6": "3364",
+      "perkprimarystyle": "8000",
+      "perksubstyle": "8300",
+      "perk0": "8010",
+      "perk1": "9111",
+      "perk2": "9105",
+      "perk3": "8017",
+      "perk4": "8304",
+      "perk5": "8347",
+      "statperk0": "5005",
+      "statperk1": "5008",
+      "statperk2": "5001",
+      "perk0var": "26;0;0",
+      "perk1var": "47;20;0",
+      "perk2var": "17;50;0",
+      "perk3var": "711;0;0",
+      "perk4var": "11;1;5",
+      "perk5var": "0;0;0",
+      "skillorder": "3;1;2;1;1;4;1;3;1;3;4;3;3;",
+      "spell1Casts": "128",
+      "spell2Casts": "128",
+      "spell3Casts": "124",
+      "spell4Casts": "8",
+      "summoner1Casts": "18",
+      "summoner2Casts": "3"
+    },
+    "itemEvents": [
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1101"
+      },
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "210",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "210",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "210",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "211",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "211",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3364"
+      },
+      {
+        "build_time": "273",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "350",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "445",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "445",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "445",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2021"
+      },
+      {
+        "build_time": "445",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "446",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2022"
+      },
+      {
+        "build_time": "446",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "514",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "602",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "665",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2021"
+      },
+      {
+        "build_time": "665",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "665",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2022"
+      },
+      {
+        "build_time": "665",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "665",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "6610"
+      },
+      {
+        "build_time": "665",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "733",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "776",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1029"
+      },
+      {
+        "build_time": "777",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "815",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1204"
+      },
+      {
+        "build_time": "815",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1101"
+      },
+      {
+        "build_time": "934",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "970",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2422"
+      },
+      {
+        "build_time": "970",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1029"
+      },
+      {
+        "build_time": "970",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3047"
+      },
+      {
+        "build_time": "971",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "971",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1135",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1155",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1155",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3044"
+      },
+      {
+        "build_time": "1155",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1156",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1292",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1347",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1037"
+      },
+      {
+        "build_time": "1476",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3044"
+      },
+      {
+        "build_time": "1476",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1476",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1037"
+      },
+      {
+        "build_time": "1476",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3071"
+      },
+      {
+        "build_time": "1476",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1509",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1597",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1597",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1600",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1033"
+      },
+      {
+        "build_time": "1640",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1672",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1672",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      }
+    ]
+  },
+  "Chovy": {
+    "final": {
+      "spell1": "12",
+      "spell2": "4",
+      "item0": "3153",
+      "item1": "6673",
+      "item2": "1037",
+      "item3": "3172",
+      "item4": "1018",
+      "item5": "1038",
+      "item6": "3364",
+      "perkprimarystyle": "8000",
+      "perksubstyle": "8400",
+      "perk0": "8021",
+      "perk1": "9101",
+      "perk2": "9104",
+      "perk3": "8299",
+      "perk4": "8444",
+      "perk5": "8453",
+      "statperk0": "5005",
+      "statperk1": "5008",
+      "statperk2": "5011",
+      "perk0var": "1929;0;0",
+      "perk1var": "891;0;0",
+      "perk2var": "17;50;0",
+      "perk3var": "345;0;0",
+      "perk4var": "929;0;0",
+      "perk5var": "1037;626;0",
+      "skillorder": "1;2;3;1;1;4;1;3;1;3;4;3;3;2;2;",
+      "spell1Casts": "269",
+      "spell2Casts": "70",
+      "spell3Casts": "79",
+      "spell4Casts": "5",
+      "summoner1Casts": "3",
+      "summoner2Casts": "3"
+    },
+    "itemEvents": [
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1054"
+      },
+      {
+        "build_time": "2",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "2",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "141",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "208",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "208",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "209",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2031"
+      },
+      {
+        "build_time": "316",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "316",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "316",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3006"
+      },
+      {
+        "build_time": "318",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "445",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "445",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1043"
+      },
+      {
+        "build_time": "446",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "485",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "564",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1053"
+      },
+      {
+        "build_time": "676",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "678",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "678",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3364"
+      },
+      {
+        "build_time": "722",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1201"
+      },
+      {
+        "build_time": "722",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3006"
+      },
+      {
+        "build_time": "795",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1053"
+      },
+      {
+        "build_time": "795",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1043"
+      },
+      {
+        "build_time": "795",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3153"
+      },
+      {
+        "build_time": "986",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1034",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1037"
+      },
+      {
+        "build_time": "1034",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1018"
+      },
+      {
+        "build_time": "1035",
+        "typeEvent": "ITEM_SOLD",
+        "itemId": "2031"
+      },
+      {
+        "build_time": "1036",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "1195",
+        "typeEvent": "ITEM_SOLD",
+        "itemId": "1054"
+      },
+      {
+        "build_time": "1196",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1037"
+      },
+      {
+        "build_time": "1196",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "6673"
+      },
+      {
+        "build_time": "1196",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1018"
+      },
+      {
+        "build_time": "1196",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "1296",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1018"
+      },
+      {
+        "build_time": "1296",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1344",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1528",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1038"
+      },
+      {
+        "build_time": "1529",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1600",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1674",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1037"
+      }
+    ]
+  },
+  "Ruler": {
+    "final": {
+      "spell1": "4",
+      "spell2": "21",
+      "item0": "3036",
+      "item1": "3508",
+      "item2": "6675",
+      "item3": "1018",
+      "item4": "2055",
+      "item5": "0",
+      "item6": "3363",
+      "perkprimarystyle": "8000",
+      "perksubstyle": "8400",
+      "perk0": "8005",
+      "perk1": "8009",
+      "perk2": "9103",
+      "perk3": "8017",
+      "perk4": "8401",
+      "perk5": "8473",
+      "statperk0": "5005",
+      "statperk1": "5008",
+      "statperk2": "5011",
+      "perk0var": "640;640;0",
+      "perk1var": "521;0;0",
+      "perk2var": "0;0;0",
+      "perk3var": "1516;0;0",
+      "perk4var": "385;0;0",
+      "perk5var": "244;0;0",
+      "skillorder": "2;3;1;1;1;4;1;2;2;1;4;2;2;3;",
+      "spell1Casts": "91",
+      "spell2Casts": "68",
+      "spell3Casts": "45",
+      "spell4Casts": "7",
+      "summoner1Casts": "2",
+      "summoner2Casts": "2"
+    },
+    "itemEvents": [
+      {
+        "build_time": "11",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1120"
+      },
+      {
+        "build_time": "12",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "12",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "187",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "264",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "264",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "264",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2031"
+      },
+      {
+        "build_time": "398",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "398",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "398",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3133"
+      },
+      {
+        "build_time": "398",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "472",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1001"
+      },
+      {
+        "build_time": "641",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3057"
+      },
+      {
+        "build_time": "674",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "705",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1018"
+      },
+      {
+        "build_time": "800",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3057"
+      },
+      {
+        "build_time": "800",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3508"
+      },
+      {
+        "build_time": "800",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1018"
+      },
+      {
+        "build_time": "800",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3133"
+      },
+      {
+        "build_time": "801",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "801",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "801",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "801",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3363"
+      },
+      {
+        "build_time": "888",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1202"
+      },
+      {
+        "build_time": "888",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1001"
+      },
+      {
+        "build_time": "888",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1207"
+      },
+      {
+        "build_time": "905",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1012",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3086"
+      },
+      {
+        "build_time": "1012",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "1013",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "1013",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "1135",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "1135",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3086"
+      },
+      {
+        "build_time": "1135",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1042"
+      },
+      {
+        "build_time": "1135",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "6675"
+      },
+      {
+        "build_time": "1210",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "1211",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1228",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1280",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "1360",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "1360",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "1360",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3035"
+      },
+      {
+        "build_time": "1361",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1405",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1491",
+        "typeEvent": "ITEM_SOLD",
+        "itemId": "2031"
+      },
+      {
+        "build_time": "1492",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1018"
+      },
+      {
+        "build_time": "1492",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "1580",
+        "typeEvent": "ITEM_SOLD",
+        "itemId": "1120"
+      },
+      {
+        "build_time": "1581",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3035"
+      },
+      {
+        "build_time": "1581",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1036"
+      },
+      {
+        "build_time": "1581",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1018"
+      },
+      {
+        "build_time": "1581",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3036"
+      },
+      {
+        "build_time": "1581",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1629",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1674",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1018"
+      },
+      {
+        "build_time": "1674",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      }
+    ]
+  },
+  "Duro": {
+    "final": {
+      "spell1": "7",
+      "spell2": "4",
+      "item0": "6620",
+      "item1": "3870",
+      "item2": "6617",
+      "item3": "3158",
+      "item4": "0",
+      "item5": "0",
+      "item6": "3364",
+      "perkprimarystyle": "8200",
+      "perksubstyle": "8300",
+      "perk0": "8214",
+      "perk1": "8275",
+      "perk2": "8210",
+      "perk3": "8236",
+      "perk4": "8304",
+      "perk5": "8347",
+      "statperk0": "5007",
+      "statperk1": "5008",
+      "statperk2": "5011",
+      "perk0var": "418;903;0",
+      "perk1var": "9;0;0",
+      "perk2var": "0;0;0",
+      "perk3var": "24;0;0",
+      "perk4var": "11;1;5",
+      "perk5var": "0;0;0",
+      "skillorder": "3;2;1;3;3;4;2;2;2;2;",
+      "spell1Casts": "48",
+      "spell2Casts": "15",
+      "spell3Casts": "54",
+      "spell4Casts": "4",
+      "summoner1Casts": "6",
+      "summoner2Casts": "3"
+    },
+    "itemEvents": [
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "1",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "69",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "240",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2003"
+      },
+      {
+        "build_time": "266",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "267",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "267",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1203"
+      },
+      {
+        "build_time": "267",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "289",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "389",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3865"
+      },
+      {
+        "build_time": "411",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "411",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3067"
+      },
+      {
+        "build_time": "411",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "411",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1203"
+      },
+      {
+        "build_time": "411",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "412",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3340"
+      },
+      {
+        "build_time": "412",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3364"
+      },
+      {
+        "build_time": "467",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "562",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1052"
+      },
+      {
+        "build_time": "562",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2022"
+      },
+      {
+        "build_time": "564",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "564",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1203"
+      },
+      {
+        "build_time": "564",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "638",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1052"
+      },
+      {
+        "build_time": "638",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2022"
+      },
+      {
+        "build_time": "638",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "4642"
+      },
+      {
+        "build_time": "771",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "4642"
+      },
+      {
+        "build_time": "771",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "6617"
+      },
+      {
+        "build_time": "771",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3067"
+      },
+      {
+        "build_time": "772",
+        "typeEvent": "ITEM_UNDO",
+        "itemId": "-1"
+      },
+      {
+        "build_time": "773",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3067"
+      },
+      {
+        "build_time": "773",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "4642"
+      },
+      {
+        "build_time": "773",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "6620"
+      },
+      {
+        "build_time": "773",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "780",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3866"
+      },
+      {
+        "build_time": "782",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3867"
+      },
+      {
+        "build_time": "890",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "954",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2022"
+      },
+      {
+        "build_time": "954",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2022"
+      },
+      {
+        "build_time": "955",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1040",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1095",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1171",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2022"
+      },
+      {
+        "build_time": "1171",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "4642"
+      },
+      {
+        "build_time": "1173",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1173",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1208"
+      },
+      {
+        "build_time": "1173",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1173",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1186",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1249",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1250",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1285",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1307",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3067"
+      },
+      {
+        "build_time": "1307",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2022"
+      },
+      {
+        "build_time": "1307",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1028"
+      },
+      {
+        "build_time": "1345",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1376",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1376",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "1208"
+      },
+      {
+        "build_time": "1376",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1376",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1486",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1500",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "4642"
+      },
+      {
+        "build_time": "1500",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1500",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "6617"
+      },
+      {
+        "build_time": "1500",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "3067"
+      },
+      {
+        "build_time": "1559",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1572",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1642",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2055"
+      },
+      {
+        "build_time": "1686",
+        "typeEvent": "ITEM_DESTROYED",
+        "itemId": "2422"
+      },
+      {
+        "build_time": "1686",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "3158"
+      },
+      {
+        "build_time": "1699",
+        "typeEvent": "ITEM_PURCHASED",
+        "itemId": "2055"
+      }
+    ]
+  }
+}

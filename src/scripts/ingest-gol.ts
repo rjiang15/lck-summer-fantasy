@@ -8,6 +8,7 @@ import { validateWeekData } from "../lib/season";
 import { assertSequentialIngest } from "../lib/ingest-order";
 import { encodeIngestionProgress } from "../lib/ingestion-progress";
 import { createWriteCounts, writeIfChanged, type WriteCounts } from "../lib/change-aware-write";
+import { applyManualSeriesReconciliation } from "../lib/manual-series-reconciliation";
 import type { PendingScoreboardMatch } from "../lib/ingest-completeness";
 import {
   golSeriesQualityOverride,
@@ -297,7 +298,11 @@ async function ingestTournament({
     completed.push({
       match,
       series,
-      result: qualityOverride ?? golSeriesResultForMatch(series, match),
+      result: qualityOverride ? {
+        winner: qualityOverride.winner,
+        team1Score: qualityOverride.team1Score,
+        team2Score: qualityOverride.team2Score,
+      } : golSeriesResultForMatch(series, match),
       qualityOverride,
     });
   }
@@ -341,6 +346,17 @@ async function ingestTournament({
     );
     let gameLinks: GolSeriesGame[] = [];
     const parsedGames: ParsedGame[] = [];
+    if (qualityOverride?.manualReconciliationId) {
+      const reconciled = await applyManualSeriesReconciliation({
+        reconciliationId: qualityOverride.manualReconciliationId,
+        matchId: match.id,
+        tournamentId,
+        runId,
+        counts: writes,
+      });
+      for (const playerName of reconciled.playerNames) sourcePlayerNames.add(playerName);
+      continue;
+    }
     if (qualityOverride?.quarantineDetailedStats) {
       pendingScoreboards.push(quarantinedDetailedStats(
         match,

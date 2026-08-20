@@ -1,0 +1,53 @@
+{
+  "archivedAt": "2026-08-05T05:17:41.272Z",
+  "esportsGameId": "115548147900553474",
+  "esportsMatchId": "115548147900553473",
+  "patchVersion": "16.14.794.9266",
+  "requestedRange": {
+    "start": "2026-08-01T11:10:10Z",
+    "end": "2026-08-01T11:44:00Z",
+    "intervalSeconds": 10
+  },
+  "gameClockZero": "2026-08-01T11:10:23.795Z",
+  "firstFinishedTimestamp": "2026-08-01T11:43:29.795Z",
+  "derivedDurationSeconds": 1986,
+  "finalScore": {
+    "Gen.G": 14,
+    "Dplus KIA": 21
+  },
+  "counts": {
+    "requestCount": 408,
+    "windowRequestCount": 204,
+    "detailsRequestCount": 204,
+    "uniqueWindowFrames": 8928,
+    "uniqueDetailsFrames": 8928,
+    "playerTimelineRows": 89280,
+    "controlWardEvents": 110,
+    "killEvents": 35,
+    "multikillClusters": 3,
+    "objectiveEvents": 18
+  },
+  "rawArchives": {
+    "riot-window-responses.json.gz": {
+      "bytes": 361942,
+      "sha256": "127485f1d262dfec983ef9a8ac9542e4106f0c79b1a213aca78f9d5992c9018e"
+    },
+    "riot-details-responses.json.gz": {
+      "bytes": 534850,
+      "sha256": "147a049ca90d97ade933468b23a6c88c00f13e304b7ce5db8f8a0a4b4d248e86"
+    }
+  },
+  "sourceUrls": {
+    "window": "https://feed.lolesports.com/livestats/v1/window/115548147900553474",
+    "details": "https://feed.lolesports.com/livestats/v1/details/115548147900553474",
+    "redditPostMatch": "https://www.reddit.com/r/leagueoflegends/comments/1vcm8sk/geng_vs_dplus_kia_lck_2026_season_rounds_34/"
+  },
+  "caveats": [
+    "Riot exposes champion damage share but not absolute damage-to-champions in this feed.",
+    "XP, vision score, damage to towers, damage mitigated, and healing are not exposed and remain blank.",
+    "Control ward purchases are a lower bound detected from item 2055 inventory increases.",
+    "Multikills are derived from successive Riot kill-counter increases no more than ten seconds apart.",
+    "Herald and void-grub totals come from the post-match table because the Riot window schema omits them.",
+    "The game clock was calibrated from the 33:06 post-match duration and cross-checked against the VOD's 15:00 scoreboard; a third-party result screenshot displayed 32:19."
+  ]
+}

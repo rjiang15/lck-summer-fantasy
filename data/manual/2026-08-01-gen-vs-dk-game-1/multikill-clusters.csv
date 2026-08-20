@@ -1,0 +1,4 @@
+participant_id,player,team,start_timestamp,end_timestamp,start_elapsed_sec,end_elapsed_sec,kill_count,classification,confidence
+3,Chovy,Gen.G,2026-08-01T11:16:16.046Z,2026-08-01T11:16:17.950Z,352.251,354.155,2,double,derived_using_10_second_consecutive_kill_window
+3,Chovy,Gen.G,2026-08-01T11:39:14.448Z,2026-08-01T11:39:16.262Z,1730.653,1732.467,2,double,derived_using_10_second_consecutive_kill_window
+9,Smash,Dplus KIA,2026-08-01T11:39:18.999Z,2026-08-01T11:39:29.071Z,1735.204,1745.276,3,triple,derived_using_10_second_consecutive_kill_window

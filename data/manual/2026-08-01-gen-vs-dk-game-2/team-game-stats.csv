@@ -1,0 +1,3 @@
+source_game_id,team,side,won,kills,deaths,gold,towers,inhibitors,dragons,cloud_drakes,infernal_drakes,mountain_drakes,ocean_drakes,hextech_drakes,chemtech_drakes,elder_dragons,barons,heralds,void_grubs,atakhans,turret_plates,first_blood,first_dragon,first_herald,first_baron,first_tower
+80676,Dplus KIA,Blue,true,7,2,57872,10,1,3,1,1,0,0,0,1,0,1,1,0,0,40,true,true,true,true,true
+80676,Gen.G,Red,false,2,7,47692,1,0,0,0,0,0,0,0,0,0,0,0,3,0,11,false,false,false,false,false

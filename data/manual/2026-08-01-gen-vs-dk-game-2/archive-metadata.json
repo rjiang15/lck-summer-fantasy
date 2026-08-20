@@ -1,0 +1,56 @@
+{
+  "archivedAt": "2026-08-20T20:02:29.692Z",
+  "source": "Games of Legends",
+  "sourceGameId": "80676",
+  "date": "2026-08-01",
+  "patch": "16.14",
+  "durationSeconds": 1726,
+  "finalScore": {
+    "Dplus KIA": 7,
+    "Gen.G": 2
+  },
+  "counts": {
+    "players": 10,
+    "teams": 2,
+    "draftActions": 20,
+    "timelineEvents": 81,
+    "playerMinuteGoldCsRows": 300,
+    "playerBuilds": 10,
+    "itemEvents": 553
+  },
+  "sourceUrls": {
+    "game": "https://gol.gg/game/stats/80676/page-game/",
+    "fullstats": "https://gol.gg/game/stats/80676/page-fullstats/",
+    "timeline": "https://gol.gg/game/stats/80676/page-timeline/",
+    "builds": "https://gol.gg/game/stats/80676/page-builds/"
+  },
+  "rawArchives": {
+    "gol-game.html.gz": {
+      "bytes": 100513,
+      "sha256": "a091c824c738ba0ace7b3d5757788d870466159fdd39dda8597d443c500da969"
+    },
+    "gol-fullstats.html.gz": {
+      "bytes": 96285,
+      "sha256": "2cf361988c9978bca20538791d55be60a2b914e3bacf922e036a568b940e45e6"
+    },
+    "gol-timeline.html.gz": {
+      "bytes": 98911,
+      "sha256": "00524bbf19542ece6268000e8859a8d2cc42217d416c7932e74143b8ecaee24c"
+    },
+    "gol-builds.html.gz": {
+      "bytes": 95388,
+      "sha256": "8e8f59fbfd92f063854a8ade37347071b270f509287550c51b983e8cf7569b4b"
+    }
+  },
+  "corrections": [
+    "Siwoo's champion is stored as KSante because GoL emits malformed alt='K'Sante' HTML in the full-stats table; the draft, icon filename, and builds row all identify KSante.",
+    "Exact team gold is the sum of player Golds rather than GoL's rounded overview display.",
+    "Inhibitor totals are derived from GoL's timestamped timeline because the overview parser does not expose them."
+  ],
+  "caveats": [
+    "This is GoL game 80676 only. The linked 80675 Game 1 record is known to be wrong and is not included.",
+    "GoL graph snapshots contain gold and CS only; they do not provide per-minute KDA, XP, level, wards, or inventory.",
+    "The final graph sample repeats minute label 28 and represents the 28:46 final state.",
+    "The GoL timeline is event-granular, not a raw Riot frame feed."
+  ]
+}

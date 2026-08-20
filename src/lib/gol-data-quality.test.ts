@@ -7,7 +7,7 @@ import {
 
 const tournamentId = "LCK/2026 Season/Rounds 3-4";
 
-test("quarantines only the known corrupted Gen.G-DK source series", () => {
+test("reconciles only the known corrupted Gen.G-DK source series", () => {
   assert.deepEqual(golSeriesQualityOverride({
     tournamentId,
     date: "2026-08-01",
@@ -18,8 +18,9 @@ test("quarantines only the known corrupted Gen.G-DK source series", () => {
     winner: "Dplus Kia",
     team1Score: 0,
     team2Score: 2,
-    quarantineDetailedStats: true,
-    reason: "Gol series 80675 is quarantined: its 1-1 match-list row conflicts with the verified 2-0 result, and its supposed Game 1 duplicates/mislabels Game 2 data and draft information.",
+    quarantineDetailedStats: false,
+    manualReconciliationId: "2026-08-01-gen-dk",
+    reason: "Gol series 80675 is replaced by the audited Gen.G-DK mixed-source package: its 1-1 match-list row conflicts with the verified 2-0 result, and its supposed Game 1 duplicates/mislabels Game 2 data and draft information.",
   });
   assert.equal(golSeriesQualityOverride({
     tournamentId,

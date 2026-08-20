@@ -1,0 +1,301 @@
+sample_index,minute,is_final,player,team,role,gold,cs
+0,0,false,Siwoo,Dplus KIA,Top,500,0
+0,0,false,Lucid,Dplus KIA,Jungle,500,0
+0,0,false,ShowMaker,Dplus KIA,Mid,500,0
+0,0,false,Smash,Dplus KIA,Bot,500,0
+0,0,false,Career,Dplus KIA,Support,500,0
+0,0,false,Kiin,Gen.G,Top,500,0
+0,0,false,Canyon,Gen.G,Jungle,500,0
+0,0,false,Chovy,Gen.G,Mid,500,0
+0,0,false,Ruler,Gen.G,Bot,500,0
+0,0,false,Duro,Gen.G,Support,500,0
+1,1,false,Siwoo,Dplus KIA,Top,500,0
+1,1,false,Lucid,Dplus KIA,Jungle,500,0
+1,1,false,ShowMaker,Dplus KIA,Mid,525,1
+1,1,false,Smash,Dplus KIA,Bot,515,1
+1,1,false,Career,Dplus KIA,Support,510,0
+1,1,false,Kiin,Gen.G,Top,511,0
+1,1,false,Canyon,Gen.G,Jungle,500,0
+1,1,false,Chovy,Gen.G,Mid,500,0
+1,1,false,Ruler,Gen.G,Bot,500,0
+1,1,false,Duro,Gen.G,Support,500,0
+2,2,false,Siwoo,Dplus KIA,Top,857,14
+2,2,false,Lucid,Dplus KIA,Jungle,813,10
+2,2,false,ShowMaker,Dplus KIA,Mid,768,9
+2,2,false,Smash,Dplus KIA,Bot,837,13
+2,2,false,Career,Dplus KIA,Support,689,1
+2,2,false,Kiin,Gen.G,Top,722,4
+2,2,false,Canyon,Gen.G,Jungle,887,12
+2,2,false,Chovy,Gen.G,Mid,755,8
+2,2,false,Ruler,Gen.G,Bot,706,5
+2,2,false,Duro,Gen.G,Support,684,1
+3,3,false,Siwoo,Dplus KIA,Top,1193,25
+3,3,false,Lucid,Dplus KIA,Jungle,1270,23
+3,3,false,ShowMaker,Dplus KIA,Mid,1144,22
+3,3,false,Smash,Dplus KIA,Bot,1239,24
+3,3,false,Career,Dplus KIA,Support,960,3
+3,3,false,Kiin,Gen.G,Top,1151,20
+3,3,false,Canyon,Gen.G,Jungle,1284,24
+3,3,false,Chovy,Gen.G,Mid,1083,18
+3,3,false,Ruler,Gen.G,Bot,998,15
+3,3,false,Duro,Gen.G,Support,860,2
+4,4,false,Siwoo,Dplus KIA,Top,1538,36
+4,4,false,Lucid,Dplus KIA,Jungle,1456,27
+4,4,false,ShowMaker,Dplus KIA,Mid,1482,33
+4,4,false,Smash,Dplus KIA,Bot,1535,32
+4,4,false,Career,Dplus KIA,Support,1135,4
+4,4,false,Kiin,Gen.G,Top,1599,32
+4,4,false,Canyon,Gen.G,Jungle,1557,31
+4,4,false,Chovy,Gen.G,Mid,1387,27
+4,4,false,Ruler,Gen.G,Bot,1302,25
+4,4,false,Duro,Gen.G,Support,1060,2
+5,5,false,Siwoo,Dplus KIA,Top,1815,45
+5,5,false,Lucid,Dplus KIA,Jungle,1858,39
+5,5,false,ShowMaker,Dplus KIA,Mid,1706,39
+5,5,false,Smash,Dplus KIA,Bot,1841,43
+5,5,false,Career,Dplus KIA,Support,1335,8
+5,5,false,Kiin,Gen.G,Top,1960,44
+5,5,false,Canyon,Gen.G,Jungle,1796,36
+5,5,false,Chovy,Gen.G,Mid,1847,45
+5,5,false,Ruler,Gen.G,Bot,1464,27
+5,5,false,Duro,Gen.G,Support,1236,3
+6,6,false,Siwoo,Dplus KIA,Top,2172,57
+6,6,false,Lucid,Dplus KIA,Jungle,2145,44
+6,6,false,ShowMaker,Dplus KIA,Mid,2064,51
+6,6,false,Smash,Dplus KIA,Bot,2213,56
+6,6,false,Career,Dplus KIA,Support,1540,11
+6,6,false,Kiin,Gen.G,Top,2328,53
+6,6,false,Canyon,Gen.G,Jungle,2124,44
+6,6,false,Chovy,Gen.G,Mid,2142,48
+6,6,false,Ruler,Gen.G,Bot,1774,36
+6,6,false,Duro,Gen.G,Support,1476,3
+7,7,false,Siwoo,Dplus KIA,Top,2470,65
+7,7,false,Lucid,Dplus KIA,Jungle,2376,48
+7,7,false,ShowMaker,Dplus KIA,Mid,2246,54
+7,7,false,Smash,Dplus KIA,Bot,2739,68
+7,7,false,Career,Dplus KIA,Support,1750,13
+7,7,false,Kiin,Gen.G,Top,2838,65
+7,7,false,Canyon,Gen.G,Jungle,2375,48
+7,7,false,Chovy,Gen.G,Mid,2548,62
+7,7,false,Ruler,Gen.G,Bot,1937,38
+7,7,false,Duro,Gen.G,Support,1643,3
+8,8,false,Siwoo,Dplus KIA,Top,2736,74
+8,8,false,Lucid,Dplus KIA,Jungle,2868,64
+8,8,false,ShowMaker,Dplus KIA,Mid,2508,63
+8,8,false,Smash,Dplus KIA,Bot,3011,77
+8,8,false,Career,Dplus KIA,Support,2071,16
+8,8,false,Kiin,Gen.G,Top,3150,76
+8,8,false,Canyon,Gen.G,Jungle,2682,56
+8,8,false,Chovy,Gen.G,Mid,2944,77
+8,8,false,Ruler,Gen.G,Bot,2181,45
+8,8,false,Duro,Gen.G,Support,1885,7
+9,9,false,Siwoo,Dplus KIA,Top,3107,86
+9,9,false,Lucid,Dplus KIA,Jungle,3181,72
+9,9,false,ShowMaker,Dplus KIA,Mid,2792,72
+9,9,false,Smash,Dplus KIA,Bot,3566,93
+9,9,false,Career,Dplus KIA,Support,2322,18
+9,9,false,Kiin,Gen.G,Top,3375,81
+9,9,false,Canyon,Gen.G,Jungle,3008,66
+9,9,false,Chovy,Gen.G,Mid,3262,81
+9,9,false,Ruler,Gen.G,Bot,2528,56
+9,9,false,Duro,Gen.G,Support,2103,7
+10,10,false,Siwoo,Dplus KIA,Top,3370,94
+10,10,false,Lucid,Dplus KIA,Jungle,3619,81
+10,10,false,ShowMaker,Dplus KIA,Mid,3139,83
+10,10,false,Smash,Dplus KIA,Bot,4312,103
+10,10,false,Career,Dplus KIA,Support,2661,19
+10,10,false,Kiin,Gen.G,Top,3644,88
+10,10,false,Canyon,Gen.G,Jungle,3294,71
+10,10,false,Chovy,Gen.G,Mid,3617,93
+10,10,false,Ruler,Gen.G,Bot,2854,68
+10,10,false,Duro,Gen.G,Support,2315,8
+11,11,false,Siwoo,Dplus KIA,Top,3630,99
+11,11,false,Lucid,Dplus KIA,Jungle,4016,89
+11,11,false,ShowMaker,Dplus KIA,Mid,3407,89
+11,11,false,Smash,Dplus KIA,Bot,5370,113
+11,11,false,Career,Dplus KIA,Support,2883,20
+11,11,false,Kiin,Gen.G,Top,3988,93
+11,11,false,Canyon,Gen.G,Jungle,3952,79
+11,11,false,Chovy,Gen.G,Mid,3988,107
+11,11,false,Ruler,Gen.G,Bot,3353,76
+11,11,false,Duro,Gen.G,Support,2566,8
+12,12,false,Siwoo,Dplus KIA,Top,3812,102
+12,12,false,Lucid,Dplus KIA,Jungle,4390,101
+12,12,false,ShowMaker,Dplus KIA,Mid,3900,102
+12,12,false,Smash,Dplus KIA,Bot,5827,129
+12,12,false,Career,Dplus KIA,Support,3137,21
+12,12,false,Kiin,Gen.G,Top,4435,107
+12,12,false,Canyon,Gen.G,Jungle,4249,85
+12,12,false,Chovy,Gen.G,Mid,4351,119
+12,12,false,Ruler,Gen.G,Bot,3701,87
+12,12,false,Duro,Gen.G,Support,2749,10
+13,13,false,Siwoo,Dplus KIA,Top,4171,111
+13,13,false,Lucid,Dplus KIA,Jungle,4761,107
+13,13,false,ShowMaker,Dplus KIA,Mid,4222,111
+13,13,false,Smash,Dplus KIA,Bot,6730,144
+13,13,false,Career,Dplus KIA,Support,3442,21
+13,13,false,Kiin,Gen.G,Top,4653,107
+13,13,false,Canyon,Gen.G,Jungle,4537,91
+13,13,false,Chovy,Gen.G,Mid,5131,135
+13,13,false,Ruler,Gen.G,Bot,4284,100
+13,13,false,Duro,Gen.G,Support,3087,11
+14,14,false,Siwoo,Dplus KIA,Top,4444,120
+14,14,false,Lucid,Dplus KIA,Jungle,5182,119
+14,14,false,ShowMaker,Dplus KIA,Mid,4427,116
+14,14,false,Smash,Dplus KIA,Bot,7046,153
+14,14,false,Career,Dplus KIA,Support,3649,22
+14,14,false,Kiin,Gen.G,Top,5021,122
+14,14,false,Canyon,Gen.G,Jungle,4865,99
+14,14,false,Chovy,Gen.G,Mid,5481,142
+14,14,false,Ruler,Gen.G,Bot,4556,109
+14,14,false,Duro,Gen.G,Support,3268,11
+15,15,false,Siwoo,Dplus KIA,Top,4969,139
+15,15,false,Lucid,Dplus KIA,Jungle,5599,131
+15,15,false,ShowMaker,Dplus KIA,Mid,4791,128
+15,15,false,Smash,Dplus KIA,Bot,7583,169
+15,15,false,Career,Dplus KIA,Support,3865,22
+15,15,false,Kiin,Gen.G,Top,5372,133
+15,15,false,Canyon,Gen.G,Jungle,5265,109
+15,15,false,Chovy,Gen.G,Mid,5825,153
+15,15,false,Ruler,Gen.G,Bot,5259,123
+15,15,false,Duro,Gen.G,Support,3459,11
+16,16,false,Siwoo,Dplus KIA,Top,5096,139
+16,16,false,Lucid,Dplus KIA,Jungle,5852,135
+16,16,false,ShowMaker,Dplus KIA,Mid,4918,128
+16,16,false,Smash,Dplus KIA,Bot,7877,178
+16,16,false,Career,Dplus KIA,Support,4146,26
+16,16,false,Kiin,Gen.G,Top,5862,138
+16,16,false,Canyon,Gen.G,Jungle,5432,112
+16,16,false,Chovy,Gen.G,Mid,6047,157
+16,16,false,Ruler,Gen.G,Bot,5483,128
+16,16,false,Duro,Gen.G,Support,3636,11
+17,17,false,Siwoo,Dplus KIA,Top,5397,144
+17,17,false,Lucid,Dplus KIA,Jungle,6426,147
+17,17,false,ShowMaker,Dplus KIA,Mid,5820,148
+17,17,false,Smash,Dplus KIA,Bot,8491,190
+17,17,false,Career,Dplus KIA,Support,4498,27
+17,17,false,Kiin,Gen.G,Top,6197,146
+17,17,false,Canyon,Gen.G,Jungle,5894,121
+17,17,false,Chovy,Gen.G,Mid,6869,182
+17,17,false,Ruler,Gen.G,Bot,5927,140
+17,17,false,Duro,Gen.G,Support,3867,11
+18,18,false,Siwoo,Dplus KIA,Top,5853,162
+18,18,false,Lucid,Dplus KIA,Jungle,6844,159
+18,18,false,ShowMaker,Dplus KIA,Mid,6181,159
+18,18,false,Smash,Dplus KIA,Bot,8916,203
+18,18,false,Career,Dplus KIA,Support,4679,27
+18,18,false,Kiin,Gen.G,Top,6654,161
+18,18,false,Canyon,Gen.G,Jungle,6291,131
+18,18,false,Chovy,Gen.G,Mid,7195,192
+18,18,false,Ruler,Gen.G,Bot,6439,158
+18,18,false,Duro,Gen.G,Support,4103,12
+19,19,false,Siwoo,Dplus KIA,Top,6140,172
+19,19,false,Lucid,Dplus KIA,Jungle,7174,162
+19,19,false,ShowMaker,Dplus KIA,Mid,6691,170
+19,19,false,Smash,Dplus KIA,Bot,9537,220
+19,19,false,Career,Dplus KIA,Support,5106,29
+19,19,false,Kiin,Gen.G,Top,7037,173
+19,19,false,Canyon,Gen.G,Jungle,6486,134
+19,19,false,Chovy,Gen.G,Mid,7490,198
+19,19,false,Ruler,Gen.G,Bot,6871,171
+19,19,false,Duro,Gen.G,Support,4315,13
+20,20,false,Siwoo,Dplus KIA,Top,6611,181
+20,20,false,Lucid,Dplus KIA,Jungle,7725,170
+20,20,false,ShowMaker,Dplus KIA,Mid,7082,179
+20,20,false,Smash,Dplus KIA,Bot,10318,228
+20,20,false,Career,Dplus KIA,Support,5365,29
+20,20,false,Kiin,Gen.G,Top,7265,178
+20,20,false,Canyon,Gen.G,Jungle,6609,134
+20,20,false,Chovy,Gen.G,Mid,7928,213
+20,20,false,Ruler,Gen.G,Bot,7320,187
+20,20,false,Duro,Gen.G,Support,4521,14
+21,21,false,Siwoo,Dplus KIA,Top,6939,191
+21,21,false,Lucid,Dplus KIA,Jungle,8252,186
+21,21,false,ShowMaker,Dplus KIA,Mid,7478,193
+21,21,false,Smash,Dplus KIA,Bot,10814,244
+21,21,false,Career,Dplus KIA,Support,5542,29
+21,21,false,Kiin,Gen.G,Top,7643,191
+21,21,false,Canyon,Gen.G,Jungle,7190,151
+21,21,false,Chovy,Gen.G,Mid,8296,225
+21,21,false,Ruler,Gen.G,Bot,7758,200
+21,21,false,Duro,Gen.G,Support,4798,17
+22,22,false,Siwoo,Dplus KIA,Top,7351,206
+22,22,false,Lucid,Dplus KIA,Jungle,8469,187
+22,22,false,ShowMaker,Dplus KIA,Mid,7796,200
+22,22,false,Smash,Dplus KIA,Bot,11361,259
+22,22,false,Career,Dplus KIA,Support,5738,30
+22,22,false,Kiin,Gen.G,Top,7907,199
+22,22,false,Canyon,Gen.G,Jungle,7348,152
+22,22,false,Chovy,Gen.G,Mid,8666,237
+22,22,false,Ruler,Gen.G,Bot,8233,216
+22,22,false,Duro,Gen.G,Support,4974,17
+23,23,false,Siwoo,Dplus KIA,Top,8061,217
+23,23,false,Lucid,Dplus KIA,Jungle,8791,195
+23,23,false,ShowMaker,Dplus KIA,Mid,8255,214
+23,23,false,Smash,Dplus KIA,Bot,11725,272
+23,23,false,Career,Dplus KIA,Support,5950,31
+23,23,false,Kiin,Gen.G,Top,8517,209
+23,23,false,Canyon,Gen.G,Jungle,7686,160
+23,23,false,Chovy,Gen.G,Mid,9161,248
+23,23,false,Ruler,Gen.G,Bot,8620,228
+23,23,false,Duro,Gen.G,Support,5191,17
+24,24,false,Siwoo,Dplus KIA,Top,8329,226
+24,24,false,Lucid,Dplus KIA,Jungle,9139,201
+24,24,false,ShowMaker,Dplus KIA,Mid,8693,224
+24,24,false,Smash,Dplus KIA,Bot,12582,287
+24,24,false,Career,Dplus KIA,Support,6330,35
+24,24,false,Kiin,Gen.G,Top,8939,223
+24,24,false,Canyon,Gen.G,Jungle,8026,168
+24,24,false,Chovy,Gen.G,Mid,9409,253
+24,24,false,Ruler,Gen.G,Bot,9050,241
+24,24,false,Duro,Gen.G,Support,5368,17
+25,25,false,Siwoo,Dplus KIA,Top,8823,241
+25,25,false,Lucid,Dplus KIA,Jungle,9387,206
+25,25,false,ShowMaker,Dplus KIA,Mid,8906,225
+25,25,false,Smash,Dplus KIA,Bot,12939,289
+25,25,false,Career,Dplus KIA,Support,6597,37
+25,25,false,Kiin,Gen.G,Top,9150,226
+25,25,false,Canyon,Gen.G,Jungle,8369,177
+25,25,false,Chovy,Gen.G,Mid,9737,264
+25,25,false,Ruler,Gen.G,Bot,9380,250
+25,25,false,Duro,Gen.G,Support,5550,17
+26,26,false,Siwoo,Dplus KIA,Top,9248,252
+26,26,false,Lucid,Dplus KIA,Jungle,9983,223
+26,26,false,ShowMaker,Dplus KIA,Mid,9450,240
+26,26,false,Smash,Dplus KIA,Bot,13476,306
+26,26,false,Career,Dplus KIA,Support,6873,39
+26,26,false,Kiin,Gen.G,Top,9512,236
+26,26,false,Canyon,Gen.G,Jungle,8661,182
+26,26,false,Chovy,Gen.G,Mid,10113,276
+26,26,false,Ruler,Gen.G,Bot,9983,269
+26,26,false,Duro,Gen.G,Support,5776,18
+27,27,false,Siwoo,Dplus KIA,Top,9655,262
+27,27,false,Lucid,Dplus KIA,Jungle,10255,227
+27,27,false,ShowMaker,Dplus KIA,Mid,9924,253
+27,27,false,Smash,Dplus KIA,Bot,14129,326
+27,27,false,Career,Dplus KIA,Support,7079,40
+27,27,false,Kiin,Gen.G,Top,9992,252
+27,27,false,Canyon,Gen.G,Jungle,8902,186
+27,27,false,Chovy,Gen.G,Mid,10754,298
+27,27,false,Ruler,Gen.G,Bot,10427,281
+27,27,false,Duro,Gen.G,Support,5963,18
+28,28,false,Siwoo,Dplus KIA,Top,10248,272
+28,28,false,Lucid,Dplus KIA,Jungle,11350,234
+28,28,false,ShowMaker,Dplus KIA,Mid,11073,259
+28,28,false,Smash,Dplus KIA,Bot,14839,333
+28,28,false,Career,Dplus KIA,Support,7678,41
+28,28,false,Kiin,Gen.G,Top,10156,252
+28,28,false,Canyon,Gen.G,Jungle,9090,188
+28,28,false,Chovy,Gen.G,Mid,10897,299
+28,28,false,Ruler,Gen.G,Bot,10868,292
+28,28,false,Duro,Gen.G,Support,6159,19
+29,28,true,Siwoo,Dplus KIA,Top,10773,277
+29,28,true,Lucid,Dplus KIA,Jungle,11807,236
+29,28,true,ShowMaker,Dplus KIA,Mid,11579,264
+29,28,true,Smash,Dplus KIA,Bot,15536,341
+29,28,true,Career,Dplus KIA,Support,8177,43
+29,28,true,Kiin,Gen.G,Top,10294,252
+29,28,true,Canyon,Gen.G,Jungle,9186,189
+29,28,true,Chovy,Gen.G,Mid,10984,299
+29,28,true,Ruler,Gen.G,Bot,10950,292
+29,28,true,Duro,Gen.G,Support,6278,19

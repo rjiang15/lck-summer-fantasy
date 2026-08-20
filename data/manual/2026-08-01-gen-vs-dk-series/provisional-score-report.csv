@@ -1,0 +1,11 @@
+player,team,role,game_1_source_available_total,game_1_provisional_total,game_1_estimate_delta,game_2_gol_total,two_game_points_per_game,estimated_xp_diff_at_15,estimated_final_vision_score,game_1_combat,game_2_combat,game_1_farm,game_2_farm,game_1_vision,game_2_vision,game_1_win,game_2_win,game_1_killParticipation,game_2_killParticipation,game_1_efficiency,game_2_efficiency,game_1_jungleObjectives,game_2_jungleObjectives,game_1_laneImpact,game_2_laneImpact,game_1_towerPressure,game_2_towerPressure,game_1_durability,game_2_durability,game_1_multikill,game_2_multikill,game_1_total,game_2_total
+Kiin,Gen.G,top,21.06,22.55,1.49,22.16,22.36,-85,47,-2.5,-2,2.56,2.63,1.49,1.53,0,0,6,10,15,10,0,0,0,0,0,0,0,0,0,0,22.55,22.16
+Canyon,Gen.G,jungle,6.33,5.33,-1,9.7,7.52,-1551,63,-2,-2.25,2.08,1.97,2,2.23,0,0,0,3,5,5,1.25,0.75,-3,-1,0,0,0,0,0,0,5.33,9.7
+Chovy,Gen.G,mid,15.43,15.89,0.46,13.51,14.7,-866,46,2.5,-0.5,2.43,3.12,1.46,1.64,0,0,3,3,7.5,3.75,0,0,-1,1,0,1,0,0.5,0,0,15.89,13.51
+Ruler,Gen.G,bottom,-2.4,-1.38,1.02,13.47,6.05,-595,32,-1.5,-1,3.1,3.05,1.02,1.42,0,0,0,3,-4,10,0,0,0,-3,0,0,0,0,0,0,-1.38,13.47
+Duro,Gen.G,support,13.03,18.36,5.33,20.11,19.24,-22,168,0.75,-0.25,0.28,0.2,5.33,4.16,0,0,3,10,9,6,0,0,0,0,0,0,0,0,0,0,18.36,20.11
+Siwoo,Dplus KIA,top,-0.71,0.78,1.49,0.78,0.78,85,47,-0.75,-1,2.54,2.89,1.49,1.39,1.5,1.5,0,0,-4,-4,0,0,0,0,0,0,0,0,0,0,0.78,0.78
+Lucid,Dplus KIA,jungle,38.97,44.57,5.6,35.61,40.09,1551,82,14.25,5,2.47,2.46,2.6,1.9,1.5,1.5,10,10,5,10,5.75,3.75,3,1,0,0,0,0,0,0,44.57,35.61
+ShowMaker,Dplus KIA,mid,27.78,30.56,2.78,25.5,28.03,866,56,6.5,3.5,2.53,2.75,1.78,1.5,1.5,1.5,6,6,11.25,11.25,0,0,1,-1,0,0,0,0,0,0,30.56,25.5
+Smash,Dplus KIA,bottom,35.35,36.78,1.43,19.66,28.22,595,45,11.5,5.25,3.35,3.56,1.43,1.35,1.5,1.5,3,6,15,-4,0,0,0,3,0,3,0,0,1,0,36.78,19.66
+Career,Dplus KIA,support,15.81,21.71,5.9,32.84,27.28,22,186,1.75,5.25,0.56,0.45,5.9,4.64,1.5,1.5,3,10,9,9,0,0,0,0,0,2,0,0,0,0,21.71,32.84

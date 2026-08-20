@@ -1,0 +1,11 @@
+source_game_id,player,team,role,lane_opponent,level_at_15,xp_bar_side,xp_bar_start_px,xp_bar_fill_end_exclusive_px,xp_bar_width_px,xp_fill_pixels,xp_progress_estimate,estimated_xp_at_15,estimated_xp_diff_at_15,vision_score_at_30_57,vision_scale_factor,estimated_final_vision_score,damage_to_champions_override,damage_to_towers_override,damage_mitigated_override,total_heal_override,confidence
+115548147900553474,Kiin,Gen.G,top,Siwoo,11,left,7,79,121,72,0.595041,8061.7,-85,44,1.069467,47,0,0,0,0,high
+115548147900553474,Canyon,Gen.G,jungle,Lucid,10,left,7,33,121,26,0.214876,6373.6,-1551,59,1.069467,63,0,0,0,0,high
+115548147900553474,Chovy,Gen.G,mid,ShowMaker,10,left,7,75,121,68,0.561983,6783.1,-866,43,1.069467,46,0,0,0,0,high
+115548147900553474,Ruler,Gen.G,bottom,Smash,10,left,7,55,121,48,0.396694,6588.1,-595,30,1.069467,32,0,0,0,0,medium
+115548147900553474,Duro,Gen.G,support,Career,7,left,7,64,121,57,0.471074,3594.5,-22,157,1.069467,168,0,0,0,0,high
+115548147900553474,Siwoo,Dplus KIA,top,Kiin,11,right,37,117,121,80,0.661157,8146.3,85,44,1.069467,47,0,0,0,0,high
+115548147900553474,Lucid,Dplus KIA,jungle,Canyon,11,right,37,96,121,59,0.487603,7924.1,1551,77,1.069467,82,0,0,0,0,high
+115548147900553474,ShowMaker,Dplus KIA,mid,Chovy,11,right,37,70,121,33,0.272727,7649.1,866,52,1.069467,56,0,0,0,0,high
+115548147900553474,Smash,Dplus KIA,bottom,Ruler,10,right,37,146,121,109,0.900826,7183.0,595,42,1.069467,45,0,0,0,0,high
+115548147900553474,Career,Dplus KIA,support,Duro,7,right,37,97,121,60,0.495868,3616.4,22,174,1.069467,186,0,0,0,0,high

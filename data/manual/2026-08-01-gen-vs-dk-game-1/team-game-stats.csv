@@ -1,0 +1,3 @@
+source_game_id,team,side,won,kills,gold,towers,inhibitors,dragons,dragon_types,barons,heralds,void_grubs,atakhans,supplemental_objective_source
+115548147900553474,Gen.G,Blue,false,14,60332,2,0,1,"[""infernal""]",0,0,3,,Reddit post-match table for heralds/void grubs
+115548147900553474,Dplus KIA,Red,true,21,71672,8,1,4,"[""mountain"",""ocean"",""ocean"",""ocean""]",2,1,0,,Reddit post-match table for heralds/void grubs

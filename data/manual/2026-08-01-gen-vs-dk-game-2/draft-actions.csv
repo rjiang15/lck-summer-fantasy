@@ -1,0 +1,21 @@
+team,side,action,sequence,champion
+Dplus KIA,Blue,BAN,1,Nocturne
+Dplus KIA,Blue,BAN,2,Orianna
+Dplus KIA,Blue,BAN,3,Jayce
+Dplus KIA,Blue,BAN,4,Akali
+Dplus KIA,Blue,BAN,5,Anivia
+Dplus KIA,Blue,PICK,1,Bard
+Dplus KIA,Blue,PICK,2,Xin Zhao
+Dplus KIA,Blue,PICK,3,Caitlyn
+Dplus KIA,Blue,PICK,4,Viktor
+Dplus KIA,Blue,PICK,5,KSante
+Gen.G,Red,BAN,1,Poppy
+Gen.G,Red,BAN,2,Ezreal
+Gen.G,Red,BAN,3,Vi
+Gen.G,Red,BAN,4,Syndra
+Gen.G,Red,BAN,5,Ryze
+Gen.G,Red,PICK,1,Jarvan IV
+Gen.G,Red,PICK,2,Lucian
+Gen.G,Red,PICK,3,Milio
+Gen.G,Red,PICK,4,Rumble
+Gen.G,Red,PICK,5,Yone

@@ -7,6 +7,7 @@ export type GolSeriesQualityOverride = {
   team1Score: number;
   team2Score: number;
   quarantineDetailedStats: boolean;
+  manualReconciliationId: string | null;
   reason: string;
 };
 
@@ -42,9 +43,10 @@ export function golSeriesQualityOverride({
     winner: dplus,
     team1Score: dplus === team1 ? 2 : 0,
     team2Score: dplus === team2 ? 2 : 0,
-    quarantineDetailedStats: true,
+    quarantineDetailedStats: false,
+    manualReconciliationId: "2026-08-01-gen-dk",
     reason:
-      "Gol series 80675 is quarantined: its 1-1 match-list row conflicts with the verified 2-0 result, and its supposed Game 1 duplicates/mislabels Game 2 data and draft information.",
+      "Gol series 80675 is replaced by the audited Gen.G-DK mixed-source package: its 1-1 match-list row conflicts with the verified 2-0 result, and its supposed Game 1 duplicates/mislabels Game 2 data and draft information.",
   };
 }
 

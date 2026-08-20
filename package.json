@@ -12,6 +12,7 @@
     "lint": "eslint",
     "ingest": "tsx src/scripts/ingest.ts",
     "ingest:gol": "tsx src/scripts/ingest-gol.ts",
+    "fixture:gen-dk": "node src/scripts/build-gen-dk-manual-series-fixture.mjs",
     "ingest:oe": "tsx src/scripts/enrich-oe.ts",
     "ingest:timeline": "tsx src/scripts/ingest-timeline.ts",
     "backfill:stats": "tsx src/scripts/backfill-stats.ts",

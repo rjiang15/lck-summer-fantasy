@@ -1,0 +1,19 @@
+timestamp,elapsed_sec,team,side,objective,subtype,new_total
+2026-08-01T11:16:03.887Z,340.092,Gen.G,Blue,dragon,infernal,1
+2026-08-01T11:22:19.476Z,715.681,Dplus KIA,Red,dragon,mountain,1
+2026-08-01T11:26:04.999Z,941.204,Dplus KIA,Red,tower,,1
+2026-08-01T11:27:20.724Z,1016.929,Gen.G,Blue,tower,,1
+2026-08-01T11:27:21.980Z,1018.185,Dplus KIA,Red,tower,,2
+2026-08-01T11:27:30.166Z,1026.371,Dplus KIA,Red,tower,,3
+2026-08-01T11:27:57.225Z,1053.43,Dplus KIA,Red,dragon,ocean,2
+2026-08-01T11:28:30.229Z,1086.434,Gen.G,Blue,tower,,2
+2026-08-01T11:33:52.486Z,1408.691,Dplus KIA,Red,dragon,ocean,3
+2026-08-01T11:34:30.539Z,1446.744,Dplus KIA,Red,baron,,1
+2026-08-01T11:36:05.983Z,1542.188,Dplus KIA,Red,tower,,4
+2026-08-01T11:36:24.787Z,1560.992,Dplus KIA,Red,tower,,5
+2026-08-01T11:39:56.616Z,1772.821,Dplus KIA,Red,dragon,ocean,4
+2026-08-01T11:41:59.595Z,1895.8,Dplus KIA,Red,baron,,2
+2026-08-01T11:42:43.753Z,1939.958,Dplus KIA,Red,tower,,6
+2026-08-01T11:42:51.198Z,1947.403,Dplus KIA,Red,inhibitor,,1
+2026-08-01T11:43:09.186Z,1965.391,Dplus KIA,Red,tower,,7
+2026-08-01T11:43:18.303Z,1974.508,Dplus KIA,Red,tower,,8

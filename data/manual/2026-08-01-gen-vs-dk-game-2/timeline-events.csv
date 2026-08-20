@@ -1,0 +1,82 @@
+source_key,time,side,team,player,champion,assisting_champions,event,victim_champion,target
+6184857,2:20,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184858,2:39,Blue,Dplus KIA,,,[],PLATE,,TOP
+6184862,5:03,Red,Gen.G,,,[],PLATE,,MID
+6184864,6:10,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184865,6:49,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184866,6:50,Red,Gen.G,,,[],PLATE,,TOP
+6184868,7:34,Blue,Dplus KIA,,,[],PLATE,,MID
+6184870,8:07,Red,Gen.G,,,[],PLATE,,MID
+6184871,8:08,Red,Gen.G,Canyon,JarvanIV,[],VOID_GRUB,,
+6184872,8:18,Red,Gen.G,Canyon,JarvanIV,[],VOID_GRUB,,
+6184873,8:23,Red,Gen.G,Canyon,JarvanIV,[],VOID_GRUB,,
+6184874,8:45,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184876,9:42,Blue,Dplus KIA,Smash,Caitlyn,"[""XinZhao"",""Bard""]",KILL,Rumble,Kiin
+6184878,10:00,Red,Gen.G,,,[],PLATE,,TOP
+6184879,10:24,Red,Gen.G,Canyon,JarvanIV,"[""Rumble"",""Lucian"",""Milio""]",KILL,KSante,Siwoo
+6184880,10:38,Red,Gen.G,,,[],PLATE,,TOP
+6184881,10:56,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184882,10:56,Blue,Dplus KIA,Smash,Caitlyn,[],TOWER,,T1 BOT
+6184884,11:05,Blue,Dplus KIA,Lucid,XinZhao,[],DRAGON_CLOUD,,
+6184885,11:30,Blue,Dplus KIA,,,[],PLATE,,MID
+6184887,12:04,Blue,Dplus KIA,,,[],PLATE,,TOP
+6184888,12:12,Blue,Dplus KIA,,,[],PLATE,,TOP
+6184889,12:20,Red,Gen.G,,,[],PLATE,,BOT
+6184890,12:39,Blue,Dplus KIA,,,[],PLATE,,TOP
+6184891,12:40,Red,Gen.G,Chovy,Yone,"[""Rumble"",""Milio""]",KILL,Viktor,ShowMaker
+6184892,12:53,Red,Gen.G,,,[],PLATE,,BOT
+6184893,12:57,Blue,Dplus KIA,,,[],PLATE,,TOP
+6184894,12:57,Blue,Dplus KIA,Smash,Caitlyn,[],TOWER,,T1 TOP
+6184896,13:03,Red,Gen.G,,,[],PLATE,,MID
+6184898,14:27,Blue,Dplus KIA,,,[],PLATE,,MID
+6184900,15:34,Blue,Dplus KIA,Career,Bard,[],RIFT_HERALD,,
+6184902,16:24,Blue,Dplus KIA,ShowMaker,Viktor,"[""XinZhao"",""Bard""]",KILL,Rumble,Kiin
+6184903,16:32,Blue,Dplus KIA,,,[],PLATE,,MID
+6184904,16:39,Red,Gen.G,,,[],PLATE,,TOP
+6184905,16:42,Blue,Dplus KIA,,,[],PLATE,,MID
+6184906,16:42,Blue,Dplus KIA,Smash,Caitlyn,[],TOWER,,T1 MID
+6184907,16:45,Red,Gen.G,,,[],PLATE,,TOP
+6184908,16:45,Red,Gen.G,Chovy,Yone,[],TOWER,,T1 TOP
+6184909,16:56,Blue,Dplus KIA,Lucid,XinZhao,[],DRAGON_INFERNAL,,
+6184910,16:59,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184913,18:56,Blue,Dplus KIA,,,[],PLATE,,TOP
+6184915,18:57,Blue,Dplus KIA,,,[],PLATE,,TOP
+6184914,18:57,Blue,Dplus KIA,,,[],PLATE,,TOP
+6184916,18:57,Blue,Dplus KIA,,,[],PLATE,,TOP
+6184918,19:06,Blue,Dplus KIA,,,[],PLATE,,TOP
+6184919,19:06,Blue,Dplus KIA,Smash,Caitlyn,[],TOWER,,T2 TOP
+6184920,19:10,Blue,Dplus KIA,Smash,Caitlyn,"[""XinZhao"",""Viktor"",""Bard""]",KILL,JarvanIV,Canyon
+6184921,19:12,Blue,Dplus KIA,,,[],PLATE,,MID
+6184922,19:24,Blue,Dplus KIA,,,[],PLATE,,MID
+6184925,21:36,Blue,Dplus KIA,,,[],PLATE,,MID
+6184926,21:39,Blue,Dplus KIA,,,[],PLATE,,MID
+6184928,22:07,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184929,22:09,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184930,22:18,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184931,22:30,Red,Gen.G,,,[],PLATE,,TOP
+6184932,22:31,Blue,Dplus KIA,Smash,Caitlyn,[],DRAGON_CHEMTECH,,
+6184934,23:51,Blue,Dplus KIA,Smash,Caitlyn,"[""Viktor"",""Bard""]",KILL,Milio,Duro
+6184936,25:00,Blue,Dplus KIA,,,[],PLATE,,MID
+6184937,25:00,Blue,Dplus KIA,,,[],TOWER,,T2 MID
+6184939,25:15,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184940,25:15,Blue,Dplus KIA,ShowMaker,Viktor,[],TOWER,,T2 BOT
+6184943,27:21,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184944,27:28,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184945,27:43,Blue,Dplus KIA,ShowMaker,Viktor,"[""XinZhao"",""Bard""]",KILL,Yone,Chovy
+6184946,27:47,Blue,Dplus KIA,ShowMaker,Viktor,"[""XinZhao"",""Caitlyn"",""Bard""]",KILL,JarvanIV,Canyon
+6184947,27:50,Blue,Dplus KIA,Lucid,XinZhao,"[""KSante"",""Caitlyn"",""Bard""]",KILL,Lucian,Ruler
+6184948,27:50,Blue,Dplus KIA,Lucid,XinZhao,[],BARON_NASHOR,,
+6184950,28:08,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184951,28:09,Blue,Dplus KIA,,,[],PLATE,,MID
+6184952,28:09,Blue,Dplus KIA,,,[],PLATE,,MID
+6184954,28:11,Blue,Dplus KIA,,,[],PLATE,,MID
+6184953,28:11,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184955,28:14,Blue,Dplus KIA,,,[],PLATE,,MID
+6184956,28:15,Blue,Dplus KIA,,,[],PLATE,,BOT
+6184957,28:15,Blue,Dplus KIA,ShowMaker,Viktor,[],TOWER,,T3 BOT
+6184958,28:19,Blue,Dplus KIA,Lucid,XinZhao,[],INHIBITOR,,INHIB BOT
+6184959,28:26,Blue,Dplus KIA,Smash,Caitlyn,[],TOWER,,T1 TOP NEXUS
+6184960,28:30,Blue,Dplus KIA,,,[],PLATE,,MID
+6184961,28:30,Blue,Dplus KIA,Smash,Caitlyn,[],TOWER,,T3 MID
+6184962,28:31,Blue,Dplus KIA,Siwoo,KSante,[],TOWER,,T2 BOT NEXUS
+6184963,28:46,Blue,Dplus KIA,,,[],NEXUS,,
